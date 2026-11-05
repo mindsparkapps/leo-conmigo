@@ -1,0 +1,9 @@
+Andika (Regular y Bold, subconjunto latino)
+
+Diseñada por SIL International para la alfabetización.
+Distribuida bajo la SIL Open Font License, Version 1.1.
+Texto completo de la licencia: https://openfontlicense.org/open-font-license-official-text/
+Fuente original: https://fonts.google.com/specimen/Andika
+
+Los archivos woff2 de esta carpeta son el subconjunto "latin" servido por Google Fonts
+(cubre todo el español: á é í ó ú ü ñ ¿ ¡).

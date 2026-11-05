@@ -1,0 +1,255 @@
+/* ===== Fuentes (alojadas localmente: funcionan sin conexión) ===== */
+@font-face {
+  font-family: 'Andika';
+  src: url('../fonts/Andika-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Andika';
+  src: url('../fonts/Andika-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ===== Variables de diseño =====
+   Paleta calma. Un color de ayuda (amarillo) y uno de acierto (verde).
+   Nunca se usa rojo para marcar errores. */
+:root {
+  --fondo: #eaf4f9;
+  --tarjeta: #ffffff;
+  --texto: #1d2b36;
+  --texto-suave: #4d606c;
+  --borde: #c3d8e3;
+
+  --azul: #2f7fa8;
+  --azul-oscuro: #1f5f82;
+  --azul-suave: #d8ebf5;
+
+  --verde: #3f9d6b;
+  --verde-suave: #dff3e8;
+
+  --amarillo: #f2b632;
+  --amarillo-suave: #fff3cf;
+
+  --radio: 20px;
+  --objetivo-min: 88px;
+  --fuente: 'Andika', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { height: 100%; margin: 0; }
+
+body {
+  font-family: var(--fuente);
+  font-size: 1.125rem;
+  line-height: 1.5;
+  color: var(--texto);
+  background: var(--fondo);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+#app {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding:
+    env(safe-area-inset-top)
+    env(safe-area-inset-right)
+    env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+#vista {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+#vista:focus { outline: none; }
+
+:focus-visible {
+  outline: 4px solid var(--amarillo);
+  outline-offset: 3px;
+}
+
+.solo-lectura {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ===== Botones ===== */
+.boton {
+  min-height: 56px;
+  padding: 0 24px;
+  border: 2px solid var(--azul);
+  border-radius: var(--radio);
+  background: var(--azul);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.boton:hover { background: var(--azul-oscuro); border-color: var(--azul-oscuro); }
+.boton.secundario { background: #fff; color: var(--azul-oscuro); }
+.boton.secundario:hover { background: var(--azul-suave); }
+
+/* ===== Modo niño ===== */
+.vista-nino {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 24px;
+  text-align: center;
+  background: var(--fondo);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+}
+
+.titulo-nino {
+  margin: 0;
+  font-size: clamp(3rem, 12vw, 6rem);
+  line-height: 1.1;
+  font-weight: 700;
+  color: var(--azul-oscuro);
+}
+
+/* ===== Candado (salida al modo adulto: mantener 3 s) ===== */
+.candado {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  opacity: 0.55;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.candado svg { width: 100%; height: 100%; display: block; }
+
+.candado-pista { fill: none; stroke: var(--borde); stroke-width: 3; }
+.candado-avance {
+  fill: none;
+  stroke: var(--azul);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 132;
+  stroke-dashoffset: 132;
+  transform: rotate(-90deg);
+  transform-origin: 24px 24px;
+}
+.candado.sosteniendo { opacity: 1; }
+.candado.sosteniendo .candado-avance {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 3s linear;
+}
+.candado-icono { fill: var(--texto-suave); }
+.candado-icono-linea {
+  fill: none;
+  stroke: var(--texto-suave);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+/* ===== Diálogo de la suma ===== */
+.dialogo-suma {
+  width: min(92vw, 420px);
+  padding: 28px;
+  border: 0;
+  border-radius: var(--radio);
+  background: var(--tarjeta);
+  color: var(--texto);
+  box-shadow: 0 12px 40px rgba(29, 43, 54, 0.3);
+}
+.dialogo-suma::backdrop { background: rgba(29, 43, 54, 0.5); }
+.dialogo-suma h2 { margin: 0 0 8px; font-size: 1.5rem; }
+.dialogo-suma p { margin: 0; }
+.suma-enunciado { margin: 16px 0 !important; font-size: 2.25rem; font-weight: 700; text-align: center; }
+.dialogo-suma input {
+  width: 100%;
+  min-height: 64px;
+  padding: 0 16px;
+  border: 3px solid var(--borde);
+  border-radius: 16px;
+  font: inherit;
+  font-size: 2rem;
+  text-align: center;
+}
+.dialogo-suma input:focus-visible { outline: none; border-color: var(--azul); }
+.suma-error {
+  margin-top: 12px !important;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--amarillo-suave);
+  color: #5c4300;
+}
+.acciones { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+
+/* ===== Modo adulto ===== */
+.vista-adulto {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.encabezado-adulto { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.encabezado-adulto h1 { margin: 0; font-size: 1.75rem; }
+
+.panel {
+  padding: 16px 20px;
+  border: 2px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--tarjeta);
+}
+.panel h2 { margin: 0 0 8px; font-size: 1.25rem; }
+.panel p { margin: 8px 0 0; }
+.panel .ayuda { color: var(--texto-suave); font-size: 1rem; }
+
+.lista-estado { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.lista-estado li { display: flex; justify-content: space-between; gap: 12px; }
+.lista-estado strong { text-align: right; }
+
+.aviso {
+  padding: 16px 20px;
+  border: 2px solid var(--amarillo);
+  border-radius: var(--radio);
+  background: var(--amarillo-suave);
+}
+.aviso p { margin: 0 0 12px; }
+
+/* ===== Movimiento reducido ===== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
