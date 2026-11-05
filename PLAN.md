@@ -127,6 +127,21 @@ Implementarlo como lógica **pura** en `js/core/progreso.js` y `js/core/sesion.j
 
 **Desbloqueo de etapas:** automático según los umbrales de §3; el adulto puede forzar o bloquear cualquier etapa y marcar a mano una palabra como dominada o nueva.
 
+### Decisiones de implementación (fase 2, ya en el código y con pruebas)
+
+Precisan lo que arriba quedaba ambiguo. **Si hay que cambiar un umbral, se cambia en una constante de `js/core/` y su prueba, no en la interfaz.**
+
+- **Dominio:** de los últimos 5 ensayos, ≥ 4 aciertos al primer intento y **esos aciertos** deben caer en ≥ 2 días distintos (con menos de 5 ensayos vale la misma regla). Por eso una palabra nunca se domina con un ensayo fallido.
+- **Leitner:** un acierto solo sube de caja si el repaso estaba **vencido** (uno antes de tiempo no la adelanta); una dominada sin fecha de repaso (marcada a mano) cuenta como vencida. Un error vuelve a la caja 1 y se repasa al día siguiente. El retroceso a `practica` necesita 2 errores **seguidos** desde que está dominada (`fallosRepaso`).
+- **Opciones:** la ventana de 10 ensayos se reinicia al cambiar de nivel. Los ensayos «fáciles» (primero, último y cierre por fatiga) **no cuentan** para el nivel. Mientras la ventana está vacía, el nivel se trata como fácil.
+- **Quién está «en práctica»:** una palabra con historial (o dominada a mano) que aún no domina todas las actividades de la etapa. Al dominar L1 pasa a practicar L2, y así; sus actividades ya dominadas se siguen repasando.
+- **Repasos:** primero todo lo vencido (los más atrasados antes, un repaso por palabra mientras se pueda) y solo después dominadas al azar. Si no hay nada nuevo que practicar, toda la sesión es repaso.
+- **Orden:** ninguna palabra ocupa más de la mitad de la sesión (el sobrante se llena con repasos). El primer y el último ensayo se eligen entre los de mayor puntaje **que permitan cumplir las reglas de orden**. «Máximo 3 seguidos de la misma actividad» se cumple siempre que sea posible; en las primeras sesiones todo es L1 y es imposible (se comprobó por fuerza bruta que el orden elegido es el mejor que existe).
+- **Ensayo «fácil»:** solo si lo que el niño hace bien existe de verdad (repaso o práctica con ≥ 60 % de aciertos); entonces se muestra con 2 opciones. En la primera sesión no hay nada así y ningún ensayo se marca fácil.
+- **Una sola opción:** mientras el niño no ha visto ninguna otra palabra, un ensayo puede tener 1 sola opción (`opciones: 1`): la pantalla muestra solo la tarjeta («Toca la palabra»). Nunca se inventan distractores sin ver.
+- **Fatiga:** con 3 errores seguidos el siguiente ensayo sale de `plan.reservaFacil` (hasta 3 palabras ya dominadas con 2 opciones) y la sesión termina al completarlo, aunque falle. Si no hay nada dominado, termina al instante. Se activa una sola vez por sesión.
+- **Ritmo medido con un niño simulado** (`tests/simulador.js`, 14 palabras, 6 sesiones por semana): un niño «lento» (acierta 40 % al empezar) lee (L4) ~3 palabras en 4 semanas, ~6 en 8 y ~10 en 12 (la etapa 2 se abre hacia la semana 12); uno «medio» llega a 13–14 en 12 semanas; uno «rápido» abre la etapa 2 hacia la semana 9. Es un ritmo prudente a propósito; **afinarlo con datos reales es parte de la fase 10**.
+
 ---
 
 ## 5. Experiencia de uso
@@ -198,18 +213,24 @@ js/
   hardware.js     cámara, micrófono, vibración, almacenamiento persistente
   audio.js        reproducir grabación o voz sintética, consignas, elogios
   pictos.js       búsqueda y descarga de ARASAAC
-  core/           LÓGICA PURA, sin DOM (probada con node --test)
+  core/           LÓGICA PURA, sin DOM (probada con `npm test`)
+    azar.js       azar reproducible (semilla), barajar
+    id.js         UUID v4
+    modelos.js    ajustes por defecto y normalización, nuevoPerfil, nuevaPalabra
+    etapas.js     actividades por etapa y desbloqueo de etapas
     silabas.js    división silábica del español
     progreso.js   estados, dominio, opciones, Leitner
-    sesion.js     crearSesion(), registrarRespuesta()
+    sesion.js     crearSesion(), iniciarCurso(), registrarRespuesta() (fatiga)
     distractores.js
-    frases.js
+    suma.js       suma de control del candado
+    frases.js     (fase 6)
   actividades/    un archivo por actividad: P1.js … S4.js
   ui/             componentes: tarjeta, boton-audio, celebracion, candado
   nino/           inicio.js, sesion.js, premio.js, album.js
   adulto/         panel.js, perfiles.js, vocabulario.js, editor-palabra.js,
                   frases.js, libros.js, progreso.js, ajustes.js, cuenta.js
-tests/            *.test.js para js/core
+tests/            *.test.js para js/core (node --test) + ayudas.js y simulador.js (apoyo)
+  navegador/      store.html: pruebas de IndexedDB real; se abre en el servidor local
 ```
 
 ### Interfaz común de actividades
@@ -240,16 +261,19 @@ Todo registro tiene `id` (UUID), `updatedAt` (ISO) y `deleted` (booleano) para l
 perfil     { id, nombre, fotoMedioId, fechaNacimiento?, ajustes:{...}, etapaActual, creado }
 palabra    { id, perfilId, texto, silabas:['ma','má'], categoria, tipo:'sustantivo'|'enlace',
              medioImagenId?, arasaacId?, emoji?, medioAudioId?, orden, activa }
-progreso   { id: `${perfilId}:${palabraId}:${actividad}`, estado, historial:[...], cajaLeitner, proximoRepaso }
-nivel      { id: `${perfilId}:${actividad}`, opciones }
+progreso   { id: `${perfilId}:${elementoId}:${actividad}`, perfilId, elementoId, actividad, estado,
+             historial:[{ fecha, correctoAlPrimerIntento, opciones }] (últimos 10), cajaLeitner (1-5),
+             proximoRepaso ('AAAA-MM-DD' o null), fallosRepaso }
+             // elementoId = id de una palabra (etapas 0, 1 y 3) o de una frase (etapa 2)
+nivel      { id: `${perfilId}:${actividad}`, perfilId, actividad, opciones (2-4), ultimos:[true|false] (ventana de 10) }
 frase      { id, perfilId, palabraIds:[...], medioImagenId? }
 libro      { id, perfilId, titulo, paginas:[{ medioImagenId, fraseId }] }
-sesion     { id, perfilId, inicio, fin, ensayos:[{ palabraId|fraseId, actividad, correctoAlPrimerIntento, intentos, ms }] }
+sesion     { id, perfilId, inicio, fin, fatiga, ensayos:[{ elementoId, actividad, tipo, esFacil, correctoAlPrimerIntento, intentos, ms }] }
 calcomania { id, perfilId, codigo, fecha }
 medio      { id, tipo:'imagen'|'audio', mime, blob (solo local), driveFileId?, subido }
 ```
 
-**IndexedDB:** un *object store* por entidad + `colaSync`.
+**IndexedDB:** un *object store* por entidad + `colaSync` (una fila por registro cambiado, con su fecha) + `meta`. El borrado es suave (`deleted: true`). `store.js` ya ofrece `guardar`, `guardarVarios` (atómico), `obtener`, `listar`, `borrar`, `importar` (sin tocar `updatedAt` ni la cola: para la sincronización y los respaldos), `pendientesSync`, `limpiarCola` (no pierde ediciones hechas mientras se subía) y `leerMeta`/`escribirMeta`.
 **Drive:** `data.json` con todo excepto los `blob`; cada medio como archivo aparte en `appDataFolder` llamado `medio-<id>.<ext>`. Al sincronizar, subir medios pendientes y bajar bajo demanda los que falten en ese dispositivo.
 
 ### División silábica (`core/silabas.js`)
@@ -283,12 +307,12 @@ Cada entrada: `{ texto, silabas, categoria, tipo, emoji, arasaacBusqueda }`.
 
 Cada fase termina con un commit y con su lista de aceptación verificada en el navegador (y en el celular cuando corresponda). Hasta la fase 7 la app funciona completa **sin cuenta de Google**, solo con datos locales.
 
-### Fase 1 — Esqueleto PWA
+### Fase 1 — Esqueleto PWA ✔ hecha
 - `index.html`, `manifest.webmanifest`, `sw.js`, íconos, `css/app.css` con variables de diseño, fuente Andika local, router por hash con vistas vacías de modo niño y modo adulto, candado de salida del modo niño.
 - **Acepta si:** se instala en Android y PC; abre sin conexión; el candado exige 3 s + suma; Lighthouse PWA sin errores.
 
-### Fase 2 — Datos locales y lógica pura
-- `store.js` (IndexedDB con todas las entidades), `core/silabas.js`, `core/progreso.js`, `core/distractores.js`, `core/sesion.js` con pruebas en `tests/` (`node --test tests/`).
+### Fase 2 — Datos locales y lógica pura ✔ hecha
+- `store.js` (IndexedDB con todas las entidades), `core/silabas.js`, `core/progreso.js`, `core/distractores.js`, `core/sesion.js` con pruebas en `tests/` (`npm test`; el almacén se prueba abriendo `/tests/navegador/store.html`).
 - **Acepta si:** todas las pruebas pasan, incluyendo: dominio en 2 días distintos, subida y bajada de opciones, Leitner, regla de fatiga, primer y último ensayo fáciles, ninguna palabra repetida seguida, sílabas de las 40 palabras de prueba.
 
 ### Fase 3 — Modo adulto: perfiles y vocabulario

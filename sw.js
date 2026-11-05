@@ -30,7 +30,16 @@ const PRECACHE = [
   'js/pwa.js',
   'js/ui/dom.js',
   'js/ui/candado.js',
+  'js/store.js',
   'js/core/suma.js',
+  'js/core/azar.js',
+  'js/core/id.js',
+  'js/core/silabas.js',
+  'js/core/modelos.js',
+  'js/core/progreso.js',
+  'js/core/etapas.js',
+  'js/core/distractores.js',
+  'js/core/sesion.js',
   'js/nino/inicio.js',
   'js/adulto/panel.js',
 ];
@@ -68,6 +77,7 @@ self.addEventListener('fetch', (evento) => {
 
   const url = new URL(peticion.url);
   if (url.origin !== self.location.origin) return; // otros orígenes: directo a la red
+  if (url.pathname.includes('/tests/')) return; // las pruebas siempre se leen frescas de la red
 
   if (peticion.mode === 'navigate') {
     evento.respondWith(cacheYActualizar(peticion, evento, INDEX));

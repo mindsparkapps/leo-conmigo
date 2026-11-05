@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pruebas de store.js (navegador)</title>
+  <style>
+    body { font: 16px/1.5 system-ui, sans-serif; margin: 24px; max-width: 760px; }
+    h1 { font-size: 1.3rem; }
+    li { margin: 2px 0; }
+    .ok { color: #1c7a45; }
+    .mal { color: #a02020; font-weight: bold; }
+    #resumen { font-weight: bold; margin: 12px 0; }
+  </style>
+</head>
+<body>
+  <h1>Pruebas de <code>js/store.js</code> (IndexedDB real)</h1>
+  <p>Abrir con el servidor local: <code>/tests/navegador/store.html</code>. Usa una base de datos aparte que borra al terminar.</p>
+  <div id="resumen">Ejecutando…</div>
+  <ul id="lista"></ul>
+
+  <script type="module">
+    import { abrirStore, borrarBD, ALMACENES } from '../../js/store.js';
+
+    const resultados = [];
+    const lista = document.getElementById('lista');
+    const NOMBRE = `leo-test-${Math.random().toString(36).slice(2)}`;
+    let reloj = 0;
+    const ahora = () => new Date(Date.UTC(2026, 10, 5, 10, 0, reloj++)).toISOString(); // un segundo por llamada
+
+    function igual(a, b, mensaje) {
+      if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${mensaje ?? 'no es igual'}: esperaba ${JSON.stringify(b)}, obtuvo ${JSON.stringify(a)}`);
+    }
+    function cierto(valor, mensaje) { if (!valor) throw new Error(mensaje ?? 'no era verdadero'); }
+    async function falla(promesa, texto) {
+      try { await promesa; } catch (e) { if (!String(e.message).includes(texto)) throw new Error(`error distinto: ${e.message}`); return; }
+      throw new Error('debía fallar y no falló');
+    }
+
+    async function prueba(nombre, fn) {
+      let store;
+      try {
+        store = await abrirStore({ nombre: NOMBRE, ahora });
+        await store.vaciar();
+        reloj = 0;
+        await fn(store);
+        resultados.push({ nombre, ok: true });
+      } catch (e) {
+        resultados.push({ nombre, ok: false, error: e.message });
+      } finally {
+        store?.cerrar();
+      }
+      const li = document.createElement('li');
+      const r = resultados.at(-1);
+      li.className = r.ok ? 'ok' : 'mal';
+      li.textContent = `${r.ok ? '✔' : '✖'} ${nombre}${r.ok ? '' : ' — ' + r.error}`;
+      lista.append(li);
+    }
+
+    await prueba('crea todos los almacenes', async (s) => {
+      for (const nombre of Object.keys(ALMACENES)) igual(await s.listar(nombre), [], nombre);
+    });
+
+    await prueba('guardar: asigna id, updatedAt y deleted=false', async (s) => {
+      const r = await s.guardar('perfiles', { nombre: 'Leo' });
+      cierto(r.id && r.id.length >= 30, 'sin id');
+      igual(r.updatedAt, '2026-11-05T10:00:00.000Z');
+      igual(r.deleted, false);
+      igual(await s.obtener('perfiles', r.id), r);
+    });
+
+    await prueba('guardar: respeta el id dado y reemplaza el registro anterior', async (s) => {
+      await s.guardar('perfiles', { id: 'p1', nombre: 'Leo' });
+      await s.guardar('perfiles', { id: 'p1', nombre: 'Leonardo' });
+      const todos = await s.listar('perfiles');
+      igual(todos.length, 1);
+      igual(todos[0].nombre, 'Leonardo');
+      igual(todos[0].updatedAt, '2026-11-05T10:00:01.000Z');
+    });
+
+    await prueba('listar por perfil usa el índice y no mezcla perfiles', async (s) => {
+      await s.guardarVarios('palabras', [
+        { id: 'a', perfilId: 'p1', texto: 'mamá' }, { id: 'b', perfilId: 'p1', texto: 'papá' }, { id: 'c', perfilId: 'p2', texto: 'casa' },
+      ]);
+      igual((await s.listar('palabras', { perfilId: 'p1' })).map((p) => p.id).sort(), ['a', 'b']);
+      igual((await s.listar('palabras', { perfilId: 'p2' })).map((p) => p.id), ['c']);
+      igual((await s.listar('palabras')).length, 3);
+      igual(await s.listar('palabras', { perfilId: 'nadie' }), []);
+    });
+
+    await prueba('listar por perfil falla en almacenes sin ese índice', async (s) => {
+      await falla(s.listar('perfiles', { perfilId: 'p1' }), 'no se filtra por perfil');
+    });
+
+    await prueba('almacén desconocido falla en todas las operaciones', async (s) => {
+      await falla(s.guardar('inventado', { id: 'x' }), 'Almacén desconocido');
+      await falla(s.listar('inventado'), 'Almacén desconocido');
+      await falla(s.obtener('inventado', 'x'), 'Almacén desconocido');
+      await falla(s.borrar('inventado', 'x'), 'Almacén desconocido');
+      await falla(s.importar('inventado', [{ id: 'x' }]), 'Almacén desconocido');
+      await falla(s.guardar('constructor', { id: 'x' }), 'Almacén desconocido');
+    });
+
+    await prueba('borrar es suave: se oculta, pero sigue ahí con conBorrados', async (s) => {
+      await s.guardar('palabras', { id: 'a', perfilId: 'p1', texto: 'mamá' });
+      igual(await s.borrar('palabras', 'a'), true);
+      igual(await s.obtener('palabras', 'a'), undefined);
+      igual(await s.listar('palabras'), []);
+      igual(await s.listar('palabras', { perfilId: 'p1' }), []);
+      const conBorrados = await s.listar('palabras', { conBorrados: true });
+      igual(conBorrados.length, 1);
+      igual(conBorrados[0].deleted, true);
+      igual((await s.obtener('palabras', 'a', { conBorrados: true })).texto, 'mamá');
+      igual(await s.borrar('palabras', 'no-existe'), false);
+    });
+
+    await prueba('guardarVarios es atómico: si uno falla, no se guarda ninguno', async (s) => {
+      const noClonable = { id: 'malo', f() {} }; // una función no se puede guardar en IndexedDB
+      await falla(s.guardarVarios('palabras', [{ id: 'bueno', perfilId: 'p1' }, noClonable]), '');
+      igual(await s.listar('palabras'), []);
+      igual(await s.pendientesSync(), []);
+    });
+
+    await prueba('cola de sincronización: un registro por clave aunque se guarde varias veces', async (s) => {
+      await s.guardar('palabras', { id: 'a', perfilId: 'p1', texto: 'mamá' });
+      await s.guardar('palabras', { id: 'a', perfilId: 'p1', texto: 'mamá!' });
+      await s.guardar('perfiles', { id: 'p1', nombre: 'Leo' });
+      const cola = await s.pendientesSync();
+      igual(cola.map((c) => c.clave), ['palabras/a', 'perfiles/p1']);
+      igual(cola[0].fecha, '2026-11-05T10:00:01.000Z', 'la fecha es la del último guardado');
+      igual(cola[0].almacen, 'palabras');
+    });
+
+    await prueba('borrar también deja el registro en la cola', async (s) => {
+      await s.guardar('palabras', { id: 'a', perfilId: 'p1' });
+      await s.limpiarCola(await s.pendientesSync());
+      igual(await s.pendientesSync(), []);
+      await s.borrar('palabras', 'a');
+      igual((await s.pendientesSync()).map((c) => c.clave), ['palabras/a']);
+    });
+
+    await prueba('limpiarCola no pierde una edición hecha mientras se subía', async (s) => {
+      await s.guardar('palabras', { id: 'a', perfilId: 'p1', texto: 'uno' });
+      const subiendo = await s.pendientesSync(); // empieza la subida...
+      await s.guardar('palabras', { id: 'a', perfilId: 'p1', texto: 'dos' }); // ...y el adulto edita
+      await s.limpiarCola(subiendo); // termina la subida
+      igual((await s.pendientesSync()).map((c) => c.clave), ['palabras/a'], 'la edición nueva debía seguir pendiente');
+      await s.limpiarCola(await s.pendientesSync());
+      igual(await s.pendientesSync(), []);
+    });
+
+    await prueba('importar guarda tal cual: sin tocar updatedAt ni la cola', async (s) => {
+      await s.importar('palabras', [{ id: 'a', perfilId: 'p1', texto: 'mamá', updatedAt: '2020-01-01T00:00:00.000Z', deleted: false }]);
+      const r = await s.obtener('palabras', 'a');
+      igual(r.updatedAt, '2020-01-01T00:00:00.000Z');
+      igual(await s.pendientesSync(), []);
+      await falla(s.importar('palabras', [{ texto: 'sin id' }]), 'necesita id');
+    });
+
+    await prueba('meta: guarda y lee valores, con valor por defecto', async (s) => {
+      igual(await s.leerMeta('ultimoSync', null), null);
+      await s.escribirMeta('ultimoSync', '2026-11-05T10:00:00.000Z');
+      igual(await s.leerMeta('ultimoSync'), '2026-11-05T10:00:00.000Z');
+      await s.escribirMeta('config', { a: 1, b: [1, 2] });
+      igual(await s.leerMeta('config'), { a: 1, b: [1, 2] });
+    });
+
+    await prueba('medios: guarda y recupera un Blob (foto o audio) sin perder tamaño ni tipo', async (s) => {
+      const blob = new Blob([new Uint8Array([1, 2, 3, 4, 5, 6, 7])], { type: 'audio/webm' });
+      await s.guardar('medios', { id: 'audio1', tipo: 'audio', mime: 'audio/webm', blob, subido: false });
+      const r = await s.obtener('medios', 'audio1');
+      cierto(r.blob instanceof Blob, 'ya no es un Blob');
+      igual(r.blob.size, 7);
+      igual(r.blob.type, 'audio/webm');
+      igual(Array.from(new Uint8Array(await r.blob.arrayBuffer())), [1, 2, 3, 4, 5, 6, 7]);
+    });
+
+    await prueba('los datos persisten al cerrar y volver a abrir la base', async (s) => {
+      await s.guardar('perfiles', { id: 'p1', nombre: 'Leo' });
+      await s.escribirMeta('x', 42);
+      s.cerrar();
+      const otra = await abrirStore({ nombre: NOMBRE, ahora });
+      igual((await otra.obtener('perfiles', 'p1')).nombre, 'Leo');
+      igual(await otra.leerMeta('x'), 42);
+      igual((await otra.pendientesSync()).length, 1);
+      otra.cerrar();
+    });
+
+    await prueba('vaciar deja todo en blanco (datos, cola y meta)', async (s) => {
+      await s.guardar('perfiles', { id: 'p1', nombre: 'Leo' });
+      await s.escribirMeta('x', 1);
+      await s.vaciar();
+      igual(await s.listar('perfiles'), []);
+      igual(await s.pendientesSync(), []);
+      igual(await s.leerMeta('x'), undefined);
+    });
+
+    await prueba('modelo completo: perfil + palabras + progreso + sesión en una pasada', async (s) => {
+      await s.guardar('perfiles', { id: 'p1', nombre: 'Leo', ajustes: { ensayosPorSesion: 8 } });
+      await s.guardarVarios('palabras', [{ id: 'w1', perfilId: 'p1', texto: 'mamá', silabas: ['ma', 'má'] }]);
+      await s.guardar('progresos', { id: 'p1:w1:L1', perfilId: 'p1', elementoId: 'w1', actividad: 'L1', estado: 'practica', historial: [] });
+      await s.guardar('niveles', { id: 'p1:L1', perfilId: 'p1', actividad: 'L1', opciones: 2, ultimos: [] });
+      await s.guardar('sesiones', { perfilId: 'p1', inicio: ahora(), fin: ahora(), ensayos: [] });
+      igual((await s.listar('progresos', { perfilId: 'p1' })).length, 1);
+      igual((await s.listar('niveles', { perfilId: 'p1' })).length, 1);
+      igual((await s.listar('sesiones', { perfilId: 'p1' })).length, 1);
+      igual((await s.pendientesSync()).length, 5);
+    });
+
+    await borrarBD(NOMBRE);
+
+    const fallos = resultados.filter((r) => !r.ok);
+    const resumen = document.getElementById('resumen');
+    resumen.textContent = fallos.length ? `✖ ${fallos.length} de ${resultados.length} pruebas fallaron` : `✔ ${resultados.length} de ${resultados.length} pruebas pasaron`;
+    resumen.className = fallos.length ? 'mal' : 'ok';
+    window.__resultados = { total: resultados.length, fallos: fallos.length, detalle: resultados };
+  </script>
+</body>
+</html>
