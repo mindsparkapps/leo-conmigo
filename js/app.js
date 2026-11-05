@@ -25,6 +25,9 @@ crearRouter({
     adulto('/adulto/perfiles', './adulto/perfiles.js'),
     adulto('/adulto/vocabulario', './adulto/vocabulario.js'),
     adulto('/adulto/palabra', './adulto/editor-palabra.js'),
+    adulto('/adulto/progreso', './adulto/progreso.js'),
+    adulto('/adulto/ajustes', './adulto/ajustes.js'),
+    adulto('/adulto/respaldo', './adulto/respaldo.js'),
     adulto('/adulto', './adulto/panel.js'),
   ],
 });

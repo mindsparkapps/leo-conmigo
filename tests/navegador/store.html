@@ -186,6 +186,21 @@
       otra.cerrar();
     });
 
+    await prueba('si otra pestaña borra la base, se avisa (alCerrarse) y se puede volver a abrir', async () => {
+      const nombre = `${NOMBRE}-cierre`;
+      let avisos = 0;
+      const s = await abrirStore({ nombre, ahora, alCerrarse: () => { avisos += 1; } });
+      await s.guardar('perfiles', { id: 'p1', nombre: 'Leo' });
+      await borrarBD(nombre); // otra pestaña pide borrar: esta conexión debe cerrarse sola
+      await new Promise((r) => setTimeout(r, 200));
+      cierto(avisos >= 1, 'no se avisó del cierre');
+      await falla(s.listar('perfiles'), 'closing'); // la conexión vieja ya no sirve...
+      const nueva = await abrirStore({ nombre, ahora }); // ...pero se puede abrir otra, vacía
+      igual(await nueva.listar('perfiles'), []);
+      nueva.cerrar();
+      await borrarBD(nombre);
+    });
+
     await prueba('vaciar deja todo en blanco (datos, cola y meta)', async (s) => {
       await s.guardar('perfiles', { id: 'p1', nombre: 'Leo' });
       await s.escribirMeta('x', 1);

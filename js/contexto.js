@@ -5,12 +5,22 @@ import { abrirStore } from './store.js';
 const META_PERFIL = 'perfilActivoId';
 let promesaStore = null;
 
-/** Abre el almacén una sola vez. Rechaza si el navegador no puede guardar datos. */
+/**
+ * Abre el almacén una sola vez. Rechaza si el navegador no puede guardar datos.
+ * Si la conexión se cierra (otra pestaña actualizó o borró la base), la siguiente llamada la reabre.
+ */
 export function obtenerStore() {
-  promesaStore ??= abrirStore().catch((error) => {
-    promesaStore = null; // permite reintentar
-    throw error;
-  });
+  if (!promesaStore) {
+    const esta = abrirStore({
+      alCerrarse: () => {
+        if (promesaStore === esta) promesaStore = null;
+      },
+    }).catch((error) => {
+      if (promesaStore === esta) promesaStore = null; // permite reintentar
+      throw error;
+    });
+    promesaStore = esta;
+  }
   return promesaStore;
 }
 

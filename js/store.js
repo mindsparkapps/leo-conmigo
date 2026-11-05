@@ -61,7 +61,7 @@ function validarAlmacen(almacen) {
  * @param idb     implementación de IndexedDB (por defecto la del navegador)
  * @param ahora   función que devuelve la hora actual en ISO (inyectable para pruebas)
  */
-export function abrirStore({ nombre = NOMBRE_BD, idb = globalThis.indexedDB, ahora = () => new Date().toISOString() } = {}) {
+export function abrirStore({ nombre = NOMBRE_BD, idb = globalThis.indexedDB, ahora = () => new Date().toISOString(), alCerrarse = null } = {}) {
   if (!idb) return Promise.reject(new Error('IndexedDB no está disponible en este navegador'));
   return new Promise((resolver, rechazar) => {
     const peticion = idb.open(nombre, VERSION_BD);
@@ -69,7 +69,13 @@ export function abrirStore({ nombre = NOMBRE_BD, idb = globalThis.indexedDB, aho
     peticion.onerror = () => rechazar(peticion.error);
     peticion.onsuccess = () => {
       const db = peticion.result;
-      db.onversionchange = () => db.close(); // otra pestaña quiere actualizar el esquema
+      // Otra pestaña quiere actualizar o borrar la base: se cierra esta conexión y se avisa, para que
+      // quien la use pueda volver a abrirla (ver contexto.js). También si el navegador la cierra solo.
+      db.onversionchange = () => {
+        db.close();
+        alCerrarse?.();
+      };
+      db.onclose = () => alCerrarse?.();
       resolver(crearStore(db, ahora));
     };
   });

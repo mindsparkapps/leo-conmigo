@@ -209,6 +209,7 @@ js/
   auth.js         login Google y renovación del token
   drive.js        leer/escribir data.json y archivos de medios en appDataFolder
   store.js        IndexedDB + cola de sincronización
+  respaldo.js     exportarTodo / importarTodo sobre el almacén (la lógica pura está en core/respaldo.js)
   sync.js         fusión por updatedAt, subida/bajada de medios
   hardware.js     galería/cámara (elegirImagen), grabadora de voz, vibración, almacenamiento persistente
   imagenes.js     recorte cuadrado a 512 px y WebP (JPEG de respaldo)
@@ -230,15 +231,18 @@ js/
     controlador.js la sesión del niño (une motor + actividades + toques); no toca DOM ni almacén
     elogios.js    elogios hablados, sin repetir el anterior
     calcomanias.js catálogo de 12 calcomanías y cuál toca ganar
+    estadisticas.js estado por palabra, tabla, precisión semanal, historial, marcado manual
+    respaldo.js   copia de seguridad: armar, validar, decodificar y fusionar (sin DOM)
     vocabulario.js categorías, orden, sílabas editables, palabras del asistente
     frases.js     (fase 6)
   actividades/    comun.js (armarEnsayo sin DOM + renderEnsayo), indice.js, L1.js … L5.js
                   (fases 6 y 8: P1–P3, F1–F3, S1–S4)
   ui/             dom.js (el), candado.js, adulto.js (cabecera, errores, campo), miniatura.js,
-                  selector-foto.js, carta.js, boton-audio.js, ajustar-texto.js
+                  selector-foto.js, carta.js, boton-audio.js, ajustar-texto.js, grafico-semanal.js
   nino/           inicio.js (con el álbum), sesion.js, premio.js
-  adulto/         panel.js, asistente.js, perfiles.js, vocabulario.js, editor-palabra.js
-                  (fases 5-6: frases.js, libros.js, progreso.js, ajustes.js, cuenta.js)
+  adulto/         panel.js, asistente.js, perfiles.js, vocabulario.js, editor-palabra.js,
+                  progreso.js, ajustes.js, respaldo.js
+                  (fases 6-7: frases.js, libros.js, cuenta.js con Google y sincronización)
 tests/            *.test.js para js/core (node --test) + ayudas.js y simulador.js (apoyo)
   navegador/      store.html (IndexedDB real) y actividades.html (ver L1–L5 con datos de ejemplo:
                   ?a=L4&n=3&ayuda&largo&mayus&grande); se abren en el servidor local
@@ -337,7 +341,7 @@ Cada fase termina con un commit y con su lista de aceptación verificada en el n
   - **Voz:** la grabación del adulto tiene prioridad (máx. 8 s); si no hay, voz sintética con la mejor voz en español del dispositivo (es-CL → es-419 → es-US → es-MX → es-ES) y se le dice al adulto cuál es. Si no hay grabación ni voz sintética, el editor avisa que la palabra no tendrá sonido.
   - **Sin hardware:** sin micrófono, sin permiso, con el micrófono ocupado, sin `MediaRecorder`, sin conexión segura, sin voz sintética, sin red para ARASAAC o al cancelar la cámara: cada caso muestra un mensaje claro y la app sigue funcionando.
   - **Rutas del modo adulto:** `#/adulto` (panel), `/asistente`, `/perfiles`, `/vocabulario`, `/palabra/nueva` y `/palabra/<id>`; todas exigen haber pasado el candado.
-  - **Pendiente de la fase 5:** el progreso por palabra en la lista de vocabulario y los ajustes del perfil.
+  - El progreso por palabra en la lista de vocabulario y los ajustes del perfil se hicieron en la fase 5.
 
 ### Fase 4 — Modo niño y etapa 1 (L1–L5) ✔ hecha
 - Inicio del niño, motor de sesión conectado a la interfaz, actividades L1–L5, ayuda sin error compartida, elogios, fin de sesión con calcomanía, álbum.
@@ -353,11 +357,18 @@ Cada fase termina con un commit y con su lista de aceptación verificada en el n
   - **Guardado:** progreso y nivel se guardan tras cada ensayo; la sesión se guarda al terminar o si un adulto la interrumpe; la calcomanía solo si la sesión termina (también por fatiga). `ms` = tiempo hasta acertar.
   - **Pantalla:** vertical = modelo arriba y opciones abajo (2 columnas con imágenes, 1 con solo palabras); horizontal ancho = opciones en una fila; celular acostado (<520 px de alto) = modelo a la izquierda y opciones a la derecha, sin desplazar. Las palabras largas se achican hasta 28 px para caber (única excepción al mínimo de 56 px).
   - **Álbum:** 12 calcomanías SVG propias; las no ganadas son un círculo punteado neutro. Una etapa sin actividades hechas todavía usa L1–L5.
-  - Los ajustes `mayusculas`, `tamanoLetra`, `altoContraste`, `velocidadVoz` y `vibracion` ya se aplican si existen en el perfil; su pantalla de edición es de la fase 5.
+  - Los ajustes `mayusculas`, `tamanoLetra`, `altoContraste`, `velocidadVoz` y `vibracion` ya se aplican si existen en el perfil (su pantalla de edición se hizo en la fase 5).
 
-### Fase 5 — Panel de progreso y ajustes
+### Fase 5 — Panel de progreso y ajustes ✔ hecha
 - Tabla por palabra, gráfico semanal SVG, historial de sesiones, todos los ajustes de §5, desbloqueo y marcado manual, exportar/importar JSON.
 - **Acepta si:** cada ajuste cambia de verdad el comportamiento de la sesión siguiente; exportar y luego importar en un perfil vacío deja todo igual.
+- **Decisiones de implementación (ya en el código):**
+  - **Progreso (`#/adulto/progreso`):** resumen (palabras leídas = dominadas en L4, en práctica, sesiones, última sesión); gráfico de barras de aciertos al primer intento de las últimas 8 semanas (lunes a domingo, hora local; semana sin sesiones = línea punteada) con resumen accesible; tabla palabra × L1–L5 (✓ dominada, `3/5` en práctica = aciertos sin ayuda / ensayos, `·` sin empezar) con filtro por estado; últimas 20 sesiones con duración, ensayos y aciertos sin ayuda. El estado general de cada palabra (Nueva, En práctica, Leída, Completa) también aparece en la lista de Vocabulario.
+  - **Marcado manual:** «Ya la sabe» deja la palabra dominada en L1–L5 sin fecha de repaso (se repasa en la próxima sesión) y conserva su historial; «Empezar de nuevo» (con confirmación) borra su progreso y vuelve a ser nueva.
+  - **Ajustes (`#/adulto/ajustes`):** ensayos por sesión (4–15), máximo de opciones (2–4), actividades que se usan (al menos una), mayúsculas, tamaño de letra, alto contraste (con vista previa), consignas y felicitaciones habladas, velocidad de la voz (con botón de prueba), vibración y celebración (normal, suave, ninguna). Se guardan en `perfil.ajustes` y rigen desde la sesión siguiente.
+  - **Se dejó para la fase 6 a propósito** (no tendrían ningún efecto hoy, serían botones muertos): elegir la etapa inicial, forzar o bloquear etapas (`etapasDesbloqueadas` ya lo soporta) y habilitar L6. La pantalla de progreso solo informa cuándo se abre la etapa de frases.
+  - **Copia de seguridad (`#/adulto/respaldo`):** un JSON con todos los niños y sus datos, **incluidas fotos y voces** en base64 (sin ellas restaurar dejaría palabras sin imagen ni sonido). Al restaurar no se borra nada: se suma lo que falta y, si un registro está en los dos lados, gana el más reciente (`updatedAt`); restaurar dos veces no cambia nada; un archivo dañado se rechaza **antes** de escribir. No viajan los registros borrados. El inicio de sesión con Google y la sincronización (fase 7) irán en una pantalla «Cuenta».
+  - **Almacén más robusto:** si otra pestaña actualiza o borra la base, la conexión se cierra y `contexto.js` la reabre sola en la siguiente llamada (antes quedaba rota hasta recargar).
 
 ### Fase 6 — Etapa 0, frases y libros (P1–P3, F1–F3, B1, L6)
 - **Acepta si:** la etapa 2 se desbloquea sola con 10 palabras dominadas en L4; F3 se resuelve solo con toques; un libro de 4 páginas creado por el adulto se lee con resaltado y audio.

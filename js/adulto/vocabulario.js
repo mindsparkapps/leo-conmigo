@@ -9,8 +9,11 @@ import { decirPalabra, desbloquearAudio, detener } from '../audio.js';
 import {
   armarPalabrasDelAsistente, agruparPorCategoria, clavePalabra, mover, nombreDeCategoria, ordenadas,
 } from '../core/vocabulario.js';
+import { tablaDePalabras } from '../core/estadisticas.js';
 
 export const titulo = 'Vocabulario · Leo Conmigo';
+
+const NOMBRE_ESTADO = { nueva: 'Nueva', practica: 'En práctica', leida: 'Leída', completa: 'Completa' };
 
 export function montar(contenedor) {
   const raiz = el('section', { class: 'vista-adulto' }, cabecera('Vocabulario'), cargando());
@@ -43,6 +46,8 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
   }
 
   const palabras = ordenadas(await store.listar('palabras', { perfilId: perfil.id }));
+  const progresos = await store.listar('progresos', { perfilId: perfil.id });
+  const estadoDe = new Map(tablaDePalabras({ palabras, progresos }).map((f) => [f.palabra.id, f.estado]));
   const urls = new Map();
   for (const p of palabras) urls.set(p.id, await urlDeMedio(store, p.medioImagenId));
   if (!estaVivo()) return;
@@ -72,6 +77,7 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
           el(
             'span',
             { class: 'insignias' },
+            el('span', { class: `insignia suave estado-${estadoDe.get(p.id)}` }, NOMBRE_ESTADO[estadoDe.get(p.id)] ?? ''),
             p.medioAudioId ? el('span', { class: 'insignia' }, 'Tu voz') : null,
             !p.medioImagenId && !p.emoji
               ? el('span', { class: 'insignia apagada', title: 'Una palabra sin imagen no se practica hasta que tenga una' }, 'Sin imagen')

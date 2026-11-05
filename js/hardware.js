@@ -179,6 +179,40 @@ export function elegirImagen({ camara = false } = {}) {
   });
 }
 
+/** Abre el selector de archivos y devuelve el archivo elegido (null si se cancela). Llamar desde un toque. */
+export function elegirArchivo({ accept = '' } = {}) {
+  return new Promise((resolver) => {
+    const entrada = document.createElement('input');
+    entrada.type = 'file';
+    if (accept) entrada.accept = accept;
+    entrada.style.display = 'none';
+    entrada.addEventListener('change', () => {
+      const archivo = entrada.files?.[0] ?? null;
+      entrada.remove();
+      resolver(archivo);
+    });
+    entrada.addEventListener('cancel', () => {
+      entrada.remove();
+      resolver(null);
+    });
+    document.body.append(entrada);
+    entrada.click();
+  });
+}
+
+/** Descarga un archivo (Blob) con el nombre dado. */
+export function descargarArchivo(blob, nombre) {
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = nombre;
+  enlace.style.display = 'none';
+  document.body.append(enlace);
+  enlace.click();
+  enlace.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
 /** Vibración breve; no hace nada si el dispositivo no la tiene (p. ej. iPhone). */
 export function vibrar(patron = 40) {
   try {
