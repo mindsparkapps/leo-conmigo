@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Corazón">
+  <circle cx="50" cy="50" r="48" fill="#fde7ef" stroke="#e8749a" stroke-width="3"/>
+  <path d="M50 78 C20 58 16 38 30 29 C40 22 48 28 50 35 C52 28 60 22 70 29 C84 38 80 58 50 78Z" fill="#e8749a" stroke="#c9577c" stroke-width="2" stroke-linejoin="round"/>
+</svg>

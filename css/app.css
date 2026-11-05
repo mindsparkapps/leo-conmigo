@@ -233,6 +233,7 @@ body {
 .panel p { margin: 8px 0 0; }
 .panel .ayuda { color: var(--texto-suave); font-size: 1rem; }
 
+.lista-ayuda { display: grid; gap: 8px; margin: 0; padding-left: 20px; }
 .lista-estado { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
 .lista-estado li { display: flex; justify-content: space-between; gap: 12px; }
 .lista-estado strong { text-align: right; }
@@ -385,6 +386,172 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 .paleta-emoji { display: flex; flex-wrap: wrap; gap: 6px; }
 .paleta-emoji .chip { padding: 0 10px; font-size: 1.5rem; }
 .creditos { margin-top: 16px; font-size: 0.85rem; }
+
+/* ===== Modo niño: inicio, álbum y premio ===== */
+.inicio-nino { gap: 20px; justify-content: center; }
+.inicio-nino .miniatura-grande { width: clamp(112px, 22vmin, 180px); height: clamp(112px, 22vmin, 180px); }
+.inicio-nino .titulo-nino { font-size: clamp(2.5rem, 9vmin, 4.5rem); }
+
+.boton-jugar, .boton-casa {
+  display: grid;
+  place-items: center;
+  width: clamp(140px, 30vmin, 220px);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.boton-jugar { background: var(--verde); }
+.boton-casa { background: var(--azul); }
+.boton-jugar svg, .boton-casa svg { width: 52%; height: 52%; }
+.boton-jugar svg { margin-left: 8%; }
+
+.mensaje-nino { max-width: 24ch; margin: 0; font-size: 1.5rem; color: var(--texto-suave); text-align: center; }
+
+.album {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 10px;
+  width: min(100%, 520px);
+  margin-top: 8px;
+}
+.calcomania { display: block; width: 100%; aspect-ratio: 1; }
+.calcomania-hueco { display: block; width: 100%; aspect-ratio: 1; border: 3px dashed var(--borde); border-radius: 50%; }
+
+.premio-nino { gap: 28px; justify-content: center; }
+.calcomania-grande { width: clamp(180px, 45vmin, 320px); aspect-ratio: 1; animation: aparecer 0.7s ease-out; }
+@keyframes aparecer { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); } }
+
+.estrellas { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.estrellas span { position: absolute; bottom: 28%; font-size: 2.2rem; opacity: 0; animation: subir 1.2s ease-out forwards; }
+@keyframes subir {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(-38vh) scale(1.2); opacity: 0; }
+}
+
+/* ===== Modo niño: sesión ===== */
+.sesion-nino { position: relative; align-items: stretch; justify-content: flex-start; gap: 0; padding: 0; }
+.area-ensayo { display: flex; flex: 1; flex-direction: column; }
+
+.zona-modelo { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; padding: 76px 16px 8px; }
+.zona-opciones {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: center;
+  gap: 16px;
+  padding: 16px;
+}
+.zona-opciones[data-forma="palabra"] { grid-template-columns: minmax(0, 1fr); }
+.zona-opciones[data-n="1"] { grid-template-columns: minmax(0, 420px); justify-content: center; }
+.zona-opciones:not([data-forma="palabra"])[data-n="3"] .carta:last-child {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: calc(50% - 8px);
+}
+@media (orientation: landscape) and (min-width: 640px) {
+  .zona-modelo { padding: 24px 96px 8px; }
+  .zona-opciones, .zona-opciones[data-forma="palabra"] { grid-template-columns: repeat(var(--n), minmax(0, 1fr)); }
+  .zona-opciones[data-n="1"] { grid-template-columns: minmax(0, 420px); }
+  .zona-opciones:not([data-forma="palabra"])[data-n="3"] .carta:last-child { grid-column: auto; width: auto; }
+}
+
+/* Cartas (el modelo y las opciones): objetivos grandes, texto negro sobre blanco, sin sombras */
+.carta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: clamp(120px, 24vmin, 200px);
+  padding: 12px;
+  border: 4px solid var(--borde);
+  border-radius: 24px;
+  background: #fff;
+  color: var(--texto);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.carta-foto { display: block; width: 100%; max-height: clamp(80px, 16vmin, 140px); object-fit: contain; border-radius: 12px; }
+.carta-emoji { font-size: clamp(3.5rem, 12vmin, 6rem); line-height: 1; }
+.palabra-texto { font-size: clamp(3.5rem, 10vmin, 5.5rem); font-weight: 700; line-height: 1.1; white-space: nowrap; }
+.carta-imagen .carta-foto { max-height: clamp(110px, 24vmin, 200px); }
+.carta-imagen .carta-emoji { font-size: clamp(4.5rem, 16vmin, 8rem); }
+
+.carta-grande { min-width: min(80vw, 360px); cursor: default; }
+.carta-grande .carta-foto { max-height: clamp(110px, 22vmin, 200px); }
+.carta-grande .palabra-texto { font-size: clamp(4rem, 13vmin, 7rem); }
+.carta-grande .carta-emoji { font-size: clamp(5rem, 18vmin, 9rem); }
+.carta-imagen.carta-grande .carta-foto, .carta-grande.carta-imagen .carta-foto { max-height: clamp(130px, 28vmin, 240px); }
+
+/* Estados: sin rojo ni señales de error. La ayuda es amarilla y late; el acierto es verde. */
+.carta.atenuada { opacity: 0.3; pointer-events: none; }
+.carta.ayuda { border-color: var(--amarillo); background: var(--amarillo-suave); animation: latido 1.3s ease-in-out infinite; }
+@keyframes latido { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+.carta.acierto { border-color: var(--verde); background: var(--verde-suave); }
+.carta.celebrar { animation: salto 0.7s ease-out; }
+@keyframes salto { 0% { transform: scale(1); } 40% { transform: scale(1.08); } 100% { transform: scale(1); } }
+
+.boton-audio {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  padding: 18px;
+  border: 4px solid var(--azul);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--azul);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.boton-audio svg { width: 100%; height: 100%; }
+.boton-audio-grande { width: clamp(140px, 30vmin, 220px); height: clamp(140px, 30vmin, 220px); padding: 34px; }
+
+/* Celular acostado (poco alto): el modelo pasa a la izquierda y las opciones a la derecha, para que
+   todo quepa sin desplazar la pantalla y las palabras sigan grandes.
+   Va después de las reglas base de .carta y .boton-audio: con igual especificidad gana la última. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .area-ensayo { flex-direction: row; align-items: center; }
+  .zona-modelo { flex: 0 0 38%; flex-direction: column; padding: 8px 12px; gap: 8px; }
+  .zona-opciones, .zona-opciones[data-forma="palabra"] {
+    flex: 1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px 76px 8px 8px;
+  }
+  .zona-opciones[data-n="1"] { grid-template-columns: minmax(0, 1fr); }
+  .zona-opciones[data-n="3"] .carta:last-child { grid-column: 1 / -1; justify-self: center; width: calc(50% - 4px); }
+  .carta { min-height: 0; padding: 8px; gap: 4px; }
+  .carta-foto, .carta-imagen .carta-foto { max-height: 17vh; }
+  .carta-emoji, .carta-imagen .carta-emoji { font-size: 12vh; }
+  .carta-grande { min-width: 0; width: 100%; }
+  .carta-grande .carta-foto, .carta-grande.carta-imagen .carta-foto { max-height: 22vh; }
+  .carta-grande .carta-emoji { font-size: 16vh; }
+  .boton-audio { width: 64px; height: 64px; padding: 12px; }
+  .boton-audio-grande { width: 38vh; height: 38vh; padding: 9vh; }
+}
+
+/* Ajustes del perfil que cambian cómo se ve */
+.mayusculas .palabra-texto { text-transform: uppercase; }
+.letra-grande .palabra-texto { font-size: clamp(4.5rem, 13vmin, 7rem); }
+.letra-grande .carta-grande .palabra-texto { font-size: clamp(5rem, 16vmin, 8.5rem); }
+.alto-contraste .carta { border-color: #000; }
+.alto-contraste .carta.ayuda { border-color: #000; background: var(--amarillo); }
+.alto-contraste .carta.acierto { border-color: #000; background: #b9e6cc; }
+
+@media (prefers-reduced-motion: reduce) {
+  .carta.ayuda { animation: none; border-width: 8px; }
+  .carta.celebrar, .calcomania-grande { animation: none; }
+  .estrellas { display: none; }
+}
 
 /* ===== Movimiento reducido ===== */
 @media (prefers-reduced-motion: reduce) {

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Pez">
+  <circle cx="50" cy="50" r="48" fill="#d8ebf5" stroke="#6bb3d9" stroke-width="3"/>
+  <polygon points="66,50 86,34 86,66" fill="#f29b4b" stroke="#d9783a" stroke-width="2" stroke-linejoin="round"/>
+  <ellipse cx="46" cy="50" rx="26" ry="17" fill="#f29b4b" stroke="#d9783a" stroke-width="2"/>
+  <path d="M44 34 Q52 24 58 36" fill="#f6b87a" stroke="#d9783a" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="33" cy="45" r="4" fill="#fff"/>
+  <circle cx="32" cy="45" r="2" fill="#1d2b36"/>
+  <path d="M26 56 Q31 59 35 56" fill="none" stroke="#d9783a" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="20" cy="28" r="3" fill="#fff" opacity="0.8"/>
+  <circle cx="26" cy="20" r="2" fill="#fff" opacity="0.8"/>
+</svg>

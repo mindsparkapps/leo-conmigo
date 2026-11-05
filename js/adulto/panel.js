@@ -34,6 +34,19 @@ export function montar(contenedor, { ir }) {
       el(
         'div',
         { class: 'panel' },
+        el('h2', {}, 'Ayuda para el adulto'),
+        el(
+          'ul',
+          { class: 'lista-ayuda' },
+          el('li', {}, 'Acompaña al niño en las sesiones. Con 1 o 2 al día basta: son cortas a propósito.'),
+          el('li', {}, 'Para que no salga de la app: en Android activa «Fijar pantalla» (Ajustes › Seguridad) y en iPhone o iPad «Acceso guiado» (Ajustes › Accesibilidad).'),
+          el('li', {}, 'Para volver aquí desde su pantalla: mantén presionado el candado 3 segundos y resuelve la suma.'),
+          el('li', {}, 'Las palabras sin imagen no se practican: agrégales una foto, un pictograma o un emoji.'),
+        ),
+      ),
+      el(
+        'div',
+        { class: 'panel' },
         el('h2', {}, 'Créditos'),
         el('p', { class: 'ayuda' }, CREDITO_ARASAAC),
         el('p', { class: 'ayuda' }, 'Letra Andika, de SIL International (licencia SIL Open Font License).'),

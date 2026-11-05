@@ -202,7 +202,7 @@ fonts/            Andika-Regular.woff2, Andika-Bold.woff2, OFL.txt
 icons/            192, 512 y 512-maskable
 css/app.css
 data/vocabulario-inicial.json
-data/calcomanias/ (SVG propios, simples)
+data/calcomanias/ (12 SVG propios, simples, sin rojo)
 js/
   config.js       CLIENT_ID del cliente OAuth "MindSpark", versión de la app
   app.js          arranque, router por hash (#/nino, #/adulto/...)
@@ -226,16 +226,22 @@ js/
     sesion.js     crearSesion(), iniciarCurso(), registrarRespuesta() (fatiga)
     distractores.js
     suma.js       suma de control del candado
+    intento.js    un ensayo del niño: toques, ayuda sin error, bloqueo de 400 ms
+    controlador.js la sesión del niño (une motor + actividades + toques); no toca DOM ni almacén
+    elogios.js    elogios hablados, sin repetir el anterior
+    calcomanias.js catálogo de 12 calcomanías y cuál toca ganar
     vocabulario.js categorías, orden, sílabas editables, palabras del asistente
     frases.js     (fase 6)
-  actividades/    un archivo por actividad: P1.js … S4.js
+  actividades/    comun.js (armarEnsayo sin DOM + renderEnsayo), indice.js, L1.js … L5.js
+                  (fases 6 y 8: P1–P3, F1–F3, S1–S4)
   ui/             dom.js (el), candado.js, adulto.js (cabecera, errores, campo), miniatura.js,
-                  selector-foto.js; (fase 4: tarjeta, boton-audio, celebracion)
-  nino/           inicio.js, sesion.js, premio.js, album.js
+                  selector-foto.js, carta.js, boton-audio.js, ajustar-texto.js
+  nino/           inicio.js (con el álbum), sesion.js, premio.js
   adulto/         panel.js, asistente.js, perfiles.js, vocabulario.js, editor-palabra.js
                   (fases 5-6: frases.js, libros.js, progreso.js, ajustes.js, cuenta.js)
 tests/            *.test.js para js/core (node --test) + ayudas.js y simulador.js (apoyo)
-  navegador/      store.html: pruebas de IndexedDB real; se abre en el servidor local
+  navegador/      store.html (IndexedDB real) y actividades.html (ver L1–L5 con datos de ejemplo:
+                  ?a=L4&n=3&ayuda&largo&mayus&grande); se abren en el servidor local
 ```
 
 ### Interfaz común de actividades
@@ -333,9 +339,21 @@ Cada fase termina con un commit y con su lista de aceptación verificada en el n
   - **Rutas del modo adulto:** `#/adulto` (panel), `/asistente`, `/perfiles`, `/vocabulario`, `/palabra/nueva` y `/palabra/<id>`; todas exigen haber pasado el candado.
   - **Pendiente de la fase 5:** el progreso por palabra en la lista de vocabulario y los ajustes del perfil.
 
-### Fase 4 — Modo niño y etapa 1 (L1–L5)
+### Fase 4 — Modo niño y etapa 1 (L1–L5) ✔ hecha
 - Inicio del niño, motor de sesión conectado a la interfaz, actividades L1–L5, ayuda sin error compartida, elogios, fin de sesión con calcomanía, álbum.
 - **Acepta si:** una sesión completa de 8 ensayos se juega solo con toques; un error nunca produce sonido ni color de error; toques dobles rápidos no cuentan dos veces; las opciones pasan de 2 a 3 tras buenos resultados; todo se ve bien en celular vertical y tablet horizontal.
+- **Decisiones de implementación (ya en el código):**
+  - **Arquitectura:** las reglas viven en `core/controlador.js` y `core/intento.js` (sin DOM, probadas en Node); `nino/sesion.js` solo dibuja y ejecuta efectos (voz, vibración, guardado). `crearEnsayo` de cada actividad también es puro; el dibujado (`renderEnsayo`) es común a L1–L5, así la ayuda sin error vive en un solo lugar.
+  - **Toques:** se ignora todo toque a menos de 400 ms del anterior y los primeros 400 ms de cada ensayo (el dedo puede venir del anterior); volver a tocar una opción ya atenuada no es otro error. Un segundo dedo se ignora solo si es un puntero real no primario: un clic de teclado, pulsador o lector de pantalla siempre vale.
+  - **Ayuda sin error:** la opción equivocada se atenúa (borde neutro, nunca rojo), la correcta se pone amarilla y late (con movimiento reducido, borde grueso fijo), se repite la palabra y no hay sonido de error ni vibración. En **L4** el audio no existe al inicio y aparece recién tras un error.
+  - **Consigna y voz:** la consigna se dice solo la primera vez de cada actividad en la sesión; después, solo la palabra. Tocar el modelo o el altavoz repite la palabra. La primera vez que el niño usa la app el ensayo tiene **una sola opción** (aún no ha visto otras palabras) y se resuelve con un toque.
+  - **Posición de la correcta:** nunca cae 3 veces seguidas en el mismo lugar.
+  - **Celebración (ajuste `intensidadCelebracion`):** `normal` = elogio + ⭐ + salto + vibración de 40 ms, pausa de 1,4 s; `suave` = elogio y resaltado verde, 0,7 s; `ninguna` = sin elogio ni vibración. `sonido: false` silencia consignas y elogios, pero **no** las palabras (L3 y L5 no funcionarían).
+  - **Qué se practica:** solo palabras activas con imagen o emoji; las demás no salen (ni como distractores) y la lista de vocabulario las marca «Sin imagen».
+  - **Guardado:** progreso y nivel se guardan tras cada ensayo; la sesión se guarda al terminar o si un adulto la interrumpe; la calcomanía solo si la sesión termina (también por fatiga). `ms` = tiempo hasta acertar.
+  - **Pantalla:** vertical = modelo arriba y opciones abajo (2 columnas con imágenes, 1 con solo palabras); horizontal ancho = opciones en una fila; celular acostado (<520 px de alto) = modelo a la izquierda y opciones a la derecha, sin desplazar. Las palabras largas se achican hasta 28 px para caber (única excepción al mínimo de 56 px).
+  - **Álbum:** 12 calcomanías SVG propias; las no ganadas son un círculo punteado neutro. Una etapa sin actividades hechas todavía usa L1–L5.
+  - Los ajustes `mayusculas`, `tamanoLetra`, `altoContraste`, `velocidadVoz` y `vibracion` ya se aplican si existen en el perfil; su pantalla de edición es de la fase 5.
 
 ### Fase 5 — Panel de progreso y ajustes
 - Tabla por palabra, gráfico semanal SVG, historial de sesiones, todos los ajustes de §5, desbloqueo y marcado manual, exportar/importar JSON.

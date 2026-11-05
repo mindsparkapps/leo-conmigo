@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Actividades L1–L5 (prueba visual)</title>
+  <link rel="stylesheet" href="../../css/app.css">
+</head>
+<body>
+  <!--
+    Muestra una actividad con datos de ejemplo, usando el mismo render que la app.
+    Parámetros: ?a=L1..L5  &n=1..4 (opciones)  &largo (palabra larga)  &mayus  &grande  &ayuda (tras un error)  &acierto
+    Ej.: /tests/navegador/actividades.html?a=L4&n=3&ayuda
+  -->
+  <div id="app"><main id="vista"></main></div>
+  <script type="module">
+    import { ACTIVIDADES } from '../../js/actividades/indice.js';
+    import { ajustarTextos } from '../../js/ui/ajustar-texto.js';
+    import { crearCandado } from '../../js/ui/candado.js';
+    import { el } from '../../js/ui/dom.js';
+
+    const q = new URLSearchParams(location.search);
+    const id = q.get('a') ?? 'L1';
+    const n = Number(q.get('n') ?? 3);
+
+    function foto(color, letra) {
+      const c = document.createElement('canvas');
+      c.width = c.height = 256;
+      const g = c.getContext('2d');
+      g.fillStyle = color; g.fillRect(0, 0, 256, 256);
+      g.fillStyle = '#fff'; g.font = 'bold 150px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(letra, 128, 136);
+      return c.toDataURL('image/png');
+    }
+    const objetivoTexto = q.has('largo') ? 'refrigerador' : 'perro';
+    const palabras = new Map([
+      [objetivoTexto, { id: objetivoTexto, texto: objetivoTexto, medioImagenId: 'm1' }],
+      ['gato', { id: 'gato', texto: 'gato', emoji: '🐱' }],
+      ['pan', { id: 'pan', texto: 'pan', medioImagenId: 'm2' }],
+      ['mamá', { id: 'mamá', texto: 'mamá', medioImagenId: 'm3' }],
+    ]);
+    const urls = new Map([['m1', foto('#2f7fa8', objetivoTexto[0].toUpperCase())], ['m2', foto('#c98b3c', 'P')], ['m3', foto('#8e44ad', 'M')]]);
+
+    const distractores = ['gato', 'pan', 'mamá'].slice(0, Math.max(0, n - 1));
+    const ensayo = ACTIVIDADES[id].crearEnsayo({
+      ensayo: { elementoId: objetivoTexto, distractorIds: distractores, tipo: 'practica', esFacil: false },
+      palabras,
+      aleatorio: () => 0.3,
+    });
+
+    const area = el('div', { class: 'area-ensayo' });
+    const vista = el('section', { class: 'vista-nino sesion-nino' }, area, crearCandado({ alDesbloquear: () => {} }));
+    vista.classList.toggle('mayusculas', q.has('mayus'));
+    vista.classList.toggle('letra-grande', q.has('grande'));
+    document.getElementById('vista').append(vista);
+
+    const toques = [];
+    const manejador = ACTIVIDADES[id].render(area, ensayo, {
+      palabras, urls,
+      alToque: (c) => toques.push(c),
+      alToqueModelo: () => toques.push('modelo'),
+    });
+    ajustarTextos(area);
+    if (q.has('ayuda')) {
+      const mala = ensayo.cartas.find((c) => c.id !== ensayo.correctaId);
+      if (mala) manejador.atenuar(mala.id);
+      manejador.resaltar(ensayo.correctaId);
+      manejador.revelarAudio();
+    }
+    if (q.has('acierto')) manejador.marcarAcierto(ensayo.correctaId, { celebrar: false });
+    window.__prueba = { ensayo, toques, manejador };
+  </script>
+</body>
+</html>

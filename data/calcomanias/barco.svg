@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Barco">
+  <circle cx="50" cy="50" r="48" fill="#d8ebf5" stroke="#6bb3d9" stroke-width="3"/>
+  <polygon points="52,26 52,58 76,58" fill="#ffffff" stroke="#9fb8c6" stroke-width="1.5" stroke-linejoin="round"/>
+  <polygon points="47,34 47,58 28,58" fill="#fff3cf" stroke="#d9a441" stroke-width="1.5" stroke-linejoin="round"/>
+  <line x1="50" y1="62" x2="50" y2="24" stroke="#4d3a28" stroke-width="3" stroke-linecap="round"/>
+  <path d="M24 60 L76 60 L67 76 L33 76 Z" fill="#8a6a45" stroke="#6b4f30" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M14 68 Q26 62 38 68 T62 68 T86 68 L86 76 Q74 88 50 90 Q26 88 14 76 Z" fill="#6bb3d9" opacity="0.95"/>
+</svg>

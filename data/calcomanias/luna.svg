@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Luna">
+  <defs>
+    <mask id="hueco">
+      <rect width="100" height="100" fill="#fff"/>
+      <circle cx="60" cy="42" r="22" fill="#000"/>
+    </mask>
+  </defs>
+  <circle cx="50" cy="50" r="48" fill="#2f5f82" stroke="#1f4560" stroke-width="3"/>
+  <circle cx="46" cy="54" r="27" fill="#fff3cf" mask="url(#hueco)"/>
+  <circle cx="72" cy="30" r="2.5" fill="#fff3cf"/>
+  <circle cx="78" cy="62" r="2" fill="#fff3cf"/>
+  <circle cx="28" cy="26" r="2" fill="#fff3cf"/>
+</svg>

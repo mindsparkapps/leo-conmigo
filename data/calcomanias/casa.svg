@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Casa">
+  <circle cx="50" cy="50" r="48" fill="#fff3cf" stroke="#f2b632" stroke-width="3"/>
+  <rect x="28" y="48" width="44" height="32" fill="#ffe3a8" stroke="#d9a441" stroke-width="2"/>
+  <polygon points="22,50 50,24 78,50" fill="#d98a5f" stroke="#b86c43" stroke-width="2" stroke-linejoin="round"/>
+  <rect x="44" y="60" width="12" height="20" fill="#7a5c3a"/>
+  <rect x="32" y="56" width="9" height="9" fill="#cfe8f6" stroke="#d9a441" stroke-width="1.5"/>
+  <rect x="59" y="56" width="9" height="9" fill="#cfe8f6" stroke="#d9a441" stroke-width="1.5"/>
+</svg>

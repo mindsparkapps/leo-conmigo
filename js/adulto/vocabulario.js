@@ -73,6 +73,9 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
             'span',
             { class: 'insignias' },
             p.medioAudioId ? el('span', { class: 'insignia' }, 'Tu voz') : null,
+            !p.medioImagenId && !p.emoji
+              ? el('span', { class: 'insignia apagada', title: 'Una palabra sin imagen no se practica hasta que tenga una' }, 'Sin imagen')
+              : null,
             p.activa === false ? el('span', { class: 'insignia apagada' }, 'En pausa') : null,
           ),
         ),

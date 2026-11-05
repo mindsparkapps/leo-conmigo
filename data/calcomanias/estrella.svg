@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Estrella">
+  <circle cx="50" cy="50" r="48" fill="#fff3cf" stroke="#f2b632" stroke-width="3"/>
+  <polygon points="50,16 60,40 86,42 66,58 73,84 50,70 27,84 34,58 14,42 40,40" fill="#f2b632" stroke="#d99a12" stroke-width="2" stroke-linejoin="round"/>
+</svg>

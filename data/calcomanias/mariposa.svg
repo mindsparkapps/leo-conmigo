@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Mariposa">
+  <circle cx="50" cy="50" r="48" fill="#ece4f7" stroke="#b894e6" stroke-width="3"/>
+  <ellipse cx="37" cy="40" rx="17" ry="14" fill="#b894e6" stroke="#9670c9" stroke-width="2"/>
+  <ellipse cx="63" cy="40" rx="17" ry="14" fill="#b894e6" stroke="#9670c9" stroke-width="2"/>
+  <ellipse cx="40" cy="62" rx="12" ry="10" fill="#d4bcf2" stroke="#9670c9" stroke-width="2"/>
+  <ellipse cx="60" cy="62" rx="12" ry="10" fill="#d4bcf2" stroke="#9670c9" stroke-width="2"/>
+  <circle cx="35" cy="40" r="4" fill="#fff" opacity="0.8"/>
+  <circle cx="65" cy="40" r="4" fill="#fff" opacity="0.8"/>
+  <ellipse cx="50" cy="52" rx="3.5" ry="18" fill="#4d3a68"/>
+  <path d="M50 36 L44 24 M50 36 L56 24" stroke="#4d3a68" stroke-width="2" stroke-linecap="round" fill="none"/>
+</svg>

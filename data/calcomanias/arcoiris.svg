@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Arcoíris">
+  <circle cx="50" cy="50" r="48" fill="#e3f2fb" stroke="#6bb3d9" stroke-width="3"/>
+  <g fill="none" stroke-width="8">
+    <path d="M10 70 A40 40 0 0 1 90 70" stroke="#f29b4b"/>
+    <path d="M18 70 A32 32 0 0 1 82 70" stroke="#f2d04b"/>
+    <path d="M26 70 A24 24 0 0 1 74 70" stroke="#6bbf8a"/>
+    <path d="M34 70 A16 16 0 0 1 66 70" stroke="#6bb3d9"/>
+  </g>
+  <g fill="#fff">
+    <circle cx="14" cy="73" r="8"/>
+    <circle cx="24" cy="75" r="7"/>
+    <circle cx="86" cy="73" r="8"/>
+    <circle cx="76" cy="75" r="7"/>
+  </g>
+</svg>

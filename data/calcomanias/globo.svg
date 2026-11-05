@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Globo">
+  <circle cx="50" cy="50" r="48" fill="#eaf4f9" stroke="#6bb3d9" stroke-width="3"/>
+  <path d="M50 73 C44 80 56 86 50 92" fill="none" stroke="#4d606c" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="46,68 54,68 50,73" fill="#4a9bc9"/>
+  <ellipse cx="50" cy="42" rx="20" ry="25" fill="#6bb3d9" stroke="#4a9bc9" stroke-width="2"/>
+  <ellipse cx="42" cy="32" rx="5" ry="9" fill="#fff" opacity="0.55" transform="rotate(20 42 32)"/>
+</svg>

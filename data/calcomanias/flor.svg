@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Flor">
+  <circle cx="50" cy="50" r="48" fill="#e4f4ea" stroke="#3f9d6b" stroke-width="3"/>
+  <line x1="50" y1="56" x2="50" y2="88" stroke="#3f9d6b" stroke-width="5" stroke-linecap="round"/>
+  <ellipse cx="62" cy="74" rx="10" ry="5" fill="#6bbf8a" transform="rotate(-30 62 74)"/>
+  <g fill="#f4a6c0" stroke="#d9789d" stroke-width="1.5">
+    <circle cx="50" cy="23" r="11"/>
+    <circle cx="66.17" cy="34.75" r="11"/>
+    <circle cx="59.99" cy="53.75" r="11"/>
+    <circle cx="40.01" cy="53.75" r="11"/>
+    <circle cx="33.83" cy="34.75" r="11"/>
+  </g>
+  <circle cx="50" cy="40" r="9" fill="#f2b632" stroke="#d99a12" stroke-width="1.5"/>
+</svg>
