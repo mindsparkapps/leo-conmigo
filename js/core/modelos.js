@@ -62,6 +62,7 @@ export function nuevaPalabra({
   arasaacId = null,
   emoji = null,
   medioAudioId = null,
+  busquedaPicto = null, // texto con el que se busca su pictograma (p. ej. «coche» para «auto»)
   orden = 0,
   activa = true,
 }) {
@@ -79,6 +80,7 @@ export function nuevaPalabra({
     arasaacId,
     emoji,
     medioAudioId,
+    busquedaPicto,
     orden,
     activa,
   };

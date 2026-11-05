@@ -210,9 +210,12 @@ js/
   drive.js        leer/escribir data.json y archivos de medios en appDataFolder
   store.js        IndexedDB + cola de sincronización
   sync.js         fusión por updatedAt, subida/bajada de medios
-  hardware.js     cámara, micrófono, vibración, almacenamiento persistente
-  audio.js        reproducir grabación o voz sintética, consignas, elogios
+  hardware.js     galería/cámara (elegirImagen), grabadora de voz, vibración, almacenamiento persistente
+  imagenes.js     recorte cuadrado a 512 px y WebP (JPEG de respaldo)
+  audio.js        reproducir grabación o voz sintética (es-CL → es-419 → es-US → es-MX → es-ES), consignas, elogios
   pictos.js       búsqueda y descarga de ARASAAC
+  medios.js       guardar/borrar fotos y audios (Blob) y sus URLs para mostrarlos
+  contexto.js     almacén compartido y perfil activo
   core/           LÓGICA PURA, sin DOM (probada con `npm test`)
     azar.js       azar reproducible (semilla), barajar
     id.js         UUID v4
@@ -223,12 +226,14 @@ js/
     sesion.js     crearSesion(), iniciarCurso(), registrarRespuesta() (fatiga)
     distractores.js
     suma.js       suma de control del candado
+    vocabulario.js categorías, orden, sílabas editables, palabras del asistente
     frases.js     (fase 6)
   actividades/    un archivo por actividad: P1.js … S4.js
-  ui/             componentes: tarjeta, boton-audio, celebracion, candado
+  ui/             dom.js (el), candado.js, adulto.js (cabecera, errores, campo), miniatura.js,
+                  selector-foto.js; (fase 4: tarjeta, boton-audio, celebracion)
   nino/           inicio.js, sesion.js, premio.js, album.js
-  adulto/         panel.js, perfiles.js, vocabulario.js, editor-palabra.js,
-                  frases.js, libros.js, progreso.js, ajustes.js, cuenta.js
+  adulto/         panel.js, asistente.js, perfiles.js, vocabulario.js, editor-palabra.js
+                  (fases 5-6: frases.js, libros.js, progreso.js, ajustes.js, cuenta.js)
 tests/            *.test.js para js/core (node --test) + ayudas.js y simulador.js (apoyo)
   navegador/      store.html: pruebas de IndexedDB real; se abre en el servidor local
 ```
@@ -260,7 +265,8 @@ Todo registro tiene `id` (UUID), `updatedAt` (ISO) y `deleted` (booleano) para l
 ```js
 perfil     { id, nombre, fotoMedioId, fechaNacimiento?, ajustes:{...}, etapaActual, creado }
 palabra    { id, perfilId, texto, silabas:['ma','má'], categoria, tipo:'sustantivo'|'enlace',
-             medioImagenId?, arasaacId?, emoji?, medioAudioId?, orden, activa }
+             medioImagenId?, arasaacId?, emoji?, medioAudioId?, busquedaPicto?, orden, activa }
+             // orden = cola de introducción (la fija el adulto); busquedaPicto = texto para buscar su pictograma
 progreso   { id: `${perfilId}:${elementoId}:${actividad}`, perfilId, elementoId, actividad, estado,
              historial:[{ fecha, correctoAlPrimerIntento, opciones }] (últimos 10), cajaLeitner (1-5),
              proximoRepaso ('AAAA-MM-DD' o null), fallosRepaso }
@@ -315,9 +321,17 @@ Cada fase termina con un commit y con su lista de aceptación verificada en el n
 - `store.js` (IndexedDB con todas las entidades), `core/silabas.js`, `core/progreso.js`, `core/distractores.js`, `core/sesion.js` con pruebas en `tests/` (`npm test`; el almacén se prueba abriendo `/tests/navegador/store.html`).
 - **Acepta si:** todas las pruebas pasan, incluyendo: dominio en 2 días distintos, subida y bajada de opciones, Leitner, regla de fatiga, primer y último ensayo fáciles, ninguna palabra repetida seguida, sílabas de las 40 palabras de prueba.
 
-### Fase 3 — Modo adulto: perfiles y vocabulario
+### Fase 3 — Modo adulto: perfiles y vocabulario ✔ hecha
 - Asistente de primer uso, perfiles, lista y editor de palabras (foto con cámara, ARASAAC, emoji; grabación de audio; sílabas editables), carga del vocabulario inicial, `audio.js`, `pictos.js`, `hardware.js`.
 - **Acepta si:** se crea un perfil con foto; se agrega una palabra con foto propia y voz grabada, y otra con pictograma ARASAAC y voz sintética `es-CL`; todo sigue disponible sin conexión; en un navegador sin cámara o micrófono la app no se rompe y lo explica.
+- **Decisiones de implementación (ya en el código):**
+  - **Palabras repetidas:** se comparan sin distinguir mayúsculas pero **respetando las tildes** (`clavePalabra`): «bebé» (persona) y «bebe» (verbo) son palabras distintas y conviven. Los distractores, en cambio, sí evitan palabras que solo difieren en la tilde.
+  - **Asistente (3 pasos):** nombre y foto del niño → su gente y sus cosas (con foto) → lista inicial. Orden de introducción: el nombre del niño, su gente, y luego el catálogo. Las palabras de **enlace** vienen desmarcadas (se usan en la etapa 2). La foto del niño se guarda dos veces (perfil y palabra) para que borrar una no afecte a la otra. Si un intento falla a medias, el siguiente reutiliza el mismo perfil.
+  - **Imágenes:** foto → cuadrado de hasta 512 px en WebP (JPEG si no hay soporte); pictograma → PNG de 500 px descargado a IndexedDB (sin conexión después). Se descartan pictogramas con violencia o contenido sexual. Al reemplazar o quitar una imagen o voz, el medio viejo queda marcado como borrado y **se libera su contenido**.
+  - **Voz:** la grabación del adulto tiene prioridad (máx. 8 s); si no hay, voz sintética con la mejor voz en español del dispositivo (es-CL → es-419 → es-US → es-MX → es-ES) y se le dice al adulto cuál es. Si no hay grabación ni voz sintética, el editor avisa que la palabra no tendrá sonido.
+  - **Sin hardware:** sin micrófono, sin permiso, con el micrófono ocupado, sin `MediaRecorder`, sin conexión segura, sin voz sintética, sin red para ARASAAC o al cancelar la cámara: cada caso muestra un mensaje claro y la app sigue funcionando.
+  - **Rutas del modo adulto:** `#/adulto` (panel), `/asistente`, `/perfiles`, `/vocabulario`, `/palabra/nueva` y `/palabra/<id>`; todas exigen haber pasado el candado.
+  - **Pendiente de la fase 5:** el progreso por palabra en la lista de vocabulario y los ajustes del perfil.
 
 ### Fase 4 — Modo niño y etapa 1 (L1–L5)
 - Inicio del niño, motor de sesión conectado a la interfaz, actividades L1–L5, ayuda sin error compartida, elogios, fin de sesión con calcomanía, álbum.

@@ -1,19 +1,28 @@
 import { crearRouter } from './router.js';
 import { iniciarPWA } from './pwa.js';
 import { adultoHabilitado } from './acceso.js';
+import { pedirAlmacenamientoPersistente } from './hardware.js';
 
 iniciarPWA();
+pedirAlmacenamientoPersistente(); // que el navegador no borre las fotos, voces y progreso
+
+const adulto = (ruta, modulo) => ({
+  ruta,
+  cargar: () => import(modulo),
+  guardia: adultoHabilitado,
+  siNoPasa: '/nino',
+});
 
 crearRouter({
   contenedor: document.getElementById('vista'),
   rutaInicial: '/nino',
+  // Las rutas más específicas van primero: '/adulto' también coincide con '/adulto/...'
   rutas: [
     { ruta: '/nino', cargar: () => import('./nino/inicio.js') },
-    {
-      ruta: '/adulto',
-      cargar: () => import('./adulto/panel.js'),
-      guardia: adultoHabilitado,
-      siNoPasa: '/nino',
-    },
+    adulto('/adulto/asistente', './adulto/asistente.js'),
+    adulto('/adulto/perfiles', './adulto/perfiles.js'),
+    adulto('/adulto/vocabulario', './adulto/vocabulario.js'),
+    adulto('/adulto/palabra', './adulto/editor-palabra.js'),
+    adulto('/adulto', './adulto/panel.js'),
   ],
 });
