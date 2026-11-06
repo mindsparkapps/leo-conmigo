@@ -391,6 +391,12 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 .quitar-chip { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 1.4rem; line-height: 1; cursor: pointer; }
 .pagina-editor { margin: 12px 0; padding: 12px; border: 2px solid var(--borde); border-radius: 16px; background: #fff; }
 .pagina-editor h3 { margin: 0; flex: 1; font-size: 1.1rem; }
+
+/* Estado de la cuenta y la sincronización (modo adulto). Sin rojo: verde = al día, amarillo = en marcha o por hacer */
+.estado-nube { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 8px; }
+.punto-estado { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--borde); }
+.punto-estado.ok { background: var(--verde); }
+.punto-estado.aviso { background: var(--amarillo); }
 .creditos { margin-top: 16px; font-size: 0.85rem; }
 
 /* ===== Modo niño: inicio, álbum y premio ===== */

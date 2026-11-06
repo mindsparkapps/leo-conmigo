@@ -2,8 +2,10 @@ import { crearRouter } from './router.js';
 import { iniciarPWA } from './pwa.js';
 import { adultoHabilitado } from './acceso.js';
 import { pedirAlmacenamientoPersistente } from './hardware.js';
+import { iniciarNube } from './nube.js';
 
 iniciarPWA();
+iniciarNube(); // sincroniza en segundo plano si hay una cuenta de Google vinculada
 pedirAlmacenamientoPersistente(); // que el navegador no borre las fotos, voces y progreso
 
 const adulto = (ruta, modulo) => ({
@@ -32,6 +34,7 @@ crearRouter({
     adulto('/adulto/progreso', './adulto/progreso.js'),
     adulto('/adulto/ajustes', './adulto/ajustes.js'),
     adulto('/adulto/respaldo', './adulto/respaldo.js'),
+    adulto('/adulto/cuenta', './adulto/cuenta.js'),
     adulto('/adulto', './adulto/panel.js'),
   ],
 });

@@ -1,5 +1,5 @@
 // Copia de seguridad: descargar todo en un archivo y restaurarlo (PLAN.md §5, «Cuenta»).
-// Más adelante (fase 7) aquí se suma el inicio de sesión con Google y la sincronización.
+// El inicio de sesión con Google y la sincronización están en cuenta.js.
 
 import { el } from '../ui/dom.js';
 import { cabecera, describirError } from '../ui/adulto.js';

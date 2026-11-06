@@ -206,11 +206,12 @@ data/calcomanias/ (12 SVG propios, simples, sin rojo)
 js/
   config.js       CLIENT_ID del cliente OAuth "MindSpark", versión de la app
   app.js          arranque, router por hash (#/nino, #/adulto/...)
-  auth.js         login Google y renovación del token
-  drive.js        leer/escribir data.json y archivos de medios en appDataFolder
+  auth.js         login Google (Identity Services) y renovación del token en silencio
+  drive.js        cliente de Drive en appDataFolder: listar, leer, crear, actualizar, borrar
   store.js        IndexedDB + cola de sincronización
   respaldo.js     exportarTodo / importarTodo sobre el almacén (la lógica pura está en core/respaldo.js)
-  sync.js         fusión por updatedAt, subida/bajada de medios
+  sync.js         sincronizador: une el almacén y Drive (la fusión pura está en core/sync.js)
+  nube.js         estado de la cuenta y la sincronización, acciones y disparadores automáticos
   hardware.js     galería/cámara (elegirImagen), grabadora de voz, vibración, almacenamiento persistente
   imagenes.js     recorte cuadrado a 512 px y WebP (JPEG de respaldo)
   audio.js        reproducir grabación o voz sintética (es-CL → es-419 → es-US → es-MX → es-ES), consignas, elogios
@@ -235,15 +236,16 @@ js/
     respaldo.js   copia de seguridad: armar, validar, decodificar y fusionar (sin DOM)
     vocabulario.js categorías, orden, sílabas editables, palabras del asistente
     frases.js     frases y libros: validar, texto, collage, elementos del motor, páginas legibles
+    sync.js       fusión por updatedAt, documento de Drive, plan de imágenes y audios (sin red)
   actividades/    comun.js (armarEnsayo sin DOM + renderEnsayo), indice.js, secuencia.js («armo la frase»),
                   P1–P3, L1–L6, F1–F3  (fase 8: S1–S4)
   ui/             dom.js (el), candado.js, adulto.js (cabecera, errores, campo), miniatura.js,
                   selector-foto.js, carta.js, boton-audio.js, ajustar-texto.js, grafico-semanal.js
   nino/           inicio.js (con el álbum y el botón de libros), sesion.js, premio.js, libros.js (estante y lectura)
   adulto/         panel.js, asistente.js, perfiles.js, vocabulario.js, editor-palabra.js,
-                  frases.js, libros.js, progreso.js, ajustes.js, respaldo.js
-                  (fase 7: cuenta.js con Google y sincronización)
-tests/            *.test.js para js/core (node --test) + ayudas.js, escenarios.js, jugar.js y simulador.js (apoyo)
+                  frases.js, libros.js, progreso.js, ajustes.js, respaldo.js, cuenta.js (Google y sincronización)
+tests/            *.test.js para js/core, drive, sync y auth (node --test) + ayudas.js, escenarios.js, jugar.js,
+                  memoria.js (almacén en memoria) y drive-falso.js (Drive simulado) como apoyo
   navegador/      store.html (IndexedDB real) y actividades.html (ver cada actividad con datos de ejemplo:
                   ?a=F3&n=3&ayuda&largo&mayus&grande); se abren en el servidor local
 ```
@@ -385,9 +387,20 @@ Cada fase termina con un commit y con su lista de aceptación verificada en el n
   - **Adulto:** `#/adulto/frases` (elegir palabras en orden, foto opcional, editar, pausar, quitar) y `#/adulto/libros` (páginas con frase y foto, subir/bajar, quitar); progreso muestra «Otras actividades» (P1–P3, F1–F3, L6).
   - **Pendiente para la fase 8:** etapa 3 (sílabas) y etapa 4.
 
-### Fase 7 — Login con Google y sincronización con Drive
+### Fase 7 — Login con Google y sincronización con Drive ✔ hecha (falta el `CLIENT_ID` real y probar con Google de verdad)
 - `auth.js`, `drive.js`, `sync.js` según el estándar MindSpark (alcance `drive.appdata`), indicador de estado (sincronizado / pendiente / sin conexión), subida y bajada de medios.
 - **Acepta si:** una palabra con foto y audio creada en el PC aparece con su foto y audio en el celular; una sesión jugada sin conexión se sube al reconectar; dos cambios al mismo registro se resuelven por el `updatedAt` más reciente; un borrado en un equipo se refleja en el otro.
+- **Decisiones de implementación (ya en el código):**
+  - **No había código de ZenBan ni de ApiTrack a mano**, así que se siguió la guía del estándar MindSpark. El `CLIENT_ID` de `js/config.js` está **vacío**: mientras no se complete, «Cuenta de Google» avisa que falta configurarlo y la app funciona igual solo en el dispositivo. Hay que agregar `https://mindsparkapps.github.io` y el `localhost` de pruebas como orígenes autorizados del cliente.
+  - **Piezas:** `core/sync.js` (fusión y plan de medios, puro), `drive.js` (cliente de Drive con el token en la cabecera y un reintento tras un 401), `auth.js` (Google Identity Services; el token solo vive en memoria; solo se recuerda el correo de la cuenta), `sync.js` (un sincronizador que une almacén y Drive, una ejecución a la vez), `nube.js` (estado observable, acciones y disparadores automáticos) y `adulto/cuenta.js` (pantalla `#/adulto/cuenta`; el panel muestra el estado).
+  - **Drive:** `data.json` con todos los registros, **también los borrados** y sin el contenido de imágenes y audios, y un archivo `medio-<id>.<ext>` por cada uno. Se suben primero los archivos y al final `data.json`.
+  - **Fusión:** registro por registro gana el `updatedAt` más reciente; lo que solo está en un lado se agrega al otro; nada local se borra al fusionar. Si dos dispositivos suben a la vez, el siguiente sync de cada uno repara la diferencia. Un `data.json` dañado o de una versión más nueva **nunca se pisa**: se avisa.
+  - **Seguridad ante fallos y cambios en curso:** la cola solo se limpia al terminar bien y solo lo que no cambió mientras tanto; un registro que cambió aquí durante la sincronización no se pisa con el de Drive. Lo traído de Drive no entra en la cola (no se vuelve a subir).
+  - **Medios:** se bajan todos al sincronizar (no «bajo demanda»): el uso sin conexión necesita las fotos y voces en el dispositivo. Si un archivo falta en Drive y en todos los dispositivos, se avisa en la pantalla.
+  - **Disparadores:** al abrir la app, al volver la conexión, al volver a la app y cada 15 s si hay cambios por subir; nunca durante una sesión del niño. **En modo niño jamás se abre una ventana de Google**: solo se sincroniza si todavía hay un token vigente; renovar la sesión (que puede abrir una ventana) solo ocurre con el modo adulto abierto o con un toque del adulto.
+  - **Estados:** sincronizado, sincronizando, cambios por subir, sin conexión, hay que volver a iniciar sesión, error, sin cuenta y sin configurar (sin rojo). Cerrar sesión revoca el token y olvida la cuenta, pero **los datos del dispositivo se quedan**.
+  - **Privacidad:** el panel del adulto explica qué se guarda y dónde (nota de privacidad); la página «Acerca de» completa sigue en la fase 9.
+  - **Probado con un Drive y un Google simulados** (`tests/drive-falso.js`, `tests/memoria.js`): sincronización PC ↔ celular con imágenes, ediciones, borrados y conflictos, y en el navegador el flujo completo (iniciar sesión, subir, vaciar el almacén y recuperar todo, sin conexión, sesión vencida, cerrar sesión). **Falta probar con el cliente de Google real** y con dos dispositivos reales.
 
 ### Fase 8 — Sílabas y lectura con comprensión (S1–S4, etapa 4)
 - **Acepta si:** S4 solo propone palabras nuevas formadas por sílabas que el niño ya domina; el cuento termina con preguntas de respuesta por imagen.

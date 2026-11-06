@@ -8,6 +8,7 @@ import { crearMiniatura } from '../ui/miniatura.js';
 import { describirError } from '../ui/adulto.js';
 import { urlDeMedio, liberarUrls } from '../medios.js';
 import { CREDITO_ARASAAC } from '../pictos.js';
+import { FASES, clasePunto, observarNube, refrescarEstado, textoDeEstado } from '../nube.js';
 
 export const titulo = 'Modo adulto · Leo Conmigo';
 
@@ -15,6 +16,7 @@ export function montar(contenedor, { ir }) {
   const zonaAviso = el('div');
   const zonaNino = el('div', { class: 'panel' }, el('p', { class: 'ayuda' }, 'Cargando…'));
   const zonaEstado = el('div', { class: 'panel' });
+  const zonaNube = el('div', { class: 'panel' });
   let vivo = true;
   let protegido = null; // true / false / null (sin soporte)
 
@@ -30,6 +32,7 @@ export function montar(contenedor, { ir }) {
       ),
       zonaAviso,
       zonaNino,
+      zonaNube,
       zonaEstado,
       el(
         'div',
@@ -43,6 +46,12 @@ export function montar(contenedor, { ir }) {
           el('li', {}, 'Para volver aquí desde su pantalla: mantén presionado el candado 3 segundos y resuelve la suma.'),
           el('li', {}, 'Las palabras sin imagen no se practican: agrégales una foto, un pictograma o un emoji.'),
         ),
+      ),
+      el(
+        'div',
+        { class: 'panel' },
+        el('h2', {}, 'Privacidad'),
+        el('p', { class: 'ayuda' }, 'Las fotos y la voz del niño se guardan solo en este dispositivo y, si inicias sesión con Google, en una carpeta oculta de tu propio Google Drive. No hay analítica ni publicidad. Los únicos servicios externos son Google (inicio de sesión y Drive) y ARASAAC (solo se envía el texto que buscas al elegir un pictograma).'),
       ),
       el(
         'div',
@@ -73,9 +82,21 @@ export function montar(contenedor, { ir }) {
     pintarEstado();
   });
 
+  const dejarDeObservarNube = observarNube((e) => {
+    const punto = el('span', { class: `punto-estado ${clasePunto(e.fase)}`, 'aria-hidden': 'true' });
+    zonaNube.replaceChildren(
+      el('h2', {}, 'Cuenta de Google'),
+      el('p', { class: 'estado-nube', role: 'status' }, punto, el('strong', {}, textoDeEstado(e)), e.email ? el('span', { class: 'ayuda' }, ` · ${e.email}`) : null),
+      e.mensaje ? el('p', { class: 'error-texto', role: 'alert' }, e.mensaje) : null,
+      el('div', { class: 'acciones' }, el('a', { class: 'boton secundario', href: '#/adulto/cuenta' }, e.fase === FASES.SIN_CUENTA ? 'Iniciar sesión' : 'Abrir la cuenta')),
+    );
+  });
+  refrescarEstado().catch(() => {});
+
   return () => {
     vivo = false;
     dejarDeObservar();
+    dejarDeObservarNube();
     liberarUrls();
   };
 }
