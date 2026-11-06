@@ -192,10 +192,11 @@ function tomarRepasos(vencidos, resto, n) {
  * @param puedeHacer    (elemento, actividad) => ¿le corresponde esa actividad? (por defecto, todas)
  * @param puedeSerOpcion (elemento, actividad) => ¿puede aparecer como opción en esa actividad?
  * @param reglasDe      (actividad) => { soloOtraCategoria } reglas extra para elegir distractores
+ * @param vistasPrevias Set de ids de elementos que ya cuentan como vistos (pueden ser distractores desde el primer ensayo)
  */
 export function crearSesion({
   perfil, elementos, progresos = [], niveles = [], actividades, hoy = new Date(), aleatorio = Math.random,
-  puedeHacer = () => true, puedeSerOpcion = () => true, reglasDe = () => ({}),
+  puedeHacer = () => true, puedeSerOpcion = () => true, reglasDe = () => ({}), vistasPrevias = new Set(),
 }) {
   const ajustes = normalizarAjustes(perfil.ajustes);
   const total = ajustes.ensayosPorSesion;
@@ -300,7 +301,8 @@ export function crearSesion({
   for (const e of secuencia) e.esFacil = Boolean(e.esFacil);
 
   // 4. Opciones y distractores (solo con palabras que el niño ya vio).
-  const vistas = new Set(infos.filter((i) => i.vista).map((i) => i.elemento.id));
+  // `vistasPrevias`: elementos que el niño ya vio en otra etapa (la etapa 3 parte de palabras que ya conoce)
+  const vistas = new Set([...vistasPrevias, ...infos.filter((i) => i.vista).map((i) => i.elemento.id)]);
   const porId = new Map(activos.map((e) => [e.id, e]));
   const completar = (ensayo, opcionesForzadas = null) => {
     const nivel = mapaNiveles.get(idNivel(perfil.id, ensayo.actividad));

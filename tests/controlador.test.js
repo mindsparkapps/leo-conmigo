@@ -82,7 +82,8 @@ test('actividadesDeLaEtapa: cada etapa con sus actividades; las que aún no exis
   assert.deepEqual(actividadesDeLaEtapa(0), ['P1', 'P2', 'P3']);
   assert.deepEqual(actividadesDeLaEtapa(1), ['L1', 'L2', 'L3', 'L4', 'L5']);
   assert.deepEqual(actividadesDeLaEtapa(2), ['F1', 'F2', 'F3']);
-  assert.deepEqual(actividadesDeLaEtapa(3), ['L1', 'L2', 'L3', 'L4', 'L5'], 'la etapa 3 llega en la fase 8');
+  assert.deepEqual(actividadesDeLaEtapa(3), ['S1', 'S2', 'S3', 'S4']);
+  assert.deepEqual(actividadesDeLaEtapa(4), ['L1', 'L2', 'L3', 'L4', 'L5'], 'la etapa 4 son cuentos, no sesiones');
   assert.deepEqual(actividadesDeLaEtapa(undefined), ['L1', 'L2', 'L3', 'L4', 'L5']);
 });
 

@@ -8,9 +8,22 @@ import { crearSelectorFoto } from '../ui/selector-foto.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { borrarMedio, guardarMedio, liberarUrls, urlDeMedio } from '../medios.js';
 import { MAX_LARGO_TITULO, MAX_PAGINAS_LIBRO, paginasLeibles, palabrasDeFrase, validarLibro } from '../core/frases.js';
-import { nuevoLibro } from '../core/modelos.js';
+import { nuevoLibro, normalizarPregunta } from '../core/modelos.js';
+import {
+  MAX_LARGO_PREGUNTA, MAX_OTRAS_OPCIONES, MAX_PREGUNTAS, armarCuentoDesdePlantilla, plantillasDisponibles, preguntasLeibles, validarPreguntas,
+} from '../core/cuentos.js';
+import { ordenadas, tieneImagen } from '../core/vocabulario.js';
 
 export const titulo = 'Libros · Leo Conmigo';
+
+async function cargarPlantillas() {
+  try {
+    const respuesta = await fetch('data/cuentos-iniciales.json');
+    return respuesta.ok ? await respuesta.json() : [];
+  } catch {
+    return []; // sin conexión y sin copia en caché: simplemente no se ofrecen
+  }
+}
 
 export function montar(contenedor) {
   const raiz = el('section', { class: 'vista-adulto' }, cabecera('Libros'), cargando());
@@ -49,6 +62,7 @@ async function pintar(raiz, estado, { editando = null, nuevo = false } = {}) {
   const libros = listaLibros.filter((l) => !l.deleted).sort((a, b) => String(a.creado ?? '').localeCompare(String(b.creado ?? '')));
   const urls = new Map();
   if (editando) for (const p of editando.paginas) if (p.medioImagenId) urls.set(p.medioImagenId, await urlDeMedio(store, p.medioImagenId));
+  const plantillas = editando || nuevo ? [] : await cargarPlantillas();
   if (!estado.vivo) return;
 
   const repintar = (opciones) => pintar(raiz, estado, opciones).catch((error) => mostrarError(raiz, error));
@@ -78,7 +92,14 @@ async function pintar(raiz, estado, { editando = null, nuevo = false } = {}) {
             `${libro.paginas.length} página${libro.paginas.length === 1 ? '' : 's'}`,
             leibles < libro.paginas.length ? ` · ${leibles} se pueden leer` : '',
           ),
-          leibles === 0 ? el('span', { class: 'insignias' }, el('span', { class: 'insignia apagada' }, 'No se muestra al niño')) : null,
+          el(
+            'span',
+            { class: 'insignias' },
+            preguntasLeibles(libro, palabrasPorId).length
+              ? el('span', { class: 'insignia' }, `Cuento · ${preguntasLeibles(libro, palabrasPorId).length} pregunta${preguntasLeibles(libro, palabrasPorId).length === 1 ? '' : 's'}`)
+              : null,
+            leibles === 0 ? el('span', { class: 'insignia apagada' }, 'No se muestra al niño') : null,
+          ),
         ),
         el('div', { class: 'acciones-fila' }, el('button', { type: 'button', class: 'boton secundario chico', onclick: () => repintar({ editando: libro }) }, 'Editar')),
       ),
@@ -157,12 +178,71 @@ async function pintar(raiz, estado, { editando = null, nuevo = false } = {}) {
       },
     }, '+ Agregar página');
 
+    // ---- preguntas del cuento (etapa 4): se responden tocando el dibujo de una palabra ----
+    const preguntas = (editando?.preguntas ?? []).map(normalizarPregunta);
+    const conImagen = ordenadas([...palabrasPorId.values()].filter(tieneImagen));
+    const contenedorPreguntas = el('div', { class: 'preguntas-editor' });
+    const botonAgregarPregunta = el('button', {
+      type: 'button',
+      class: 'boton secundario',
+      onclick: () => {
+        if (preguntas.length >= MAX_PREGUNTAS) return;
+        preguntas.push({ texto: '', correctaId: null, distractorIds: [] });
+        pintarPreguntas();
+      },
+    }, '+ Agregar pregunta');
+
+    function pintarPreguntas() {
+      contenedorPreguntas.replaceChildren(
+        ...preguntas.map((q, i) => {
+          const entrada = el('input', { type: 'text', maxlength: MAX_LARGO_PREGUNTA, autocomplete: 'off', placeholder: '¿Quién come pan?', value: q.texto });
+          entrada.addEventListener('input', () => { q.texto = entrada.value; });
+          const respuesta = el(
+            'select',
+            { 'aria-label': `Respuesta de la pregunta ${i + 1}` },
+            el('option', { value: '' }, 'Elige la respuesta'),
+            conImagen.map((p) => el('option', { value: p.id, selected: p.id === q.correctaId }, p.texto)),
+          );
+          respuesta.addEventListener('change', () => {
+            q.correctaId = respuesta.value || null;
+            q.distractorIds = q.distractorIds.filter((id) => id !== q.correctaId);
+            pintarPreguntas();
+          });
+          const resumen = el('summary', {}, `Otras opciones (${q.distractorIds.length} de ${MAX_OTRAS_OPCIONES})`);
+          const casillas = conImagen.filter((p) => p.id !== q.correctaId).map((p) => {
+            const casilla = el('input', { type: 'checkbox', checked: q.distractorIds.includes(p.id) });
+            casilla.addEventListener('change', () => {
+              if (casilla.checked && q.distractorIds.length >= MAX_OTRAS_OPCIONES) { casilla.checked = false; return; }
+              q.distractorIds = casilla.checked ? [...q.distractorIds, p.id] : q.distractorIds.filter((id) => id !== p.id);
+              resumen.textContent = `Otras opciones (${q.distractorIds.length} de ${MAX_OTRAS_OPCIONES})`;
+            });
+            return el('label', { class: 'item-catalogo' }, casilla, el('span', {}, p.texto));
+          });
+          return el(
+            'div',
+            { class: 'pagina-editor' },
+            el(
+              'div',
+              { class: 'fila' },
+              el('h3', {}, `Pregunta ${i + 1}`),
+              el('button', { type: 'button', class: 'boton secundario chico', onclick: () => { preguntas.splice(i, 1); pintarPreguntas(); } }, 'Quitar'),
+            ),
+            campo('La pregunta', entrada),
+            campo('Respuesta correcta', respuesta, 'Es una palabra del vocabulario con imagen: el niño toca su dibujo.'),
+            el('details', { class: 'panel-detalle', open: q.distractorIds.length === 0 }, resumen, el('div', { class: 'catalogo-items' }, casillas)),
+          );
+        }),
+      );
+      botonAgregarPregunta.disabled = preguntas.length >= MAX_PREGUNTAS;
+    }
+
     const botonGuardar = el('button', { type: 'button', class: 'boton' }, editando ? 'Guardar cambios' : 'Crear libro');
     botonGuardar.addEventListener('click', async () => {
       avisoError.hidden = true;
       errorTitulo.hidden = true;
       const pedido = paginas.map((p) => ({ fraseId: p.seleccion.value || null, medioImagenId: p.medioImagenId }));
-      const error = validarLibro({ titulo: entradaTitulo.value, paginas: pedido, frasesPorId });
+      const error = validarLibro({ titulo: entradaTitulo.value, paginas: pedido, frasesPorId })
+        ?? validarPreguntas({ preguntas, palabrasPorId });
       if (error) {
         const lugar = error.includes('título') ? errorTitulo : avisoError;
         lugar.textContent = error;
@@ -188,9 +268,9 @@ async function pintar(raiz, estado, { editando = null, nuevo = false } = {}) {
         }
         for (const id of quitadas) await borrarMedio(store, id);
         if (editando) {
-          await store.guardar('libros', { ...editando, titulo: entradaTitulo.value.trim(), paginas: resultado });
+          await store.guardar('libros', { ...editando, titulo: entradaTitulo.value.trim(), paginas: resultado, preguntas: preguntas.map(normalizarPregunta) });
         } else {
-          await store.guardar('libros', nuevoLibro({ perfilId: perfil.id, titulo: entradaTitulo.value, paginas: resultado }));
+          await store.guardar('libros', nuevoLibro({ perfilId: perfil.id, titulo: entradaTitulo.value, paginas: resultado, preguntas }));
         }
         repintar();
       } catch (e) {
@@ -211,6 +291,7 @@ async function pintar(raiz, estado, { editando = null, nuevo = false } = {}) {
     }
 
     pintarPaginas();
+    pintarPreguntas();
     return el(
       'div',
       { class: 'panel' },
@@ -219,6 +300,10 @@ async function pintar(raiz, estado, { editando = null, nuevo = false } = {}) {
       errorTitulo,
       contenedorPaginas,
       el('div', { class: 'acciones' }, botonAgregar),
+      el('h3', {}, 'Preguntas al final (opcional)'),
+      el('p', { class: 'ayuda' }, `Con 1 o ${MAX_PREGUNTAS} preguntas, el libro es un cuento: al terminarlo el niño responde tocando un dibujo («¿Quién comió pan?»). No se evalúa nada.`),
+      contenedorPreguntas,
+      el('div', { class: 'acciones' }, botonAgregarPregunta),
       avisoError,
       el(
         'div',
@@ -229,6 +314,53 @@ async function pintar(raiz, estado, { editando = null, nuevo = false } = {}) {
       ),
     );
   }
+
+  // ================= Cuentos de ejemplo =================
+  const titulosExistentes = new Set(libros.map((l) => l.titulo));
+  const disponibles = plantillasDisponibles(plantillas, [...palabrasPorId.values()]);
+  async function agregarCuento(plantilla) {
+    try {
+      const { frasesNuevas, libro } = armarCuentoDesdePlantilla({ plantilla, perfilId: perfil.id, palabras: [...palabrasPorId.values()], frases });
+      if (frasesNuevas.length) await store.guardarVarios('frases', frasesNuevas);
+      await store.guardar('libros', libro);
+      repintar();
+    } catch (e) {
+      fallar(e);
+    }
+  }
+  const panelEjemplos = disponibles.length
+    ? el(
+        'div',
+        { class: 'panel' },
+        el('h2', {}, 'Cuentos de ejemplo'),
+        el('p', { class: 'ayuda' }, 'Cuentos cortos con preguntas, hechos con palabras del vocabulario inicial. Se pueden agregar cuando el niño ya tiene esas palabras, y después puedes cambiarlos.'),
+        el(
+          'ul',
+          { class: 'lista-filas' },
+          disponibles.map(({ plantilla, faltan, completa }) => {
+            const agregado = titulosExistentes.has(plantilla.titulo);
+            return el(
+              'li',
+              { class: 'fila-palabra' },
+              el(
+                'div',
+                { class: 'fila-texto' },
+                el('strong', {}, plantilla.titulo),
+                el('span', { class: 'ayuda' }, `${plantilla.paginas.length} páginas · ${plantilla.preguntas?.length ?? 0} preguntas`),
+                !completa ? el('span', { class: 'ayuda' }, `Faltan palabras: ${faltan.join(', ')}`) : null,
+              ),
+              el(
+                'div',
+                { class: 'acciones-fila' },
+                agregado
+                  ? el('span', { class: 'insignia' }, 'Ya está')
+                  : el('button', { type: 'button', class: 'boton secundario chico', disabled: !completa, onclick: () => agregarCuento(plantilla) }, 'Agregar'),
+              ),
+            );
+          }),
+        ),
+      )
+    : null;
 
   const sinFrases = !frases.length;
   raiz.replaceChildren(...[
@@ -241,6 +373,7 @@ async function pintar(raiz, estado, { editando = null, nuevo = false } = {}) {
       ? el('div', { class: 'panel' }, el('p', { class: 'ayuda' }, `${libros.length} libro${libros.length === 1 ? '' : 's'}`), lista)
       : sinFrases ? null : el('div', { class: 'panel' }, el('p', {}, 'Aún no hay libros.')),
     formulario ?? (sinFrases ? null : el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton', onclick: () => repintar({ nuevo: true }) }, '+ Nuevo libro'))),
+    formulario ? null : panelEjemplos,
     formulario ? null : avisoError,
   ].filter(Boolean));
 }

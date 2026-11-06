@@ -9,7 +9,7 @@
 <body>
   <!--
     Muestra una actividad con datos de ejemplo, usando el mismo render que la app.
-    Parámetros: ?a=P1..P3, L1..L6, F1..F3  &n=1..4 (opciones)  &largo (palabra larga)  &mayus  &grande
+    Parámetros: ?a=P1..P3, L1..L6, F1..F3, S1..S4  &n=1..4 (opciones)  &largo (palabra larga)  &mayus  &grande
                 &ayuda (tras un error)  &acierto (solo actividades de elegir)
     Ej.: /tests/navegador/actividades.html?a=L4&n=3&ayuda   ·   ?a=F3&n=3&ayuda
   -->
@@ -53,11 +53,23 @@
       ['fr3', frase('fr3', ['mamá', 'come', 'pan'])],
     ]);
 
+    // Etapa 3 (S1–S4): palabras ya anotadas con sus sílabas y lo que necesita cada actividad
+    const silabica = (texto, silabas, extra = {}) => ({ id: texto, texto, silabas, emoji: '🍎', leida: true, ...extra });
+    const palabrasSilabas = new Map([
+      silabica('mamá', ['ma', 'má'], { medioImagenId: 'm3', conMismaSilaba: true }),
+      silabica('mano', ['ma', 'no'], { conMismaSilaba: true, emoji: '✋' }),
+      silabica('pelota', ['pe', 'lo', 'ta'], { medioImagenId: 'm2', emoji: '⚽' }),
+      silabica('pato', ['pa', 'to'], { emoji: '🦆' }),
+      silabica('mesa', ['me', 'sa'], { emoji: '🪑' }),
+      silabica('masa', ['ma', 'sa'], { leida: false, paraS4: true, emoji: '🥖' }),
+    ].map((p) => [p.id, p]));
+
     const esFrases = id.startsWith('F');
-    const palabras = esFrases ? frases : palabrasPorId;
-    const elemento = esFrases ? 'fr1' : objetivoTexto;
+    const esSilabas = id.startsWith('S');
+    const palabras = esFrases ? frases : esSilabas ? palabrasSilabas : palabrasPorId;
+    const elemento = esFrases ? 'fr1' : esSilabas ? (id === 'S4' ? 'masa' : id === 'S1' ? 'mamá' : 'pelota') : objetivoTexto;
     // P3 («¿cuál es…?») usa distractores de otra categoría
-    const candidatos = esFrases ? ['fr2', 'fr3', 'fr2'] : id === 'P3' ? ['pan', 'mamá', 'come'] : ['gato', 'pan', 'mamá'];
+    const candidatos = esFrases ? ['fr2', 'fr3', 'fr2'] : esSilabas ? ['pato', 'mesa', 'mano'] : id === 'P3' ? ['pan', 'mamá', 'come'] : ['gato', 'pan', 'mamá'];
     const distractores = candidatos.slice(0, Math.max(0, n - 1));
     const ensayo = ACTIVIDADES[id].crearEnsayo({
       ensayo: { elementoId: elemento, distractorIds: distractores, tipo: 'practica', esFacil: false },

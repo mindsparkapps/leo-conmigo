@@ -18,5 +18,9 @@ import L6 from './L6.js';
 import F1 from './F1.js';
 import F2 from './F2.js';
 import F3 from './F3.js';
+import S1 from './S1.js';
+import S2 from './S2.js';
+import S3 from './S3.js';
+import S4 from './S4.js';
 
-export const ACTIVIDADES = Object.freeze({ P1, P2, P3, L1, L2, L3, L4, L5, L6, F1, F2, F3 });
+export const ACTIVIDADES = Object.freeze({ P1, P2, P3, L1, L2, L3, L4, L5, L6, F1, F2, F3, S1, S2, S3, S4 });

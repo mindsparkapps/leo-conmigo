@@ -392,6 +392,17 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 .pagina-editor { margin: 12px 0; padding: 12px; border: 2px solid var(--borde); border-radius: 16px; background: #fff; }
 .pagina-editor h3 { margin: 0; flex: 1; font-size: 1.1rem; }
 
+/* Etapa 3: palabras partidas en sílabas de colores (con un punto entre ellas, para no depender solo del color) */
+.texto-silabas { display: inline-flex; align-items: baseline; justify-content: center; }
+.silaba-0 { color: var(--azul-oscuro); }
+.silaba-1 { color: #1d5a3a; }
+.silaba-punto { margin: 0 0.12em; color: var(--texto-suave); }
+.silaba.resaltada { border-radius: 12px; background: var(--amarillo-suave); box-shadow: 0 0 0 4px var(--amarillo-suave); }
+.hueco-silaba { display: inline-block; min-width: 1.4em; border-bottom: 0.1em dashed var(--azul); margin: 0 0.08em; }
+.carta-silaba .palabra-texto { font-size: clamp(3.5rem, 12vmin, 6rem); }
+.alto-contraste .silaba-0, .alto-contraste .silaba-1 { color: #000; }
+.alto-contraste .silaba.resaltada { background: var(--amarillo); box-shadow: none; outline: 3px solid #000; }
+
 /* Estado de la cuenta y la sincronización (modo adulto). Sin rojo: verde = al día, amarillo = en marcha o por hacer */
 .estado-nube { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 8px; }
 .punto-estado { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--borde); }
@@ -745,6 +756,12 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 .palabra-libro .palabra-texto { font-size: clamp(2.6rem, 9vmin, 4.8rem); }
 .palabra-libro.suena { background: var(--amarillo); }
 .alto-contraste .palabra-libro.suena { background: var(--amarillo); outline: 4px solid #000; }
+.panel-detalle summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; font-weight: 700; }
+
+/* Etapa 4: las preguntas del cuento (el texto de la pregunta arriba y los dibujos de respuesta abajo) */
+.pregunta-libro { width: 100%; }
+.pregunta-libro .zona-modelo { padding-top: 8px; }
+.texto-pregunta { max-width: 18ch; margin: 0; font-size: clamp(2.2rem, 8vmin, 3.8rem); font-weight: 700; line-height: 1.15; }
 .navegacion-libro { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: min(100%, 520px); }
 
 /* Celular acostado: «armo la frase» en tres columnas (imagen · franja · palabras). Va después de las reglas base. */

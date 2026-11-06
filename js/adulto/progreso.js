@@ -97,7 +97,7 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null } = {})
   const dominadasEn = (actividad) =>
     new Set(progresos.filter((p) => !p.deleted && p.actividad === actividad && p.estado === 'dominada').map((p) => p.elementoId)).size;
   const practicadasEn = (actividad) => new Set(progresos.filter((p) => !p.deleted && p.actividad === actividad).map((p) => p.elementoId)).size;
-  const otras = ['P1', 'P2', 'P3', 'F1', 'F2', 'F3', 'L6'].filter((id) => practicadasEn(id) > 0);
+  const otras = ['P1', 'P2', 'P3', 'F1', 'F2', 'F3', 'S1', 'S2', 'S3', 'S4', 'L6'].filter((id) => practicadasEn(id) > 0);
   const panelOtras = otras.length
     ? el(
         'div',

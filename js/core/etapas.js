@@ -23,8 +23,8 @@ export function contarDominadas(progresos, actividad = ACTIVIDAD_CLAVE) {
   return ids.size;
 }
 
-/** Etapas cuyas actividades ya existen en la app (la 3 llega en la fase 8). */
-export const ETAPAS_HECHAS = Object.freeze([0, 1, 2]);
+/** Etapas cuyas actividades ya existen en la app. (La etapa 4, cuentos con preguntas, no es de sesiones: son libros.) */
+export const ETAPAS_HECHAS = Object.freeze([0, 1, 2, 3]);
 
 export const NOMBRE_ETAPA = Object.freeze({
   0: 'Etapa 0 · Ver y emparejar imágenes',

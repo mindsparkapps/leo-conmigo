@@ -86,7 +86,18 @@ export function renderEnsayo(contenedor, ensayo, ctx) {
     modelo = crearBotonAudio({ grande: true, alToque: alToqueModelo });
     audioDisponible = true;
   } else {
-    modelo = crearCarta({ forma: ensayo.modelo.forma, palabra: objetivo, url: urlDe(objetivo), partes: partesDe(objetivo), grande: true, interactiva: false });
+    modelo = crearCarta({
+      forma: ensayo.modelo.forma,
+      palabra: objetivo,
+      url: urlDe(objetivo),
+      partes: partesDe(objetivo),
+      grande: true,
+      interactiva: false,
+      // etapa 3: la palabra partida en sílabas, con una resaltada (S1) o con un hueco (S2)
+      silabas: ensayo.modelo.resaltar != null || ensayo.modelo.hueco != null ? objetivo.silabas : null,
+      resaltar: ensayo.modelo.resaltar ?? null,
+      hueco: ensayo.modelo.hueco ?? null,
+    });
     modelo.addEventListener('click', (e) => {
       if (audioDisponible && !esSegundoDedo(e)) alToqueModelo(); // tocar lo que se ve permite escucharlo
     });
@@ -104,7 +115,8 @@ export function renderEnsayo(contenedor, ensayo, ctx) {
     style: `--n:${ensayo.cartas.length}`,
   });
   for (const carta of ensayo.cartas) {
-    const palabra = palabras.get(carta.id);
+    // Una carta puede traer su propio texto (S2: las opciones son sílabas, no palabras del vocabulario)
+    const palabra = carta.texto != null ? { id: carta.id, texto: carta.texto } : palabras.get(carta.id);
     const elemento = crearCarta({
       forma: carta.forma,
       palabra,

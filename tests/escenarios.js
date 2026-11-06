@@ -1,6 +1,7 @@
 // Datos de apoyo para probar etapas, frases y libros (no es una prueba: no termina en .test.js).
 
 import { PERFIL_ID, vocabulario } from './ayudas.js';
+import { silabear } from '../js/core/silabas.js';
 
 /**
  * 14 palabras del niño más «come» y «bebe». Todas tienen emoji; las de posición par tienen además foto
@@ -13,6 +14,20 @@ export function palabrasDelNino() {
   }));
   return [...base, ...verbos];
 }
+
+/**
+ * Palabras para la etapa 3 (id = texto, con foto de cada una). Las `leidas` ya se dominan en L4; `nuevas` no se han visto
+ * y están hechas con sílabas de las leídas (masa = ma·sa, mapa = ma·pa); «luna» tiene sílabas desconocidas.
+ */
+export function palabrasSilabas() {
+  const leidas = ['mamá', 'mano', 'cama', 'casa', 'mesa', 'pato', 'gato', 'pelota', 'taza', 'pan'];
+  const nuevas = ['masa', 'mapa', 'luna'];
+  return [...leidas, ...nuevas].map((texto, i) => ({
+    id: texto, perfilId: PERFIL_ID, texto, categoria: 'otras', tipo: 'sustantivo', orden: i, activa: true,
+    emoji: '🍎', medioImagenId: `img-${texto}`, silabas: silabear(texto),
+  }));
+}
+export const LEIDAS_SILABAS = ['mamá', 'mano', 'cama', 'casa', 'mesa', 'pato', 'gato', 'pelota', 'taza', 'pan'];
 
 export function frase(id, palabraIds, extra = {}) {
   return { id, perfilId: PERFIL_ID, palabraIds, texto: palabraIds.join(' '), orden: 0, activa: true, medioImagenId: null, ...extra };

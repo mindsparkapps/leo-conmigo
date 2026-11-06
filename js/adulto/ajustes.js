@@ -10,7 +10,7 @@ import { obtenerStore, perfilActivo } from '../contexto.js';
 import { ACTIVIDADES } from '../actividades/indice.js';
 import { AJUSTES_POR_DEFECTO, normalizarAjustes } from '../core/modelos.js';
 import {
-  ACTIVIDADES_POR_ETAPA, ETAPAS_HECHAS, NOMBRE_ETAPA, UMBRAL_ETAPA_2, etapasDesbloqueadas, palabrasQueFaltan,
+  ACTIVIDADES_POR_ETAPA, ETAPAS_HECHAS, NOMBRE_ETAPA, UMBRAL_ETAPA_2, UMBRAL_ETAPA_3, etapasDesbloqueadas, palabrasQueFaltan,
 } from '../core/etapas.js';
 import { hablarTexto, desbloquearAudio } from '../audio.js';
 import { vibrar } from '../hardware.js';
@@ -92,8 +92,8 @@ async function pintar(raiz, estaVivo) {
   const modosEtapa = ETAPAS_HECHAS.map((etapa) => {
     const valorInicial = a.etapasForzadas.includes(etapa) ? 'abrir' : a.etapasBloqueadas.includes(etapa) ? 'bloquear' : 'auto';
     const opciones = [
-      ['auto', etapa === 2 ? `Automática (se abre con ${UMBRAL_ETAPA_2} palabras leídas)` : 'Siempre disponible'],
-      ...(etapa === 2 ? [['abrir', 'Abrir ahora']] : []),
+      ['auto', etapa >= 2 ? `Automática (se abre con ${etapa === 2 ? UMBRAL_ETAPA_2 : UMBRAL_ETAPA_3} palabras leídas)` : 'Siempre disponible'],
+      ...(etapa >= 2 ? [['abrir', 'Abrir ahora']] : []),
       ['bloquear', 'Bloquear'],
     ];
     const seleccion = el('select', {}, opciones.map(([v, t]) => el('option', { value: v, selected: v === valorInicial }, t)));
@@ -110,7 +110,7 @@ async function pintar(raiz, estaVivo) {
     'div',
     { class: 'panel' },
     el('h2', {}, 'Las etapas'),
-    el('p', { class: 'ayuda' }, 'La etapa 2 (frases) se abre sola cuando lee 10 palabras. Tú eliges cuál practica hoy, y puedes abrir o bloquear etapas.'),
+    el('p', { class: 'ayuda' }, `La etapa 2 (frases) se abre sola cuando lee ${UMBRAL_ETAPA_2} palabras y la 3 (sílabas) cuando lee ${UMBRAL_ETAPA_3}. Tú eliges cuál practica hoy, y puedes abrir o bloquear etapas. Los cuentos con preguntas (etapa 4) se arman en Libros.`),
     campo('Etapa que practica', selEtapaActual, 'Si esa etapa está cerrada o no tiene nada que practicar, se usa la anterior.'),
     modosEtapa.map((m) => m.elemento),
     lecturaVozAlta.elemento,

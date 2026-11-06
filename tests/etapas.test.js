@@ -8,8 +8,8 @@ import { ESTADOS } from '../js/core/progreso.js';
 
 const dominadasL4 = (n) => Array.from({ length: n }, (_, i) => ({ elementoId: `w${i}`, actividad: 'L4', estado: ESTADOS.DOMINADA }));
 
-test('las etapas hechas son la 0, la 1 y la 2, y todas tienen nombre', () => {
-  assert.deepEqual([...ETAPAS_HECHAS], [0, 1, 2]);
+test('las etapas hechas son la 0, la 1, la 2 y la 3, y todas tienen nombre', () => {
+  assert.deepEqual([...ETAPAS_HECHAS], [0, 1, 2, 3]);
   for (const e of [0, 1, 2, 3]) assert.ok(NOMBRE_ETAPA[e].length > 0);
 });
 
@@ -25,14 +25,21 @@ test('etapaEfectiva: si la elegida no está abierta, baja a la más alta abierta
   assert.equal(etapaEfectiva({ etapaActual: 1, desbloqueadas: [0] }), 0, 'el adulto bloqueó la 1');
 });
 
-test('etapaEfectiva: una etapa aún no hecha (la 3) no se usa aunque esté abierta', () => {
-  assert.equal(etapaEfectiva({ etapaActual: 3, desbloqueadas: [0, 1, 2, 3] }), 2);
-  assert.equal(etapaEfectiva({ etapaActual: 3, desbloqueadas: [0, 1, 3] }), 1);
+test('etapaEfectiva: la etapa 3 se usa si está abierta, y si no, baja', () => {
+  assert.equal(etapaEfectiva({ etapaActual: 3, desbloqueadas: [0, 1, 2, 3] }), 3);
+  assert.equal(etapaEfectiva({ etapaActual: 3, desbloqueadas: [0, 1, 2] }), 2);
+  assert.equal(etapaEfectiva({ etapaActual: 3, desbloqueadas: [0, 1] }), 1);
+});
+
+test('etapaEfectiva: una etapa que aún no está hecha no se usa aunque esté abierta', () => {
+  const hechas = [0, 1, 2]; // como si la 3 todavía no existiera
+  assert.equal(etapaEfectiva({ etapaActual: 3, desbloqueadas: [0, 1, 2, 3], hechas }), 2);
+  assert.equal(etapaEfectiva({ etapaActual: 3, desbloqueadas: [0, 1, 3], hechas }), 1);
 });
 
 test('etapaEfectiva: si no queda nada usable, la 1; por defecto la elegida es la 1', () => {
   assert.equal(etapaEfectiva({ etapaActual: 1, desbloqueadas: [] }), 1);
-  assert.equal(etapaEfectiva({ etapaActual: 1, desbloqueadas: [3] }), 1);
+  assert.equal(etapaEfectiva({ etapaActual: 1, desbloqueadas: [4] }), 1);
   assert.equal(etapaEfectiva({ desbloqueadas: [0, 1] }), 1);
   assert.equal(etapaEfectiva({ etapaActual: 0, desbloqueadas: [1, 2] }), 1, 'bloqueó la 0 y ninguna menor sirve: sube a la menor abierta');
 });

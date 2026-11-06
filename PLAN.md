@@ -202,6 +202,7 @@ fonts/            Andika-Regular.woff2, Andika-Bold.woff2, OFL.txt
 icons/            192, 512 y 512-maskable
 css/app.css
 data/vocabulario-inicial.json
+data/cuentos-iniciales.json (3 cuentos de ejemplo con preguntas)
 data/calcomanias/ (12 SVG propios, simples, sin rojo)
 js/
   config.js       CLIENT_ID del cliente OAuth "MindSpark", versión de la app
@@ -237,8 +238,10 @@ js/
     vocabulario.js categorías, orden, sílabas editables, palabras del asistente
     frases.js     frases y libros: validar, texto, collage, elementos del motor, páginas legibles
     sync.js       fusión por updatedAt, documento de Drive, plan de imágenes y audios (sin red)
+    silabeo.js    etapa 3: anota las palabras para S1–S4 (leídas, compañeras, palabras nuevas), sílabas distractoras
+    cuentos.js    etapa 4: preguntas de comprensión y cuentos de ejemplo
   actividades/    comun.js (armarEnsayo sin DOM + renderEnsayo), indice.js, secuencia.js («armo la frase»),
-                  P1–P3, L1–L6, F1–F3  (fase 8: S1–S4)
+                  P1–P3, L1–L6, F1–F3, S1–S4
   ui/             dom.js (el), candado.js, adulto.js (cabecera, errores, campo), miniatura.js,
                   selector-foto.js, carta.js, boton-audio.js, ajustar-texto.js, grafico-semanal.js
   nino/           inicio.js (con el álbum y el botón de libros), sesion.js, premio.js, libros.js (estante y lectura)
@@ -286,7 +289,7 @@ progreso   { id: `${perfilId}:${elementoId}:${actividad}`, perfilId, elementoId,
              // elementoId = id de una palabra (etapas 0, 1 y 3) o de una frase (etapa 2)
 nivel      { id: `${perfilId}:${actividad}`, perfilId, actividad, opciones (2-4), ultimos:[true|false] (ventana de 10) }
 frase      { id, perfilId, palabraIds:[...] (2 a 6), texto, medioImagenId? (sin ella se usa un collage), orden, activa }
-libro      { id, perfilId, titulo, paginas:[{ medioImagenId?, fraseId }] (1 a 10), creado }
+libro      { id, perfilId, titulo, paginas:[{ medioImagenId?, fraseId }] (1 a 10), preguntas?:[{ texto, correctaId, distractorIds }] (0 a 2; con ellas es un cuento), creado }
 ajustes    (dentro del perfil) + etapasForzadas:[0-3], etapasBloqueadas:[0-3], habilitarL6; el perfil guarda etapaActual
 sesion     { id, perfilId, inicio, fin, fatiga, ensayos:[{ elementoId, actividad, tipo, esFacil, correctoAlPrimerIntento, intentos, ms }] }
 calcomania { id, perfilId, codigo, fecha }
@@ -402,8 +405,18 @@ Cada fase termina con un commit y con su lista de aceptación verificada en el n
   - **Privacidad:** el panel del adulto explica qué se guarda y dónde (nota de privacidad); la página «Acerca de» completa sigue en la fase 9.
   - **Probado con un Drive y un Google simulados** (`tests/drive-falso.js`, `tests/memoria.js`): sincronización PC ↔ celular con imágenes, ediciones, borrados y conflictos, y en el navegador el flujo completo (iniciar sesión, subir, vaciar el almacén y recuperar todo, sin conexión, sesión vencida, cerrar sesión). **Falta probar con el cliente de Google real** y con dos dispositivos reales.
 
-### Fase 8 — Sílabas y lectura con comprensión (S1–S4, etapa 4)
+### Fase 8 — Sílabas y lectura con comprensión (S1–S4, etapa 4) ✔ hecha
 - **Acepta si:** S4 solo propone palabras nuevas formadas por sílabas que el niño ya domina; el cuento termina con preguntas de respuesta por imagen.
+- **Decisiones de implementación (ya en el código):**
+  - **La etapa 3 parte solo de palabras que el niño ya lee** (L4 dominada). `core/silabeo.js` anota cada palabra con `leida`, `vistaAntes`, `conMismaSilaba` (S1) y `paraS4`; esas anotaciones son las que consultan `aplicaA` y `esOpcionValida` de S1–S4. Si no hay ninguna palabra que sirva, se baja a la etapa anterior. Las sílabas se comparan sin tilde («ma» = «má»). Se abre sola con 20 palabras dominadas (o por el adulto) y su progreso va aparte de L1–L5 (`S1`…`S4`).
+  - **Opciones desde el primer ensayo:** el motor recibe `vistasPrevias`: las palabras que el niño ya vio en la etapa 1 cuentan como vistas y pueden ser distractores desde el principio (si no, la etapa 3 empezaría con una sola opción).
+  - **S1 «descubro la sílaba»:** el modelo es la palabra partida en sílabas de colores con un punto entre ellas (no se depende solo del color), la primera resaltada, y suena **la sílaba**. La correcta es **otra** palabra leída que empieza con esa sílaba; ningún distractor empieza igual (si no, habría dos respuestas). Solo se usa con palabras que tienen una compañera así.
+  - **S2 «completo la palabra»:** imagen más la palabra con una sílaba que falta (en cualquier posición); las opciones son sílabas de otras palabras, sin ninguna que se confunda con las de la palabra (ni «ma» junto a «má»). Al tocar el modelo suena la palabra entera. El nombre accesible de la carta no revela la sílaba que falta.
+  - **S3 «armo la palabra»:** igual que «armo la frase» (sin arrastrar; ficha equivocada atenuada, se ilumina la siguiente); con 3 y 4 opciones se suman 1 y 2 sílabas de relleno; admite sílabas repetidas (pa·pa).
+  - **S4 «palabra nueva»:** como L4 (sin audio al inicio) pero solo con palabras **nunca vistas** (sin ningún progreso en L1–L5), de 2 o más sílabas y hechas solo con sílabas de palabras que ya lee; las opciones son dibujos de palabras que ya lee.
+  - **Etapa 4: cuentos con preguntas.** Un cuento es un libro con 1 o 2 preguntas (`libro.preguntas: [{ texto, correctaId, distractorIds }]`, palabras con imagen, hasta 3 opciones más). Tras la última página, el botón de avance lleva a las preguntas: se dice la pregunta y se responde tocando un dibujo, **sin error** (opción equivocada atenuada, correcta iluminada, pregunta repetida, sin vibración; acierto con elogio). **No se evalúa ni se guarda nada**, como en B1. Las preguntas que ya no se pueden contestar (palabra borrada o sin imagen) se saltan.
+  - **Adulto:** en Libros, editor de preguntas (texto, respuesta, otras opciones) y **cuentos de ejemplo** (`data/cuentos-iniciales.json`: «La comida», «El perro», «En casa»), que se agregan si el niño ya tiene todas sus palabras y crean sus frases y el libro con las preguntas; se avisa qué palabras faltan. Ajustes ya lista S1–S4 y las etapas 2 y 3 como automáticas con su umbral; Progreso suma S1–S4.
+  - **Pendiente:** la prueba con el niño real (fase 10) dirá si hay que afinar los umbrales de la etapa 3 y la cantidad de cuentos.
 
 ### Fase 9 — Pulido y publicación
 - Revisión de accesibilidad (contraste, tamaños, `prefers-reduced-motion`, lector de pantalla en el modo adulto), página «Acerca de» con créditos ARASAAC y Andika y nota de privacidad, ayuda para el adulto (cómo usar la app, cómo fijar la pantalla, recomendaciones: 1–2 sesiones al día, siempre acompañado), repositorio `mindsparkapps/leo-conmigo` con GitHub Pages.

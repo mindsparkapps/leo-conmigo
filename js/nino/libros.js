@@ -10,15 +10,21 @@ import { habilitarAdulto, deshabilitarAdulto } from '../acceso.js';
 import { NOMBRE_APP } from '../config.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { liberarUrls, urlDeMedio } from '../medios.js';
-import { decirFrase, decirPalabra, desbloquearAudio, detener } from '../audio.js';
+import { decirFrase, decirPalabra, desbloquearAudio, detener, hablarTexto } from '../audio.js';
+import { vibrar } from '../hardware.js';
 import { esSegundoDedo } from '../actividades/comun.js';
 import { normalizarAjustes } from '../core/modelos.js';
 import { librosParaElNino, paginasLeibles, palabrasDeFrase, partesDeCollage } from '../core/frases.js';
+import { armarPregunta, preguntasLeibles } from '../core/cuentos.js';
+import { crearIntento, tocar as tocarIntento } from '../core/intento.js';
+import { elegirElogio } from '../core/elogios.js';
+import { lluviaDeEstrellas } from './premio.js';
 
 export const titulo = NOMBRE_APP;
 
 const BLOQUEO_NAVEGACION_MS = 400;
 const RUTA_LIBRO = '/nino/libro/';
+const PAUSA_CELEBRACION_MS = { normal: 1400, suave: 700, ninguna: 500 };
 
 const ICONO_CASA = `
 <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path d="M32 8L6 32h8v22h14V40h8v14h14V32h8z" fill="currentColor"/></svg>`;
@@ -128,6 +134,10 @@ async function pintar({ vista, ir, estado, idLibro }) {
   await pintarLibro({ vista, ir, estado, store, libro, frasesPorId, palabrasPorId, ajustes });
 }
 
+function elegirImagenDe(palabra, urls) {
+  return palabra.medioImagenId ? urls.get(palabra.medioImagenId) ?? null : null;
+}
+
 // ---------- el estante ----------
 
 async function pintarEstante({ vista, ir, estado, store, disponibles, frasesPorId, palabrasPorId, casa }) {
@@ -167,7 +177,14 @@ async function pintarEstante({ vista, ir, estado, store, disponibles, frasesPorI
 
 async function pintarLibro({ vista, ir, estado, store, libro, frasesPorId, palabrasPorId, ajustes }) {
   const paginas = paginasLeibles(libro, frasesPorId, palabrasPorId);
+  const preguntas = preguntasLeibles(libro, palabrasPorId); // cuento: al final, preguntas que se responden por imagen
   const urls = await cargarUrls(store, paginas, frasesPorId, palabrasPorId);
+  for (const q of preguntas) {
+    for (const id of [q.correctaId, ...q.distractorIds]) {
+      const medioId = palabrasPorId.get(id).medioImagenId;
+      if (medioId && !urls.has(medioId)) urls.set(medioId, await urlDeMedio(store, medioId));
+    }
+  }
   if (!estado.vivo) return;
 
   const obtenerMedio = (id) => store.obtener('medios', id);
@@ -216,9 +233,10 @@ async function pintarLibro({ vista, ir, estado, store, libro, frasesPorId, palab
     const anterior = boton('boton-nav', 'Página anterior', ICONO_ANTERIOR, () => cambiar(-1));
     anterior.disabled = indice === 0;
     anterior.classList.toggle('oculto', indice === 0);
-    const siguiente = esUltima
-      ? boton('boton-nav boton-nav-listo', 'Terminé el libro', ICONO_LISTO, () => ir('/nino/libros'))
-      : boton('boton-nav', 'Página siguiente', ICONO_SIGUIENTE, () => cambiar(1));
+    let siguiente;
+    if (esUltima && preguntas.length) siguiente = boton('boton-nav boton-nav-listo', 'Responder las preguntas', ICONO_SIGUIENTE, () => mostrarPregunta(0));
+    else if (esUltima) siguiente = boton('boton-nav boton-nav-listo', 'Terminé el libro', ICONO_LISTO, () => ir('/nino/libros'));
+    else siguiente = boton('boton-nav', 'Página siguiente', ICONO_SIGUIENTE, () => cambiar(1));
     const navegacion = el(
       'div',
       { class: 'navegacion-libro' },
@@ -227,6 +245,68 @@ async function pintarLibro({ vista, ir, estado, store, libro, frasesPorId, palab
       siguiente,
     );
     area.replaceChildren(imagen, texto, navegacion);
+  }
+
+  // ---- etapa 4: las preguntas del cuento. Sin error: la opción equivocada se atenúa y la correcta se ilumina ----
+  let temporizador = null;
+  let ultimoElogio = null;
+  estado.limpiar = () => clearTimeout(temporizador);
+  const celebracion = ajustes.intensidadCelebracion;
+
+  function mostrarPregunta(i) {
+    detener();
+    const q = armarPregunta({ pregunta: preguntas[i] });
+    let intento = crearIntento({ correctaId: q.correctaId, cartas: q.cartas }, performance.now());
+    let cerrando = false;
+    const decirPregunta = () => {
+      if (!ajustes.sonido) return;
+      desbloquearAudio();
+      hablarTexto(q.texto, { velocidad });
+    };
+
+    const cartas = new Map();
+    const zonaOpciones = el('div', { class: 'zona-opciones', 'data-forma': 'imagen', 'data-n': String(q.cartas.length), style: `--n:${q.cartas.length}` });
+    for (const { id } of q.cartas) {
+      const palabra = palabrasPorId.get(id);
+      const carta = crearCarta({ forma: 'imagen', palabra, url: elegirImagenDe(palabra, urls) });
+      carta.addEventListener('click', (e) => { if (!esSegundoDedo(e)) alToque(id); });
+      cartas.set(id, carta);
+      zonaOpciones.append(carta);
+    }
+    const zonaModelo = el('div', { class: 'zona-modelo' }, el('p', { class: 'texto-pregunta' }, q.texto), crearBotonAudio({ alToque: decirPregunta }));
+    area.replaceChildren(el('div', { class: 'area-ensayo pregunta-libro' }, zonaModelo, zonaOpciones));
+
+    function alToque(id) {
+      if (cerrando) return;
+      const r = tocarIntento(intento, id, performance.now());
+      intento = r.intento;
+      if (r.efecto === 'ignorado') return;
+      desbloquearAudio();
+      if (r.efecto === 'ayuda') {
+        cartas.get(id).classList.add('atenuada');
+        cartas.get(q.correctaId).classList.add('ayuda');
+        decirPregunta();
+        return;
+      }
+      cerrando = true;
+      const acertada = cartas.get(id);
+      acertada.classList.remove('ayuda');
+      acertada.classList.add('acierto');
+      if (celebracion !== 'ninguna') acertada.classList.add('celebrar');
+      if (celebracion === 'normal') lluviaDeEstrellas(vista);
+      if (celebracion !== 'ninguna' && ajustes.sonido) {
+        ultimoElogio = elegirElogio(ultimoElogio);
+        hablarTexto(ultimoElogio, { velocidad });
+      } else detener();
+      if (celebracion !== 'ninguna' && ajustes.vibracion) vibrar(40);
+      temporizador = setTimeout(() => {
+        if (!estado.vivo) return;
+        if (i + 1 < preguntas.length) mostrarPregunta(i + 1);
+        else ir('/nino/libros');
+      }, PAUSA_CELEBRACION_MS[celebracion]);
+    }
+
+    temporizador = setTimeout(decirPregunta, 300);
   }
 
   function cambiar(paso) {

@@ -1,0 +1,26 @@
+[
+  {
+    "titulo": "La comida",
+    "paginas": ["papá come pan", "mamá bebe leche", "el gato come queso", "el nene bebe jugo"],
+    "preguntas": [
+      { "texto": "¿Quién bebe leche?", "respuesta": "mamá", "otras": ["papá", "gato"] },
+      { "texto": "¿Qué come el gato?", "respuesta": "queso", "otras": ["pan", "leche"] }
+    ]
+  },
+  {
+    "titulo": "El perro",
+    "paginas": ["el perro juega", "el perro tiene la pelota", "el perro duerme"],
+    "preguntas": [
+      { "texto": "¿Qué tiene el perro?", "respuesta": "pelota", "otras": ["auto", "globo"] },
+      { "texto": "¿Quién duerme?", "respuesta": "perro", "otras": ["gato", "pato"] }
+    ]
+  },
+  {
+    "titulo": "En casa",
+    "paginas": ["la nena duerme", "el nene juega", "mamá tiene pan", "la abuela bebe agua"],
+    "preguntas": [
+      { "texto": "¿Quién juega?", "respuesta": "nene", "otras": ["nena", "abuela"] },
+      { "texto": "¿Quién bebe agua?", "respuesta": "abuela", "otras": ["mamá", "nena"] }
+    ]
+  }
+]

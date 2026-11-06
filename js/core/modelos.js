@@ -102,8 +102,20 @@ export function nuevaFrase({ perfilId, palabraIds, texto, medioImagenId = null, 
   return { id: nuevoId(), perfilId, palabraIds: [...palabraIds], texto: limpio, medioImagenId, orden, activa };
 }
 
-/** Un libro: título y páginas { medioImagenId (foto de la página, opcional), fraseId }. */
-export function nuevoLibro({ perfilId, titulo, paginas = [] }) {
+/** Una pregunta de comprensión de un cuento: se responde tocando la imagen de una palabra. */
+export function normalizarPregunta(pregunta) {
+  return {
+    texto: String(pregunta.texto ?? '').trim(),
+    correctaId: pregunta.correctaId,
+    distractorIds: [...(pregunta.distractorIds ?? [])],
+  };
+}
+
+/**
+ * Un libro: título y páginas { medioImagenId (foto de la página, opcional), fraseId }.
+ * Con `preguntas` ({ texto, correctaId, distractorIds }) es un cuento: al final el niño responde por imagen.
+ */
+export function nuevoLibro({ perfilId, titulo, paginas = [], preguntas = [] }) {
   if (!perfilId) throw new Error('El libro necesita un perfil');
   const limpio = String(titulo ?? '').trim();
   if (!limpio) throw new Error('El libro necesita un título');
@@ -112,6 +124,7 @@ export function nuevoLibro({ perfilId, titulo, paginas = [] }) {
     perfilId,
     titulo: limpio,
     paginas: paginas.map((p) => ({ medioImagenId: p.medioImagenId ?? null, fraseId: p.fraseId })),
+    preguntas: preguntas.map(normalizarPregunta),
     creado: new Date().toISOString(),
   };
 }

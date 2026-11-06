@@ -2,7 +2,7 @@
 
 // Al cambiar VERSION se registra un service worker nuevo (sw.js?v=...) y se
 // crea una caché nueva. Súbela en cada publicación que cambie archivos.
-export const VERSION = '0.7.0';
+export const VERSION = '0.8.0';
 
 export const NOMBRE_APP = 'Leo Conmigo';
 

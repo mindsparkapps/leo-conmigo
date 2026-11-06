@@ -19,9 +19,12 @@ const ESPERADO = {
   L5: { modelo: 'audio', cartas: 'palabra', audioInicial: true, consigna: 'Escucha y toca la palabra' },
 };
 
-test('hay doce actividades (P1–P3, L1–L6, F1–F3) con la interfaz común', () => {
-  assert.deepEqual(Object.keys(ACTIVIDADES).sort(), ['F1', 'F2', 'F3', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'P1', 'P2', 'P3']);
-  const etapaDe = { P: 0, L: 1, F: 2 };
+test('hay dieciséis actividades (P1–P3, L1–L6, F1–F3, S1–S4) con la interfaz común', () => {
+  assert.deepEqual(
+    Object.keys(ACTIVIDADES).sort(),
+    ['F1', 'F2', 'F3', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'P1', 'P2', 'P3', 'S1', 'S2', 'S3', 'S4'],
+  );
+  const etapaDe = { P: 0, L: 1, F: 2, S: 3 };
   for (const [id, act] of Object.entries(ACTIVIDADES)) {
     assert.equal(act.id, id);
     assert.equal(act.etapa, etapaDe[id[0]], `${id}: etapa`);

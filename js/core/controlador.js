@@ -16,6 +16,7 @@ import { ACTIVIDADES } from '../actividades/indice.js';
 import { ACTIVIDADES_POR_ETAPA, ETAPAS_HECHAS, etapaEfectiva, etapasDesbloqueadas } from './etapas.js';
 import { elegirElogio } from './elogios.js';
 import { frasesComoElementos } from './frases.js';
+import { anotarParaSilabas } from './silabeo.js';
 import {
   crearIntento, crearIntentoLectura, crearIntentoSecuencia, decidirLectura, fichaSiguiente, resultadoDelIntento,
   tocar as tocarSimple, tocarSecuencia,
@@ -57,7 +58,18 @@ export function crearControlador({
   const elegida = etapaEfectiva({ etapaActual: perfil.etapaActual ?? 1, desbloqueadas });
 
   function armarEtapa(etapa) {
-    const elementos = etapa === 2 ? frasesComoElementos(frases, palabrasPorId) : [...palabrasPorId.values()].filter(esPracticable);
+    let elementos;
+    let vistasPrevias = new Set();
+    if (etapa === 2) {
+      elementos = frasesComoElementos(frases, palabrasPorId);
+    } else if (etapa === 3) {
+      // Las sílabas parten de palabras que el niño ya lee: cada una se anota con lo que necesitan S1–S4
+      const anotado = anotarParaSilabas({ perfilId: perfil.id, palabras: [...palabrasPorId.values()].filter(esPracticable), progresos });
+      elementos = anotado.elementos;
+      vistasPrevias = anotado.vistasPrevias;
+    } else {
+      elementos = [...palabrasPorId.values()].filter(esPracticable);
+    }
     const plan = crearSesion({
       perfil,
       elementos,
@@ -69,12 +81,13 @@ export function crearControlador({
       puedeHacer: (elemento, actividad) => ACTIVIDADES[actividad].aplicaA?.(elemento) ?? true,
       puedeSerOpcion: (elemento, actividad) => ACTIVIDADES[actividad].esOpcionValida?.(elemento) ?? true,
       reglasDe: (actividad) => ACTIVIDADES[actividad].reglas ?? {},
+      vistasPrevias,
     });
     return { etapa, elementos, plan };
   }
 
   // Si en la etapa elegida no hay nada que practicar (p. ej. aún no hay frases), se baja a la anterior.
-  const candidatas = [elegida, ...[2, 1, 0].filter((e) => e < elegida && desbloqueadas.includes(e) && ETAPAS_HECHAS.includes(e))];
+  const candidatas = [elegida, ...[3, 2, 1, 0].filter((e) => e < elegida && desbloqueadas.includes(e) && ETAPAS_HECHAS.includes(e))];
   let base = null;
   for (const etapa of candidatas) {
     base = armarEtapa(etapa);
