@@ -501,11 +501,11 @@ const sesionesHasta = (r, meta) => {
 };
 const mediana = (lista) => [...lista].sort((a, b) => a - b)[Math.floor(lista.length / 2)];
 
-test('simulador: el avance rápido acelera a un niño que ya conoce las palabras', () => {
-  const semillas = [1, 2, 3];
+test('simulador: el avance rápido ahorra al menos 20 % de las sesiones a un niño que ya conoce las palabras', () => {
+  const semillas = [1, 2, 3, 4, 5, 6, 7, 8];
   const sin = semillas.map((semilla) => sesionesHasta(simular({ palabras: 10, conocidas: 10, dias: 50, semilla, revisar: false }), 10));
   const con = semillas.map((semilla) => sesionesHasta(simular({ palabras: 10, conocidas: 10, dias: 50, semilla, revisar: false, avanceRapido: true }), 10));
-  assert.ok(mediana(con) <= mediana(sin) - 4, `con ${con} / sin ${sin}`);
+  assert.ok(mediana(con) <= mediana(sin) * 0.8, `con ${con} / sin ${sin}`);
 });
 
 test('simulador: el niño lento sigue a su ritmo (±1 semana) y nunca hay más de 2 palabras nuevas por sesión', () => {
