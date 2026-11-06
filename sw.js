@@ -72,6 +72,8 @@ const PRECACHE = [
   'js/sync.js',
   'js/nube.js',
   'js/adulto/cuenta.js',
+  'js/adulto/ayuda.js',
+  'js/adulto/acerca.js',
   'js/nino/libros.js',
   'js/adulto/frases.js',
   'js/adulto/libros.js',

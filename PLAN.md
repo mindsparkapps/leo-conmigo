@@ -418,9 +418,24 @@ Cada fase termina con un commit y con su lista de aceptación verificada en el n
   - **Adulto:** en Libros, editor de preguntas (texto, respuesta, otras opciones) y **cuentos de ejemplo** (`data/cuentos-iniciales.json`: «La comida», «El perro», «En casa»), que se agregan si el niño ya tiene todas sus palabras y crean sus frases y el libro con las preguntas; se avisa qué palabras faltan. Ajustes ya lista S1–S4 y las etapas 2 y 3 como automáticas con su umbral; Progreso suma S1–S4.
   - **Pendiente:** la prueba con el niño real (fase 10) dirá si hay que afinar los umbrales de la etapa 3 y la cantidad de cuentos.
 
-### Fase 9 — Pulido y publicación
+### Fase 9 — Pulido y publicación ✔ hecha (falta subir el repositorio y las pruebas con Google y dispositivos reales)
 - Revisión de accesibilidad (contraste, tamaños, `prefers-reduced-motion`, lector de pantalla en el modo adulto), página «Acerca de» con créditos ARASAAC y Andika y nota de privacidad, ayuda para el adulto (cómo usar la app, cómo fijar la pantalla, recomendaciones: 1–2 sesiones al día, siempre acompañado), repositorio `mindsparkapps/leo-conmigo` con GitHub Pages.
 - **Acepta si:** pasa la comprobación final del estándar MindSpark (login, cierre de sesión, renovación del token, sync PC ↔ celular, uso sin conexión, instalación, hardware sin soporte) y las listas de aceptación de todas las fases anteriores.
+- **Decisiones de implementación (ya en el código):**
+  - **Ayuda y «Acerca de»** (`#/adulto/ayuda`, `#/adulto/acerca`): reemplazan los tres paneles sueltos del panel del adulto. La ayuda explica los primeros pasos, cómo acompañar al niño, las etapas, cómo fijar la pantalla (Android e iPhone/iPad), instalar la app y qué hacer si algo falla. «Acerca de» trae versión, método, privacidad y créditos (ARASAAC con su licencia CC BY-NC-SA y Andika con la SIL OFL); los únicos enlaces externos están en el modo adulto.
+  - **Contraste (WCAG AA) medido con la paleta y con el DOM real:** `--azul` pasó de `#2f7fa8` a `#287599` (texto blanco 5,1:1 y enlaces 4,6:1), `--verde` a `#2b7d51`, el gris de «sin empezar» a `#5a6e7a`. Nuevo `--borde-fuerte` (`#6a8fa6`, ≥ 3:1) para los bordes de lo que se toca o se escribe (cartas, fichas, huecos, campos, pestañas); los bordes decorativos de los paneles siguen suaves. El anillo de enfoque pasó de amarillo (1,6:1) a azul oscuro, y los campos ya no lo ocultan.
+  - **Tamaños:** en el modo niño todo lo que se toca mide al menos 88 px (se agrandaron los botones de volver y avanzar y las palabras del libro); en el modo adulto, al menos 44 px. El candado de salida se queda en 56 px a propósito.
+  - **Movimiento reducido:** una regla global anula las animaciones y las ayudas siguen viéndose por color y atenuado.
+  - **Revisión automática** de 18 pantallas en un celular (375 px): sin imágenes sin `alt`, sin botones ni campos sin nombre, sin contraste bajo, sin toques pequeños y sin desborde horizontal.
+  - **Sin conexión:** probado de verdad: con el service worker activo se detuvo el servidor y la app abrió desde la caché, recorrió todas las pantallas del adulto y jugó una sesión. Los 105 archivos del precaché estaban guardados.
+  - **Publicación preparada, no subida:** `README.md` (probar, publicar, orígenes autorizados de Google, qué hacer en cada versión) y `.nojekyll`. Todas las rutas son relativas, así que funciona en `https://mindsparkapps.github.io/leo-conmigo/`. El usuario crea el repositorio y sube (aquí no se puede hacer `git push`).
+- **Comprobación final del estándar MindSpark** (✔ probado aquí; ☐ lo debe probar el adulto con Google y dispositivos reales):
+  - ✔ Login, cierre de sesión y renovación del token con un Google simulado (pruebas y navegador). ☐ Con el cliente de Google real (`CLIENT_ID` vacío todavía).
+  - ✔ Sincronización PC ↔ celular con un Drive simulado (fotos, voz, ediciones, borrados, conflictos). ☐ Con dos dispositivos reales.
+  - ✔ Abre y funciona sin conexión; sincroniza al reconectar (simulado). ☐ En Chrome de Android y Safari de iPhone/iPad (audio, `MediaRecorder` y almacenamiento son lo que más falla).
+  - ✔ Manifiesto con íconos normal y «maskable», service worker y aviso de versión nueva. ☐ «Instalar» / «Agregar a pantalla de inicio» en un celular real.
+  - ✔ Hardware sin soporte: cámara, micrófono, voz sintética, vibración y almacenamiento detectan la falta de soporte con alternativa (pruebas `dispositivo.test.js` y mensajes en pantalla).
+  - ☐ Subir el repositorio a `mindsparkapps/leo-conmigo`, activar Pages y completar el `CLIENT_ID`.
 
 ### Fase 10 — Prueba con el niño (la hace el adulto)
 - 2 semanas de uso real. Anotar: palabras que confunde, actividades que lo aburren o frustran, si las celebraciones lo distraen. Ajustar umbrales del §4 con esa información y, si es posible, revisarlo con su educadora diferencial o fonoaudióloga.

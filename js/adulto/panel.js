@@ -7,7 +7,6 @@ import { obtenerStore, perfilActivo } from '../contexto.js';
 import { crearMiniatura } from '../ui/miniatura.js';
 import { describirError } from '../ui/adulto.js';
 import { urlDeMedio, liberarUrls } from '../medios.js';
-import { CREDITO_ARASAAC } from '../pictos.js';
 import { FASES, clasePunto, observarNube, refrescarEstado, textoDeEstado } from '../nube.js';
 
 export const titulo = 'Modo adulto · Leo Conmigo';
@@ -37,28 +36,14 @@ export function montar(contenedor, { ir }) {
       el(
         'div',
         { class: 'panel' },
-        el('h2', {}, 'Ayuda para el adulto'),
+        el('h2', {}, 'Ayuda e información'),
         el(
-          'ul',
-          { class: 'lista-ayuda' },
-          el('li', {}, 'Acompaña al niño en las sesiones. Con 1 o 2 al día basta: son cortas a propósito.'),
-          el('li', {}, 'Para que no salga de la app: en Android activa «Fijar pantalla» (Ajustes › Seguridad) y en iPhone o iPad «Acceso guiado» (Ajustes › Accesibilidad).'),
-          el('li', {}, 'Para volver aquí desde su pantalla: mantén presionado el candado 3 segundos y resuelve la suma.'),
-          el('li', {}, 'Las palabras sin imagen no se practican: agrégales una foto, un pictograma o un emoji.'),
+          'div',
+          { class: 'acciones' },
+          el('a', { class: 'boton secundario', href: '#/adulto/ayuda' }, 'Ayuda'),
+          el('a', { class: 'boton secundario', href: '#/adulto/acerca' }, 'Acerca de, privacidad y créditos'),
         ),
-      ),
-      el(
-        'div',
-        { class: 'panel' },
-        el('h2', {}, 'Privacidad'),
-        el('p', { class: 'ayuda' }, 'Las fotos y la voz del niño se guardan solo en este dispositivo y, si inicias sesión con Google, en una carpeta oculta de tu propio Google Drive. No hay analítica ni publicidad. Los únicos servicios externos son Google (inicio de sesión y Drive) y ARASAAC (solo se envía el texto que buscas al elegir un pictograma).'),
-      ),
-      el(
-        'div',
-        { class: 'panel' },
-        el('h2', {}, 'Créditos'),
-        el('p', { class: 'ayuda' }, CREDITO_ARASAAC),
-        el('p', { class: 'ayuda' }, 'Letra Andika, de SIL International (licencia SIL Open Font License).'),
+        el('p', { class: 'ayuda' }, 'Para volver aquí desde la pantalla del niño: mantén presionado el candado 3 segundos y resuelve la suma.'),
       ),
     ),
   );

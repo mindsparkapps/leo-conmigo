@@ -144,7 +144,7 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null } = {})
   // ---- tabla por palabra ----
   const selFiltro = el(
     'select',
-    { 'aria-label': 'Mostrar palabras' },
+    { class: 'selector', 'aria-label': 'Mostrar palabras' },
     FILTROS.map(([valor, nombre]) => el('option', { value: valor, selected: valor === filtro }, nombre)),
   );
   selFiltro.addEventListener('change', () => repintar({ filtro: selFiltro.value }));
