@@ -442,6 +442,196 @@ Cada fase termina con un commit y con su lista de aceptación verificada en el n
 
 ---
 
+## Ampliación 2 — Fases 11 a 14 (pedidas por el usuario el 2026-11-06)
+
+> **Para quien programa (Sonnet):** estas cuatro fases amplían la app ya terminada. Se hacen **en orden** (11 → 12 → 13 → 14), una por vez, cada una con su lista de aceptación, `npm test` en verde, prueba en el navegador y un commit. Las reglas del §2 siguen valiendo; donde esta ampliación las cambia, lo dice explícitamente (el usuario lo pidió). Si algo no está definido aquí, pregunta.
+
+### Por qué existe esta ampliación (lo que vio el usuario)
+
+1. Completó todas las calcomanías y no pasó nada: el álbum se quedó lleno y siguió dando calcomanías repetidas.
+2. «Siguen saliendo las mismas palabras»: con las reglas actuales cada palabra debe dominarse en L1, L2, L3, L4 y L5 **una tras otra** y cada dominio pide aciertos en **2 días distintos**, así que una palabra que el niño ya sabe ocupa como mínimo ~10 días de práctica. Además, las palabras dominadas nunca salen del ciclo de repasos.
+3. El adulto no tiene cómo ver qué palabras le cuestan más ni exportar datos para que una IA los analice.
+4. Los ajustes son fijos: el adulto tiene que adivinar cuándo subir los ensayos o las opciones.
+
+### Decisiones tomadas (valores por defecto; el usuario puede cambiarlas)
+
+| Tema | Decisión |
+|---|---|
+| Premio por álbum completo | **10 monedas de oro** (configurable 1–50 por el adulto) |
+| Tamaño del álbum | 12 calcomanías (configurable 6–24) |
+| Qué calcomanías entran al álbum | Las elige el adulto de un catálogo (mínimo = tamaño del álbum); por defecto todas las del catálogo |
+| Premios de la tienda | Premios **reales** que define el adulto (p. ej. «helado», «ir al parque», «15 min de dibujos»): la app solo registra el canje y el adulto lo entrega |
+| Monedas en pantalla del niño | Monedas dibujadas (una por moneda, hasta 20) y además el número, chico, para que vaya conociendo los números |
+| Las monedas y la regla «sin puntajes» (§1, §2) | Se mantiene: **nunca** se ganan ni se pierden monedas por acertar o fallar. Solo se ganan al completar un álbum (que se llena por terminar sesiones) y solo se gastan en la tienda. Nada de monedas durante la sesión |
+| Registro fino | Uno por ensayo, solo en el dispositivo y en el Drive del adulto. **La app no envía nada a ningún servicio de IA**: el adulto exporta un archivo y lo comparte él |
+| Avance rápido de palabras que ya sabe | **Activado** por defecto, con interruptor en Ajustes |
+| Palabras aprendidas | Salen solas de la práctica y del repaso normal; solo vuelven en un repaso de control cada 30 días |
+| Ajustes automáticos | **Activados** por defecto, uno por uno, con aviso al adulto y botón «Deshacer». Nunca cambian durante una sesión |
+
+---
+
+### Fase 11 — Álbum que se renueva, monedas de oro y tienda
+
+**Datos (subir `VERSION_BD` a 2 en `store.js`; `crearEsquema` ya crea solo los almacenes que faltan):**
+
+```js
+// nuevos almacenes en ALMACENES, todos con índice perfilId
+premio      { id, perfilId, nombre, precio (1–100), medioImagenId?, arasaacId?, emoji?, activo, orden }
+movimiento  { id, perfilId, fecha, cantidad (+ gana / − gasta), tipo: 'album'|'canje'|'regalo'|'correccion',
+              premioId?, albumNumero?, nota?, estado?: 'pendiente'|'entregado'|'anulado' (solo canjes) }
+calcomaniaPropia { id, perfilId, nombre, medioImagenId?, arasaacId?, emoji? }  // calcomanías creadas por el adulto
+// perfil.album = { tamano: 12, monedasPorAlbum: 10, codigos: null | ['estrella', 'propia:<id>', ...] }
+//   (va en perfil.album, no en ajustes; normalizarlo como normalizarAjustes, con pruebas)
+// calcomania (existente) no cambia: { id, perfilId, codigo, fecha }
+```
+
+- **El saldo nunca se guarda como número**: es la suma de `movimiento.cantidad` (sin los canjes `anulado`). Así la sincronización (gana el `updatedAt` más reciente **por registro**) nunca pierde monedas cuando dos dispositivos suman a la vez.
+- **Los álbumes se calculan, no se guardan** (`core/album.js`, puro y con pruebas): se recorren las calcomanías del perfil por `fecha` y se van llenando álbumes de `tamano` calcomanías **distintas**; cuando uno se llena, empieza el siguiente. `albumes(calcomanias, config) → [{ numero, codigos, completo, fechaFin }]` y `albumActual(...)`.
+- **Premio del álbum sin duplicados entre dispositivos:** el movimiento de premio tiene id **determinista** `album:<perfilId>:<numero>`. Si dos dispositivos lo crean, es el mismo registro y la fusión deja uno. `movimientosPendientesDeAlbum(albumes, movimientos, config)` devuelve los que faltan crear (pruebas: completar un álbum dos veces en paralelo da 10 monedas, no 20).
+- `elegirCalcomania` pasa a recibir el álbum actual y la lista de códigos en juego: elige una que **no esté en el álbum actual**; ya no hay calcomanías repetidas dentro de un álbum.
+- Si el adulto achica el álbum o quita calcomanías del juego, los álbumes ya completos no cambian (se recalculan solo desde el último completo: guardar `fechaFin` del último álbum completo en el movimiento del premio y usarla como corte). Escribir la prueba de este caso.
+
+**Catálogo de calcomanías:**
+- Pasar de 12 a **30 SVG propios** en `data/calcomanias/` (mismo estilo simple de los actuales: formas planas, colores calmos, sin texto). Agregarlos a `CALCOMANIAS` y al `PRECACHE`.
+- Calcomanías **propias del adulto**: con foto, pictograma ARASAAC o emoji (reutilizar `ui/selector-foto.js` y `pictos.js`). Código `propia:<id>`; `rutaCalcomania` resuelve también estas (URL del medio).
+
+**Modo niño:**
+- **Fin de sesión** (`nino/premio.js`): igual que hoy, y si esa calcomanía **completa el álbum**: pantalla «¡Completaste tu álbum!» (se dice en voz alta), las 12 calcomanías juntas, y 10 monedas que entran una a una a un cofre (≤ 2 s; con `prefers-reduced-motion` o celebración «ninguna», aparecen sin animación). Luego un toque en ▶ vuelve al inicio con un **álbum vacío nuevo**.
+- **Inicio:** debajo del álbum, el **cofre** con su saldo (monedas dibujadas + número) y un botón grande «Tienda» (≥ 88 px) **solo si hay premios activos**. Un botón «Mis álbumes» muestra los álbumes completos (solo mirar).
+- **Tienda (`#/nino/tienda`):** tarjetas grandes de premios (imagen + nombre + precio en monedas dibujadas). Tocar un premio lo dice en voz alta.
+  - Si le alcanza: pantalla de confirmación con la imagen grande, «¿Lo quieres?» hablado y dos botones grandes: ✓ y ← (sin mantener presionado, con bloqueo de 400 ms). Al confirmar: movimiento `canje` con `estado: 'pendiente'` y cantidad negativa, voz «¡Es tuyo! Pídeselo a un adulto», volver a la tienda.
+  - Si no le alcanza: el precio muestra las monedas que tiene llenas y las que faltan como contorno punteado; se dice «Te faltan N monedas». Sin sonido de error, sin rojo, sin bloqueo frustrante: es información.
+- El candado y la salida al modo adulto funcionan igual en la tienda.
+
+**Modo adulto:**
+- `#/adulto/album`: tamaño del álbum, monedas por álbum, elegir qué calcomanías entran (cuadrícula con casillas; al menos tantas como el tamaño), crear/quitar calcomanías propias, ver el álbum actual y los completos.
+- `#/adulto/tienda`: crear, editar, ordenar, pausar y quitar premios (nombre, imagen, precio); **canjes pendientes** con «Entregado» y «Anular» (anular devuelve las monedas); historial de movimientos; «Regalar monedas» y «Corregir saldo» (con nota obligatoria). Mostrar el saldo actual.
+- Enlaces nuevos en el panel del adulto. Respaldo (exportar/importar) y sincronización deben incluir los almacenes nuevos: comprobar que `core/respaldo.js` y `core/sync.js` recorren `ALMACENES` y no una lista fija (si es fija, cambiarla) y agregar pruebas.
+
+**Acepta si:**
+- Al terminar la sesión que llena el álbum se ve la celebración, el saldo sube exactamente 10 y la siguiente sesión empieza un álbum vacío; los álbumes completos se ven en «Mis álbumes».
+- Ninguna calcomanía se repite dentro de un álbum; solo salen las que el adulto dejó en juego (incluidas las propias).
+- Un canje deja el saldo bien, aparece como pendiente en el adulto, «Anular» devuelve las monedas; con saldo insuficiente no se puede canjear y no hay ningún gesto de error.
+- Pruebas puras: cálculo de álbumes, saldo, premio con id determinista (dos dispositivos → una sola vez), cambio de tamaño del álbum, sincronización y respaldo con los almacenes nuevos.
+- Tamaños (88 px niño, 44 px adulto), contraste AA y sin desplazamiento horizontal en 375 px.
+
+---
+
+### Fase 12 — Registro fino de cada respuesta
+
+Hoy `sesion.ensayos` guarda `{ elementoId, actividad, tipo, esFacil, correctoAlPrimerIntento, intentos, ms }` y `progreso.historial` solo los últimos 10. Eso no alcanza para saber **con qué** se confunde ni **cuánto duda**.
+
+**Datos:** nuevo almacén `respuestas` (índice `perfilId`; agregar también un índice `elementoId`). Un registro por ensayo terminado, **solo se agrega, nunca se edita**:
+
+```js
+respuesta {
+  id, perfilId, sesionId,                  // sesionId: generar el id de la sesión al EMPEZAR (hoy se crea al guardar)
+  fecha,                                   // ISO completa
+  dia, hora, diaSemana,                    // 'AAAA-MM-DD', 0–23, 0–6 (hora local; sirven para ver si rinde mejor en la mañana)
+  numeroEnSesion,                          // 1, 2, 3…
+  elementoId, texto, esFrase,              // copia del texto: el registro se entiende aunque después borren la palabra
+  categoria, silabas,
+  etapa, actividad, tipo: 'nueva'|'practica'|'repaso'|'lectura', esFacil,
+  opciones: [{ id, texto }],               // en el orden en que se mostraron
+  posicionCorrecta,                        // índice 0..n-1
+  nivelOpciones,                           // las que mandaba el nivel (puede diferir de opciones.length)
+  correctoAlPrimerIntento, intentos,
+  errores: [{ id, texto, ms }],            // cada opción equivocada tocada, en orden, con ms desde el inicio
+  msPrimerToque,                           // tiempo hasta el primer toque válido (duda)
+  msAcierto,                               // tiempo hasta acertar (= el `ms` de hoy)
+  repeticionesAudio,                       // veces que tocó el altavoz o el modelo para volver a oír
+  conAyudaVisual,                          // true si llegó a verse la correcta iluminada
+  estadoAntes, estadoDespues,              // 'nueva'|'practica'|'dominada'|'aprendida' de ese progreso
+  cajaLeitnerAntes, cajaLeitnerDespues,
+  fatigaActiva,                            // si este ensayo fue el de cierre por fatiga
+  // solo secuencias (F3, S3):
+  ordenEsperado?: [texto], toques?: [{ texto, correcto, ms }]
+  // solo L6: repeticiones? (veces que el adulto tocó ↻)
+}
+```
+
+**Cómo se captura (sin romper la arquitectura):**
+- `core/intento.js`: guardar `primerToque` (ms del primer toque válido) y `ms` en cada error. Las secuencias guardan cada toque. Pruebas.
+- `core/controlador.js`: nuevo método `oirOtraVez()` que cuenta `repeticionesAudio` del ensayo actual (la pantalla lo llama en `alToqueModelo`). `avanzar()` devuelve además `guardar.respuesta` armada por una función **pura** nueva `construirRespuesta({ ensayo, visual, intento, progresoAntes, progresoDespues, … })` en `core/registro.js`, con pruebas.
+- `nino/sesion.js`: guarda `respuesta` junto al progreso (misma cola de `guardar`). La sesión tiene `id` desde el inicio y `sesion.ensayos` sigue como está (compatibilidad con Progreso).
+- Libros y cuentos: registrar también las respuestas a las **preguntas de los cuentos** (`actividad: 'B2'`, `tipo: 'cuento'`) — sigue sin evaluarse ni mover el progreso, pero sirve para el análisis.
+- `ms` mayores a 60 s se guardan tal cual pero se marcan `distraido: true` (el análisis los excluye del tiempo).
+
+**Tamaño y sincronización:** ~15 ensayos × 2 sesiones × 365 días ≈ 11 000 registros/año (~3–4 MB en `data.json`). Aceptable. Agregar a `respaldo` y `sync` (como los demás almacenes). Si el `data.json` pasa de 8 MB, avisar en la pantalla Cuenta (no recortar nada sin preguntar).
+
+**Acepta si:** una sesión de 8 ensayos con 2 errores y 3 toques al altavoz deja 8 registros con los errores (qué opción y cuándo), `msPrimerToque`, `repeticionesAudio` y estados antes/después correctos; F3 guarda los toques en orden; los registros viajan por sync y respaldo; pruebas puras de `construirRespuesta` e `intento`.
+
+---
+
+### Fase 13 — Análisis: qué le cuesta, qué le es fácil, exportar para IA
+
+**Lógica pura (`core/analisis.js`, con pruebas y datos de ejemplo):**
+
+Por palabra (y por frase), con sus respuestas de los **últimos 60 días**, sin contar `esFacil` ni `lectura`:
+- `ensayos`, `aciertosPrimerIntento`, `tasa` (= aciertos / ensayos), `errores` totales.
+- `tiempoMediano`: mediana de `msAcierto` de los aciertos al primer intento, sin `distraido`. `tiempoRelativo` = `tiempoMediano` ÷ mediana del niño en esa misma actividad (≥ 1 = más lento que su propio promedio; se compara con él mismo, nunca con otros niños).
+- `audioPorEnsayo`: promedio de `repeticionesAudio`.
+- `tendencia`: tasa de los últimos 5 ensayos menos la de los 5 anteriores (`'mejora' | 'igual' | 'empeora'`, umbral ±0,2).
+- `dias`: días distintos practicados; `ultimaVez`.
+- **Índice de dificultad (0–100):**
+  `round(100 × (0,60 × (1 − tasa) + 0,25 × clamp((tiempoRelativo − 1) / 2, 0, 1) + 0,15 × clamp(audioPorEnsayo / 2, 0, 1)))`.
+  Con menos de 5 ensayos: `confiable: false` («pocos datos»). Las constantes van arriba del archivo para poder afinarlas.
+- **Confusiones:** pares (palabra objetivo → opción tocada por error) con cuántas veces pasó; `confusionesFrecuentes(respuestas, { minimo: 2 })` ordenadas de más a menos.
+- **Listas:** `masDificiles` (top 5 por índice, solo confiables), `masFaciles` (top 5 por menor índice), `paraRepetirMas` (índice ≥ 50, o tendencia «empeora», o falló un repaso en los últimos 7 días), `porActividad` (tasa y tiempo mediano por L1–L5, S1–S4…: dónde se traba), `porHora` (tasa por franja mañana/tarde/noche, solo si hay ≥ 20 ensayos en cada una).
+
+**Pantalla del adulto `#/adulto/analisis` («Qué le cuesta»):**
+- Tarjetas: «Le cuestan más», «Le salen fácil», «Para repetir más», «Se confunde entre…» (p. ej. «mamá ↔ mano: 4 veces»), «Actividad más difícil». Cada palabra muestra su imagen, el índice como barra (azul, **nunca rojo**), tasa, tiempo mediano en segundos y tendencia con flecha.
+- Tocar una palabra abre su detalle: últimos 20 ensayos (fecha, actividad, ✓ sin ayuda / ↻ con ayuda, con qué se confundió, tiempo), y botones existentes «Ya la sabe» / «Empezar de nuevo».
+- Texto de ayuda breve: qué significa cada número y que el tiempo **no** se usa para juzgar al niño ni se le muestra.
+- Enlace desde el panel y desde Progreso.
+
+**Exportar para IA:**
+- Botón «Exportar para analizar con IA» → descarga `leo-conmigo-analisis-<nombre>-<AAAA-MM-DD>.json` con: `esquema` (descripción en español de cada campo, para que la IA lo entienda sin contexto), `metodo` (resumen de 5 líneas del método y las reglas: aprendizaje sin error, dominio, Leitner), `perfil` (solo nombre de pila, edad si existe, etapa, ajustes), `metricasPorPalabra`, `confusiones`, `porActividad`, `sesiones` y `respuestas` (todas, no solo 60 días). **Sin fotos ni audios.** Casilla «Ocultar el nombre del niño» (lo reemplaza por «el niño»).
+- Botón «Copiar resumen para IA»: texto Markdown corto (≤ 4 000 caracteres) con las métricas principales y una pregunta sugerida, listo para pegar en un chat: «Eres especialista en lectura para niños con síndrome de Down (método Troncoso). Con estos datos, dime qué palabras reforzar, qué confusiones trabajar y si conviene cambiar algo de los ajustes».
+- Recordatorio visible: «La app no envía estos datos a ningún lado. Tú decides con quién compartirlos.»
+
+**Acepta si:** con un set de respuestas de prueba (fijo, en `tests/`), las listas y el índice salen exactamente como se esperan; la pantalla muestra las cinco tarjetas y el detalle; el JSON exportado se puede volver a leer y trae `esquema`; con «Ocultar el nombre» no aparece el nombre en ningún campo; sin datos suficientes la pantalla lo explica en vez de mostrar listas vacías.
+
+---
+
+### Fase 14 — Avance automático: sacar lo que ya sabe y ajustes que se adaptan
+
+**Cambio explícito a §4 (lo pidió el usuario).** Todas las constantes nuevas van en `core/progreso.js` / `core/sesion.js` / `core/autoajuste.js` con sus pruebas, y se documentan en «Decisiones de implementación» al cerrar la fase.
+
+**1. Avance rápido (`ajustes.avanceRapido`, por defecto `true`):**
+- En una actividad, si los **primeros 3 ensayos** de una palabra son aciertos al primer intento con **≥ 2 opciones** (no cuentan los de 1 opción ni los `esFacil`), la actividad queda `dominada` **provisional** (`provisional: true`, caja Leitner 1, repaso al día siguiente) y la palabra pasa a la siguiente actividad **en esa misma sesión o la próxima**.
+- Si el repaso del día siguiente falla, vuelve a `practica` con **un solo** error (no dos, como las dominadas normales). Si acierta, deja de ser provisional.
+- Efecto buscado: una palabra que el niño ya sabe recorre L1–L5 en 1–3 sesiones en vez de ~10 días. Prueba con el simulador (`tests/simulador.js`): un niño que ya conoce 10 palabras las tiene leídas (L4) en ≤ 4 sesiones; el niño «lento» sigue igual que hoy (no debe acelerar con suerte).
+
+**2. Palabras aprendidas (salen solas):**
+- Nuevo estado `aprendida` por palabra (no por actividad): todas las actividades de la etapa 1 dominadas (no provisionales) **y** un repaso acertado estando en la caja Leitner 5 (16 días). Se calcula en `core/progreso.js` (`estaAprendida(progresosDeLaPalabra)`), sin campo nuevo obligatorio.
+- Las aprendidas **no entran** en los repasos normales. Solo un **repaso de control** cada 30 días (`DIAS_CONTROL = 30`), como máximo 1 por sesión. Si falla el control, vuelve a dominada en caja 1.
+- Siguen sirviendo como distractores, en frases, libros y sílabas.
+- Como liberan lugar, entran palabras nuevas antes. Revisar `MIN_EN_PRACTICA`/`MAX_NUEVAS_POR_SESION`: **no cambian** (máximo 2 nuevas por sesión sigue siendo regla del §2).
+- Adulto: Progreso y Vocabulario muestran «Aprendida»; el detalle permite «Volver a practicar».
+
+**3. Prioridad a lo difícil:**
+- En `crearSesion`, entre las palabras en práctica, las de **mayor índice de dificultad** (fase 13) reciben un ensayo extra cuando hay lugar (sin pasar el tope de la mitad de la sesión) y las de índice < 20 uno menos.
+- **Confusiones:** mientras la precisión de esa palabra sea < 80 %, su confusión más frecuente **no** se usa como distractor (evita reforzar el error); con ≥ 80 % se usa a propósito como distractor una vez por sesión (discriminación fina). Pruebas.
+
+**4. Ajustes automáticos (`core/autoajuste.js`, puro):**
+- `ajustes.automaticos = { ensayosPorSesion: true, maxOpciones: true, etapa: true, palabrasNuevas: true }`. Cada uno con su interruptor en Ajustes («Automático» / «Lo elijo yo»). Si el adulto cambia a mano un ajuste automático, ese pasa a «Lo elijo yo».
+- Se evalúa **al terminar cada sesión**, mirando las **últimas 3 sesiones** (registro de la fase 12). Cada ajuste cambia como máximo **una vez por día**:
+  - **Ensayos por sesión:** +2 (tope 12 en automático) si las 3 terminaron sin fatiga, con ≥ 80 % de aciertos al primer intento y duración mediana < 8 min. −2 (mín. 4) si hubo fatiga en 2 de 3, o duración mediana > 12 min, o una sesión interrumpida por el adulto.
+  - **Máximo de opciones:** +1 (hasta 4) si todos los niveles de las actividades en uso están en el máximo actual con precisión ≥ 85 %. Nunca baja solo (el nivel por actividad ya baja por sí mismo).
+  - **Palabras nuevas por sesión** (ajuste nuevo `palabrasNuevasPorSesion`, 1–2, por defecto 2): baja a 1 si el promedio de dificultad de las palabras en práctica es ≥ 50; vuelve a 2 si es < 30.
+  - **Etapa:** si se abrió la etapa siguiente y ≥ 80 % de las palabras activas de la etapa actual están dominadas o aprendidas, `etapaActual` sube. **Nunca baja sola**: si la precisión de las últimas 3 sesiones es < 50 %, solo se **sugiere** al adulto bajar.
+- Cada cambio queda en `perfil.cambiosAutomaticos` (últimos 30: `{ fecha, ajuste, antes, despues, motivo }`) y el panel del adulto muestra un aviso: «La app ajustó: ensayos por sesión 8 → 10 (terminó 3 sesiones seguidas sin cansarse)» con **Deshacer** (vuelve al valor anterior y deja ese ajuste en «Lo elijo yo») y «Entendido».
+- El niño nunca ve nada de esto. Nada cambia a mitad de sesión.
+
+**Acepta si:**
+- Pruebas puras de avance rápido, provisional que falla, aprendida, control de 30 días, prioridad a lo difícil, confusiones como distractor, y de cada regla de autoajuste (incluido «una vez por día» y «a mano → manual»).
+- Simulador: niño que ya sabe 10 palabras → leídas en ≤ 4 sesiones; niño lento → mismo ritmo que hoy (±1 semana); ninguna sesión pasa de 2 palabras nuevas.
+- En el navegador: tras 3 sesiones buenas aparece el aviso de ajuste y «Deshacer» funciona; una palabra aprendida deja de salir y aparece como «Aprendida».
+- Actualizar «Decisiones de implementación» del §4 y la ayuda del adulto (`#/adulto/ayuda`: qué hace la app sola y cómo apagarlo).
+
+---
+
 ## 10. Notas para el desarrollo
 
 - **Git:** commit al cerrar cada fase con un mensaje claro. **No hacer `git push`** (no puede autenticarse desde este equipo): el usuario sube los cambios.
