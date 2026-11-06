@@ -15,6 +15,10 @@ export const VERSION_SYNC = 1;
 export const ARCHIVO_DATOS = 'data.json';
 export const ALMACENES_SYNC = ALMACENES_RESPALDO; // 'medios' primero
 
+/** Desde este tamaño de `data.json` la pantalla Cuenta avisa (el registro fino de respuestas es lo que más crece). */
+export const LIMITE_AVISO_DATOS_BYTES = 8 * 1024 * 1024;
+export const datosMuyGrandes = (bytes) => Number(bytes) > LIMITE_AVISO_DATOS_BYTES;
+
 export class ErrorSync extends Error {
   constructor(mensaje) {
     super(mensaje);

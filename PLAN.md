@@ -528,7 +528,19 @@ calcomaniaPropia { id, perfilId, nombre, medioImagenId?, arasaacId?, emoji? }  /
 
 ---
 
-### Fase 12 — Registro fino de cada respuesta
+### Fase 12 — Registro fino de cada respuesta ✔ hecha
+
+**Decisiones de implementación (ya en el código, con pruebas en `tests/registro.test.js`):**
+- **Un registro por ensayo terminado**, armado por `construirRespuesta` (`core/registro.js`, puro). Su `id` es `<sesionId>:<numeroEnSesion>` (determinista: guardarlo dos veces no lo duplica). El `sesionId` lo genera `crearControlador` al empezar (`ctl.sesionId`, también se puede inyectar) y el registro de la sesión (`ctl.registro`) ahora lleva ese mismo `id`; `sesion.ensayos` no cambió.
+- **`core/intento.js`**: todos los modos guardan `primerToque` (ms hasta el primer toque válido; los toques ignorados por el bloqueo de 400 ms no cuentan). Simple y secuencia guardan además `erroresMs` (un valor por cada elemento de `errores`); secuencia guarda `toques: [{ fichaId, correcto, ms }]`. `errores` sigue siendo la lista de ids de siempre.
+- **`ctl.oirOtraVez()`** cuenta `repeticionesAudio` del ensayo actual (se reinicia en cada ensayo; no cuenta después de acertar). `nino/sesion.js` lo llama en `alToqueModelo` (altavoz o modelo, ya con el filtro de toques repetidos); el audio automático tras un error NO cuenta, porque lo dice la app y no el niño.
+- **`ctl.avanzar()` devuelve `guardar.respuesta`**; la pantalla la guarda en el almacén `respuestas` por la misma cola `guardar` que el progreso y el nivel. `nivelOpciones` es lo que mandaba el nivel antes del ensayo (`opcionesEfectivas`); `fatigaActiva` es true solo en el ensayo de cierre (que además tiene `tipo: 'cierre'`).
+- **Estados**: `estadoAntes/Despues` son los del motor (`nueva` / `practica` / `dominada`; no existe «aprendida»). En L6 y cuentos sin progreso, los estados y cajas quedan en `null`.
+- **Frases y L6**: secuencia guarda `ordenEsperado` y `toques` con el texto de cada ficha (`errores[].id` es el id de la palabra, no el de la ficha); lectura guarda `repeticiones` (veces que el adulto tocó ↻), `opciones: []` y `posicionCorrecta: null`.
+- **Cuentos (B2)**: `nino/libros.js` registra cada respuesta a una pregunta (`actividad: 'B2'`, `tipo: 'cuento'`, `etapa: 4`, más `libroId` y `pregunta`); sigue sin mover el progreso. Cada lectura de las preguntas es una «sesión» propia (`sesionId` nuevo).
+- **`distraido: true`** si `msAcierto` > 60 000 (`MS_DISTRAIDO`); el valor se guarda tal cual.
+- **Datos**: `VERSION_BD = 3` (almacén `respuestas`, índices `perfilId` y `elementoId`; la base existente se actualiza sin perder nada). Está en `ALMACENES_RESPALDO` (copia de seguridad y sincronización la recorren, y hay una prueba que falla si se agrega un almacén y se olvida en la copia).
+- **Aviso de tamaño**: `sync.js` guarda en `meta` (`syncBytesDatos`) lo que pesa el último `data.json` subido; la pantalla Cuenta avisa desde 8 MB (`LIMITE_AVISO_DATOS_BYTES` en `core/sync.js`). Solo avisa: no recorta nada.
 
 Hoy `sesion.ensayos` guarda `{ elementoId, actividad, tipo, esFacil, correctoAlPrimerIntento, intentos, ms }` y `progreso.historial` solo los últimos 10. Eso no alcanza para saber **con qué** se confunde ni **cuánto duda**.
 

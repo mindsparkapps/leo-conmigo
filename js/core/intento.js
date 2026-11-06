@@ -7,6 +7,11 @@
 
 export const BLOQUEO_MS = 400;
 
+// Para el registro fino (fase 12) cada intento guarda CUÁNDO pasó cada cosa, en ms desde que apareció
+// el ensayo: `primerToque` (cuánto dudó) y `erroresMs` (un valor por cada elemento de `errores`).
+const msDesde = (intento, ahoraMs) => Math.round(ahoraMs - intento.inicio);
+const conPrimerToque = (intento, ahoraMs) => (intento.primerToque == null ? msDesde(intento, ahoraMs) : intento.primerToque);
+
 /** `ensayo` visual: necesita `correctaId` y `cartas` ([{ id }]). `ahoraMs`: reloj monótono (performance.now()). */
 export function crearIntento(ensayo, ahoraMs) {
   return {
@@ -17,6 +22,8 @@ export function crearIntento(ensayo, ahoraMs) {
     ultimoToque: ahoraMs,
     estado: 'esperando', // 'esperando' -> 'ayuda' (hubo error) -> 'acertado'
     errores: [], // ids tocados por error, en orden
+    erroresMs: [], // ms (desde el inicio) de cada error, en el mismo orden
+    primerToque: null, // ms hasta el primer toque válido
     atenuadas: [],
     intentos: 0,
     fin: null,
@@ -36,7 +43,9 @@ export function tocar(intento, opcionId, ahoraMs) {
   if (opcionId === intento.correctaId) {
     return {
       efecto: 'correcto',
-      intento: { ...intento, estado: 'acertado', intentos: intento.intentos + 1, ultimoToque: ahoraMs, fin: ahoraMs },
+      intento: {
+        ...intento, estado: 'acertado', primerToque: conPrimerToque(intento, ahoraMs), intentos: intento.intentos + 1, ultimoToque: ahoraMs, fin: ahoraMs,
+      },
     };
   }
   if (intento.atenuadas.includes(opcionId)) return ignorado;
@@ -46,6 +55,8 @@ export function tocar(intento, opcionId, ahoraMs) {
       ...intento,
       estado: 'ayuda',
       errores: [...intento.errores, opcionId],
+      erroresMs: [...intento.erroresMs, msDesde(intento, ahoraMs)],
+      primerToque: conPrimerToque(intento, ahoraMs),
       atenuadas: [...intento.atenuadas, opcionId],
       intentos: intento.intentos + 1,
       ultimoToque: ahoraMs,
@@ -77,6 +88,9 @@ export function crearIntentoSecuencia(ensayo, ahoraMs) {
     fichas: ensayo.fichas.map((f) => ({ id: f.id, palabraId: f.palabraId })),
     colocadas: [], // ids de ficha ya puestas en la franja, en orden
     errores: [], // ids de ficha tocadas por error
+    erroresMs: [],
+    toques: [], // cada toque válido, en orden: { fichaId, correcto, ms }
+    primerToque: null,
     atenuadas: [], // fichas equivocadas que siguen atenuadas (hasta el próximo acierto)
     inicio: ahoraMs,
     ultimoToque: ahoraMs,
@@ -111,6 +125,8 @@ export function tocarSecuencia(intento, fichaId, ahoraMs) {
         ...intento,
         colocadas,
         atenuadas: [],
+        toques: [...intento.toques, { fichaId, correcto: true, ms: msDesde(intento, ahoraMs) }],
+        primerToque: conPrimerToque(intento, ahoraMs),
         estado: completa ? 'acertado' : intento.errores.length ? 'ayuda' : 'esperando',
         intentos: intento.intentos + 1,
         ultimoToque: ahoraMs,
@@ -125,6 +141,9 @@ export function tocarSecuencia(intento, fichaId, ahoraMs) {
       ...intento,
       estado: 'ayuda',
       errores: [...intento.errores, fichaId],
+      erroresMs: [...intento.erroresMs, msDesde(intento, ahoraMs)],
+      toques: [...intento.toques, { fichaId, correcto: false, ms: msDesde(intento, ahoraMs) }],
+      primerToque: conPrimerToque(intento, ahoraMs),
       atenuadas: [...intento.atenuadas, fichaId],
       intentos: intento.intentos + 1,
       ultimoToque: ahoraMs,
@@ -137,7 +156,7 @@ export function tocarSecuencia(intento, fichaId, ahoraMs) {
 // El niño lee en voz alta y el ADULTO decide: «lo leyó» o «otra vez». La app nunca evalúa el habla.
 
 export function crearIntentoLectura(ensayo, ahoraMs) {
-  return { modo: 'lectura', inicio: ahoraMs, ultimoToque: ahoraMs, estado: 'esperando', repeticiones: 0, intentos: 0, fin: null };
+  return { modo: 'lectura', inicio: ahoraMs, ultimoToque: ahoraMs, estado: 'esperando', repeticiones: 0, primerToque: null, intentos: 0, fin: null };
 }
 
 /** @param decision 'ok' (lo leyó) | 'otra' (otra vez). @returns { intento, efecto: 'ignorado' | 'ayuda' | 'correcto' } */
@@ -147,7 +166,15 @@ export function decidirLectura(intento, decision, ahoraMs) {
   if (decision !== 'ok' && decision !== 'otra') return ignorado;
   if (ahoraMs - intento.ultimoToque < BLOQUEO_MS) return ignorado;
   if (decision === 'otra') {
-    return { efecto: 'ayuda', intento: { ...intento, estado: 'ayuda', repeticiones: intento.repeticiones + 1, intentos: intento.intentos + 1, ultimoToque: ahoraMs } };
+    return {
+      efecto: 'ayuda',
+      intento: {
+        ...intento, estado: 'ayuda', repeticiones: intento.repeticiones + 1, primerToque: conPrimerToque(intento, ahoraMs), intentos: intento.intentos + 1, ultimoToque: ahoraMs,
+      },
+    };
   }
-  return { efecto: 'correcto', intento: { ...intento, estado: 'acertado', intentos: intento.intentos + 1, ultimoToque: ahoraMs, fin: ahoraMs } };
+  return {
+    efecto: 'correcto',
+    intento: { ...intento, estado: 'acertado', primerToque: conPrimerToque(intento, ahoraMs), intentos: intento.intentos + 1, ultimoToque: ahoraMs, fin: ahoraMs },
+  };
 }

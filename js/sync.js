@@ -92,6 +92,7 @@ export function crearSincronizador({ store, drive, ahora = () => new Date(), alP
       const almacenes = {};
       for (const nombre of ALMACENES_SYNC) almacenes[nombre] = fusion[nombre].resultado;
       const texto = JSON.stringify(armarDocumento({ almacenes, ahora: ahora() }));
+      await store.escribirMeta('syncBytesDatos', new TextEncoder().encode(texto).length); // para avisar en Cuenta si crece demasiado
       if (archivoDatos) await drive.actualizar(archivoDatos.id, texto, MIME_JSON);
       else await drive.crear(ARCHIVO_DATOS, texto, MIME_JSON);
       subioDatos = true;

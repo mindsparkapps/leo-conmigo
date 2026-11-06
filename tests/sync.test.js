@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { crearSincronizador } from '../js/sync.js';
 import { crearDrive } from '../js/drive.js';
 import { ErrorSync } from '../js/core/sync.js';
-import { ALMACENES_SYNC } from '../js/core/sync.js';
+import { ALMACENES_SYNC, datosMuyGrandes } from '../js/core/sync.js';
 import { crearDriveFalso } from './drive-falso.js';
 import { bytesDe, crearStoreEnMemoria } from './memoria.js';
 
@@ -41,6 +41,19 @@ test('primera sincronización: sube los datos y las imágenes y vacía la cola',
   assert.deepEqual(doc.almacenes.palabras.map((p) => p.id).sort(), ['gato', 'perro']);
   assert.equal('blob' in doc.almacenes.medios[0], false, 'el contenido va en su propio archivo');
   assert.equal(r.cuenta.palabras, 2);
+});
+
+test('al subir los datos se guarda cuánto pesa data.json, y desde 8 MB se avisa', async () => {
+  const falso = crearDriveFalso();
+  const A = dispositivo(falso);
+  await sembrar(A.store);
+  await A.sync.sincronizar();
+  const bytes = await A.store.leerMeta('syncBytesDatos');
+  assert.equal(bytes, new TextEncoder().encode(JSON.stringify(falso.json('data.json'))).length);
+  assert.equal(datosMuyGrandes(bytes), false);
+  assert.equal(datosMuyGrandes(8 * 1024 * 1024), false);
+  assert.equal(datosMuyGrandes(8 * 1024 * 1024 + 1), true);
+  assert.equal(datosMuyGrandes(undefined), false);
 });
 
 test('un segundo dispositivo recibe todo, también el contenido de las imágenes', async () => {

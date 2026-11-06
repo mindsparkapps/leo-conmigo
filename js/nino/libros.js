@@ -16,7 +16,9 @@ import { esSegundoDedo } from '../actividades/comun.js';
 import { normalizarAjustes } from '../core/modelos.js';
 import { librosParaElNino, paginasLeibles, palabrasDeFrase, partesDeCollage } from '../core/frases.js';
 import { armarPregunta, preguntasLeibles } from '../core/cuentos.js';
+import { nuevoId } from '../core/id.js';
 import { crearIntento, tocar as tocarIntento } from '../core/intento.js';
+import { construirRespuesta } from '../core/registro.js';
 import { elegirElogio } from '../core/elogios.js';
 import { lluviaDeEstrellas } from './premio.js';
 
@@ -131,7 +133,7 @@ async function pintar({ vista, ir, estado, idLibro }) {
   }
   const libro = disponibles.find((l) => l.id === idLibro);
   if (!libro) { ir('/nino/libros', true); return; }
-  await pintarLibro({ vista, ir, estado, store, libro, frasesPorId, palabrasPorId, ajustes });
+  await pintarLibro({ vista, ir, estado, store, perfilId: perfil.id, libro, frasesPorId, palabrasPorId, ajustes });
 }
 
 function elegirImagenDe(palabra, urls) {
@@ -175,7 +177,7 @@ async function pintarEstante({ vista, ir, estado, store, disponibles, frasesPorI
 
 // ---------- un libro ----------
 
-async function pintarLibro({ vista, ir, estado, store, libro, frasesPorId, palabrasPorId, ajustes }) {
+async function pintarLibro({ vista, ir, estado, store, perfilId, libro, frasesPorId, palabrasPorId, ajustes }) {
   const paginas = paginasLeibles(libro, frasesPorId, palabrasPorId);
   const preguntas = preguntasLeibles(libro, palabrasPorId); // cuento: al final, preguntas que se responden por imagen
   const urls = await cargarUrls(store, paginas, frasesPorId, palabrasPorId);
@@ -252,12 +254,33 @@ async function pintarLibro({ vista, ir, estado, store, libro, frasesPorId, palab
   let ultimoElogio = null;
   estado.limpiar = () => clearTimeout(temporizador);
   const celebracion = ajustes.intensidadCelebracion;
+  const sesionId = nuevoId(); // una «sesión» por lectura de las preguntas del cuento
+
+  // Registro fino (fase 12): las preguntas no mueven el progreso, pero sirven para el análisis
+  function registrarRespuesta(i, q, intento, repeticionesAudio) {
+    const respuesta = construirRespuesta({
+      perfilId,
+      sesionId,
+      numeroEnSesion: i + 1,
+      fecha: new Date(),
+      etapa: 4,
+      ensayo: { elementoId: q.correctaId, actividad: 'B2', tipo: 'cuento', esFacil: false },
+      elemento: palabrasPorId.get(q.correctaId),
+      visual: { cartas: q.cartas, posicionCorrecta: q.cartas.findIndex((c) => c.id === q.correctaId) },
+      intento,
+      textoDe: (id) => palabrasPorId.get(id)?.texto ?? null,
+      repeticionesAudio,
+      extra: { libroId: libro.id, pregunta: q.texto },
+    });
+    store.guardar('respuestas', respuesta).catch((e) => console.error('No se pudo guardar la respuesta', e));
+  }
 
   function mostrarPregunta(i) {
     detener();
     const q = armarPregunta({ pregunta: preguntas[i] });
     let intento = crearIntento({ correctaId: q.correctaId, cartas: q.cartas }, performance.now());
     let cerrando = false;
+    let repeticionesAudio = 0; // veces que el niño tocó el altavoz para oír otra vez
     const decirPregunta = () => {
       if (!ajustes.sonido) return;
       desbloquearAudio();
@@ -273,7 +296,7 @@ async function pintarLibro({ vista, ir, estado, store, libro, frasesPorId, palab
       cartas.set(id, carta);
       zonaOpciones.append(carta);
     }
-    const zonaModelo = el('div', { class: 'zona-modelo' }, el('p', { class: 'texto-pregunta' }, q.texto), crearBotonAudio({ alToque: decirPregunta }));
+    const zonaModelo = el('div', { class: 'zona-modelo' }, el('p', { class: 'texto-pregunta' }, q.texto), crearBotonAudio({ alToque: () => { if (!cerrando) repeticionesAudio += 1; decirPregunta(); } }));
     area.replaceChildren(el('div', { class: 'area-ensayo pregunta-libro' }, zonaModelo, zonaOpciones));
 
     function alToque(id) {
@@ -289,6 +312,7 @@ async function pintarLibro({ vista, ir, estado, store, libro, frasesPorId, palab
         return;
       }
       cerrando = true;
+      registrarRespuesta(i, q, intento, repeticionesAudio);
       const acertada = cartas.get(id);
       acertada.classList.remove('ayuda');
       acertada.classList.add('acierto');

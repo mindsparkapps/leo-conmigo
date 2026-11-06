@@ -10,7 +10,7 @@
 import { nuevoId } from './core/id.js';
 
 export const NOMBRE_BD = 'leo-conmigo';
-const VERSION_BD = 2; // 2: premios, movimientos y calcomaniasPropias (fase 11)
+const VERSION_BD = 3; // 2: premios, movimientos y calcomaniasPropias (fase 11); 3: respuestas (fase 12)
 
 /** Almacenes de datos y los índices de cada uno. */
 export const ALMACENES = Object.freeze({
@@ -25,6 +25,7 @@ export const ALMACENES = Object.freeze({
   calcomaniasPropias: ['perfilId'], // calcomanías creadas por el adulto
   premios: ['perfilId'], // premios de la tienda
   movimientos: ['perfilId'], // monedas: el saldo es la suma de los movimientos
+  respuestas: ['perfilId', 'elementoId'], // registro fino: una por ensayo terminado, solo se agrega (ver core/registro.js)
   medios: [], // { id, tipo, mime, blob, driveFileId, subido }
 });
 

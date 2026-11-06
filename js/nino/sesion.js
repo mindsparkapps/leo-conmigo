@@ -144,6 +144,7 @@ async function iniciar({ vista, area, ir, sesion }) {
     const t = ahora();
     if (t - ultimoToqueModelo < BLOQUEO_MODELO_MS) return; // toques repetidos: uno solo
     ultimoToqueModelo = t;
+    ctl.oirOtraVez(); // cuenta para el registro fino: cuántas veces pidió oír otra vez
     desbloquearAudio();
     decirLaPalabra();
   }
@@ -191,6 +192,7 @@ async function iniciar({ vista, area, ir, sesion }) {
     const r = ctl.avanzar(ahora());
     guardar(() => store.guardar('progresos', r.guardar.progreso));
     if (r.guardar.nivel) guardar(() => store.guardar('niveles', r.guardar.nivel)); // la lectura asistida no mueve el nivel
+    guardar(() => store.guardar('respuestas', r.guardar.respuesta)); // registro fino (fase 12)
     if (r.terminada) { await finalizar(); return; }
     cerrando = false;
     mostrar(r.siguiente);

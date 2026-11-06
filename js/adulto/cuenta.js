@@ -3,6 +3,7 @@
 
 import { el } from '../ui/dom.js';
 import { cabecera } from '../ui/adulto.js';
+import { datosMuyGrandes } from '../core/sync.js';
 import {
   FASES, cerrarSesion, clasePunto, iniciarSesion, nubeConfigurada, observarNube, refrescarEstado, sincronizarAhora, textoDeEstado,
 } from '../nube.js';
@@ -73,6 +74,9 @@ export function montar(contenedor) {
           ? el('p', {}, 'Inicia sesión con tu cuenta de Google para tener los mismos datos en el computador y en el celular.')
           : null,
         e.ultimo && vinculada ? el('p', { class: 'ayuda' }, `Última sincronización: ${fechaHora(e.ultimo)}.`) : null,
+        vinculada && datosMuyGrandes(e.bytesDatos)
+          ? el('p', { class: 'ayuda', role: 'status' }, `Los datos guardados en Drive ya pesan ${(e.bytesDatos / 1048576).toFixed(1)} MB (sobre todo el registro de respuestas). Sigue funcionando; si la sincronización se pone lenta, avisa para decidir qué hacer. No se borra nada sin preguntarte.`)
+          : null,
         e.fase === FASES.PENDIENTE || e.fase === FASES.SIN_CONEXION
           ? el('p', { class: 'ayuda' }, e.pendientes > 0 ? `${cuantos(e.pendientes, 'cambio espera', 'cambios esperan')} para subirse.` : 'No hay cambios por subir.')
           : null,

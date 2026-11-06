@@ -21,8 +21,10 @@ import {
   crearIntento, crearIntentoLectura, crearIntentoSecuencia, decidirLectura, fichaSiguiente, resultadoDelIntento,
   tocar as tocarSimple, tocarSecuencia,
 } from './intento.js';
+import { nuevoId } from './id.js';
 import { normalizarAjustes } from './modelos.js';
-import { ESTADOS, aplicarResultado, idNivel, idProgreso, nuevoNivel, nuevoProgreso } from './progreso.js';
+import { ESTADOS, aplicarResultado, idNivel, idProgreso, nuevoNivel, nuevoProgreso, opcionesEfectivas } from './progreso.js';
+import { construirRespuesta } from './registro.js';
 import { construirRegistroSesion, crearSesion, ensayoActual, iniciarCurso, registrarRespuesta, resumenDeSesion } from './sesion.js';
 import { tieneImagen } from './vocabulario.js';
 
@@ -47,6 +49,7 @@ export function actividadesDeLaEtapa(etapa = 1) {
 
 export function crearControlador({
   perfil, palabras, frases = [], progresos = [], niveles = [], hoy = new Date(), aleatorio = Math.random, reloj = () => new Date(),
+  sesionId = nuevoId(),
 }) {
   const ajustes = normalizarAjustes(perfil.ajustes);
   const palabrasPorId = new Map(palabras.filter((p) => !p.deleted).map((p) => [p.id, p]));
@@ -117,9 +120,13 @@ export function crearControlador({
   let visual = null;
   let intento = null;
   let ultimoElogio = null;
+  let repeticionesAudio = 0; // veces que el niño pidió oír otra vez, en el ensayo actual
+
+  const textoDe = (id) => porId.get(id)?.texto ?? palabrasPorId.get(id)?.texto ?? null;
 
   function preparar(ahoraMs) {
     const ensayo = ensayoActual(estado);
+    repeticionesAudio = 0;
     if (!ensayo) {
       visual = null;
       intento = null;
@@ -188,9 +195,17 @@ export function crearControlador({
       return salida;
     },
 
+    /** El niño tocó el altavoz o el modelo para volver a oír. Cuenta para el registro fino del ensayo actual. */
+    oirOtraVez() {
+      if (intento && intento.estado !== 'acertado') repeticionesAudio += 1;
+    },
+
+    /** Identificador de la sesión (se genera al empezar; el registro de la sesión y cada respuesta lo usan). */
+    sesionId,
+
     /**
      * Cierra el ensayo ya acertado: actualiza progreso y nivel y prepara el siguiente.
-     * @returns { guardar: { progreso, nivel (null en «leo en voz alta») }, siguiente, terminada, fatiga }
+     * @returns { guardar: { progreso, nivel (null en «leo en voz alta»), respuesta (registro fino) }, siguiente, terminada, fatiga }
      */
     avanzar(ahoraMs) {
       if (!intento || intento.estado !== 'acertado') throw new Error('El ensayo actual aún no se resolvió');
@@ -199,15 +214,36 @@ export function crearControlador({
       const idP = idProgreso(perfil.id, ensayo.elementoId, ensayo.actividad);
       const idN = idNivel(perfil.id, ensayo.actividad);
       const esLectura = ensayo.tipo === 'lectura';
+      const progresoAntes = mapaProgresos.get(idP) ?? nuevoProgreso({ perfilId: perfil.id, elementoId: ensayo.elementoId, actividad: ensayo.actividad });
+      const nivelAntes = mapaNiveles.get(idN) ?? nuevoNivel(perfil.id, ensayo.actividad);
+      const fecha = reloj();
       const { progreso, nivel } = aplicarResultado({
-        progreso: mapaProgresos.get(idP) ?? nuevoProgreso({ perfilId: perfil.id, elementoId: ensayo.elementoId, actividad: ensayo.actividad }),
-        nivel: mapaNiveles.get(idN) ?? nuevoNivel(perfil.id, ensayo.actividad),
-        resultado: { fecha: reloj(), correctoAlPrimerIntento: resultado.correctoAlPrimerIntento, opciones: visual.opciones },
+        progreso: progresoAntes,
+        nivel: nivelAntes,
+        resultado: { fecha, correctoAlPrimerIntento: resultado.correctoAlPrimerIntento, opciones: visual.opciones },
         maxOpciones: ajustes.maxOpciones,
         contarParaNivel: !ensayo.esFacil && !esLectura,
       });
       mapaProgresos.set(idP, progreso);
       if (!esLectura) mapaNiveles.set(idN, nivel);
+
+      const respuesta = construirRespuesta({
+        perfilId: perfil.id,
+        sesionId,
+        numeroEnSesion: estado.resultados.length + 1,
+        fecha,
+        etapa,
+        ensayo,
+        elemento: porId.get(ensayo.elementoId),
+        visual,
+        intento,
+        textoDe,
+        progresoAntes,
+        progresoDespues: progreso,
+        nivelOpciones: esLectura ? null : opcionesEfectivas(nivelAntes, ajustes.maxOpciones),
+        repeticionesAudio,
+        fatigaActiva: Boolean(estado.cierre),
+      });
 
       estado = registrarRespuesta(estado, resultado);
       const siguiente = estado.terminada ? null : preparar(ahoraMs);
@@ -215,11 +251,11 @@ export function crearControlador({
         visual = null;
         intento = null;
       }
-      return { guardar: { progreso, nivel: esLectura ? null : nivel }, siguiente, terminada: estado.terminada, fatiga: estado.fatiga };
+      return { guardar: { progreso, nivel: esLectura ? null : nivel, respuesta }, siguiente, terminada: estado.terminada, fatiga: estado.fatiga };
     },
 
     /** Datos de la sesión para guardar (completa o interrumpida). */
-    registro: ({ inicio, fin }) => construirRegistroSesion(estado, { perfilId: perfil.id, inicio, fin }),
+    registro: ({ inicio, fin }) => ({ id: sesionId, ...construirRegistroSesion(estado, { perfilId: perfil.id, inicio, fin }) }),
     resumen: () => resumenDeSesion(estado),
   };
 }

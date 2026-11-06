@@ -105,6 +105,7 @@ const PRECACHE = [
   'js/adulto/frases.js',
   'js/adulto/libros.js',
   'js/core/intento.js',
+  'js/core/registro.js',
   'js/core/elogios.js',
   'js/core/calcomanias.js',
   'js/core/controlador.js',

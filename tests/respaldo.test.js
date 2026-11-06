@@ -28,6 +28,7 @@ async function llenarAlmacen() {
   await s.guardar('premios', { id: 'pr1', perfilId: 'p1', nombre: 'Helado', precio: 5, emoji: '🍦', activo: true, orden: 0 });
   await s.guardar('movimientos', { id: 'album:p1:1', perfilId: 'p1', fecha: '2026-11-02T10:04:00.000Z', cantidad: 10, tipo: 'album', albumNumero: 1 });
   await s.guardar('movimientos', { id: 'mv-canje', perfilId: 'p1', fecha: '2026-11-03T10:04:00.000Z', cantidad: -5, tipo: 'canje', premioId: 'pr1', estado: 'pendiente' });
+  await s.guardar('respuestas', { id: 'ses1:1', perfilId: 'p1', sesionId: 'ses1', numeroEnSesion: 1, elementoId: 'w1', texto: 'mamá', actividad: 'L1', errores: [{ id: 'w2', texto: 'bebé', ms: 1800 }], msPrimerToque: 1800, msAcierto: 3200, repeticionesAudio: 1 });
   // algo borrado: no debe viajar en la copia
   await s.guardar('palabras', { id: 'w-borrada', perfilId: 'p1', texto: 'fuera', orden: 9, activa: true, deleted: true });
   await s.escribirMeta('perfilActivoId', 'p1');
@@ -51,7 +52,7 @@ const igualAlmacen = async (a, b, nombres) => {
     }
   }
 };
-const NOMBRES = ['perfiles', 'palabras', 'progresos', 'niveles', 'sesiones', 'calcomanias', 'calcomaniasPropias', 'premios', 'movimientos', 'medios'];
+const NOMBRES = ['perfiles', 'palabras', 'progresos', 'niveles', 'sesiones', 'calcomanias', 'calcomaniasPropias', 'premios', 'movimientos', 'respuestas', 'medios'];
 
 // ---------- base64 ----------
 
@@ -72,7 +73,7 @@ test('armarRespaldo: sin borrados, con las imágenes y voces en base64 y convert
   assert.equal(respaldo.formato, FORMATO);
   assert.equal(respaldo.version, VERSION_RESPALDO);
   assert.equal(respaldo.meta.perfilActivoId, 'p1');
-  assert.deepEqual(contarRespaldo(respaldo), { medios: 2, perfiles: 1, palabras: 2, progresos: 1, niveles: 1, frases: 0, libros: 0, sesiones: 1, calcomanias: 1, calcomaniasPropias: 1, premios: 1, movimientos: 2 });
+  assert.deepEqual(contarRespaldo(respaldo), { medios: 2, perfiles: 1, palabras: 2, progresos: 1, niveles: 1, frases: 0, libros: 0, sesiones: 1, calcomanias: 1, calcomaniasPropias: 1, premios: 1, movimientos: 2, respuestas: 1 });
   assert.ok(!respaldo.almacenes.palabras.some((p) => p.id === 'w-borrada'));
   for (const m of respaldo.almacenes.medios) {
     assert.equal(typeof m.blobBase64, 'string');

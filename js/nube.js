@@ -40,6 +40,7 @@ const estado = {
   fase: FASES.SIN_CUENTA,
   email: '',
   ultimo: null, // ISO de la última sincronización
+  bytesDatos: 0, // tamaño del último data.json subido a Drive
   pendientes: 0,
   mensaje: '',
   progreso: '',
@@ -80,7 +81,8 @@ export async function refrescarEstado() {
   let fase = pendientes > 0 ? FASES.PENDIENTE : FASES.SINCRONIZADO;
   if (estado.fase === FASES.RECONECTAR || estado.fase === FASES.ERROR) fase = estado.fase; // sigue hasta que se arregle
   if (!navigator.onLine && fase !== FASES.RECONECTAR) fase = FASES.SIN_CONEXION;
-  publicar({ fase, email: cuenta.email, pendientes, ultimo });
+  const bytesDatos = (await store.leerMeta('syncBytesDatos')) ?? 0;
+  publicar({ fase, email: cuenta.email, pendientes, ultimo, bytesDatos });
 }
 
 function describir(error) {
