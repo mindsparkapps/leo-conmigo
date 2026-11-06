@@ -25,9 +25,9 @@ test('elogios: cortos, en español y sin repetir el anterior', () => {
 
 // ---------- calcomanías ----------
 
-test('calcomanías: 12 distintas, cada una con su dibujo SVG', () => {
-  assert.equal(CALCOMANIAS.length, 12);
-  assert.equal(new Set(CALCOMANIAS.map((c) => c.codigo)).size, 12);
+test('calcomanías: 30 distintas, cada una con su dibujo SVG', () => {
+  assert.equal(CALCOMANIAS.length, 30);
+  assert.equal(new Set(CALCOMANIAS.map((c) => c.codigo)).size, 30);
   for (const { codigo, nombre } of CALCOMANIAS) {
     assert.ok(nombre.length > 0);
     const ruta = new URL(`../${rutaCalcomania(codigo)}`, import.meta.url);
@@ -44,7 +44,7 @@ test('calcomanías: 12 distintas, cada una con su dibujo SVG', () => {
   }
 });
 
-test('calcomanías: primero las que no tiene; recién con el álbum completo se repiten', () => {
+test('calcomanías: primero las que no tiene; recién con todo lo que está en juego se repiten', () => {
   const azar = crearAleatorio(3);
   const tenidas = [];
   for (let i = 0; i < CALCOMANIAS.length; i++) {
@@ -53,7 +53,7 @@ test('calcomanías: primero las que no tiene; recién con el álbum completo se 
     assert.ok(!tenidas.includes(codigo), `repetida antes de tiempo: ${codigo}`);
     tenidas.push(codigo);
   }
-  assert.equal(tenidas.length, 12);
+  assert.equal(tenidas.length, CALCOMANIAS.length);
   const repetida = elegirCalcomania(tenidas, azar);
   assert.equal(repetida.esNueva, false);
   assert.ok(tenidas.includes(repetida.codigo));

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Pelota">
+  <circle cx="50" cy="50" r="48" fill="#e4f3e8" stroke="#6dbb8a" stroke-width="3"/>
+  <circle cx="50" cy="50" r="28" fill="#ffffff" stroke="#3f8fb8" stroke-width="3"/>
+  <path d="M22 50 Q50 38 78 50 Q50 62 22 50 Z" fill="#6bb3d9" stroke="#3f8fb8" stroke-width="2"/>
+  <path d="M50 22 Q60 50 50 78" fill="none" stroke="#f2b632" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="40" cy="36" r="3" fill="#ffffff" opacity="0.8"/>
+</svg>

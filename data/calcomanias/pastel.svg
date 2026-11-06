@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Pastel">
+  <circle cx="50" cy="50" r="48" fill="#fff3cf" stroke="#f2b632" stroke-width="3"/>
+  <path d="M28 52 L32 76 L68 76 L72 52 Z" fill="#e8b06a" stroke="#c48a3e" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M38 54 L40 74 M50 54 L50 74 M62 54 L60 74" stroke="#c48a3e" stroke-width="1.5"/>
+  <path d="M24 52 Q24 40 36 42 Q38 32 50 34 Q62 32 64 42 Q76 40 76 52 Q64 58 50 54 Q36 58 24 52 Z" fill="#f6b6c8" stroke="#d98aa3" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="50" cy="26" r="7" fill="#c06a8a" stroke="#a04f6e" stroke-width="2"/>
+  <path d="M50 20 Q52 14 56 12" fill="none" stroke="#4d9a6a" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

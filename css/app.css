@@ -792,6 +792,78 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
   .navegacion-libro { width: 100%; }
 }
 
+/* ===== Fase 11: álbum que se renueva, monedas de oro y tienda ===== */
+.fila-cofre { display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; }
+.boton-albumes {
+  display: grid; place-items: center; width: 88px; height: 88px; padding: 0; border: 0; border-radius: 50%;
+  background: var(--azul); color: #fff; font-size: 2.4rem; cursor: pointer; touch-action: manipulation;
+}
+.boton-tienda {
+  display: grid; place-items: center; width: clamp(96px, 20vmin, 150px); aspect-ratio: 1; padding: 0; border: 0;
+  border-radius: 50%; background: #8a5a00; color: #fff; cursor: pointer; touch-action: manipulation;
+}
+.boton-tienda svg { width: 56%; height: 56%; }
+.boton-casa-chico { position: absolute; top: 12px; left: 12px; width: 88px; }
+
+.cofre { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; max-width: min(100%, 560px); }
+.monedas { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
+.moneda { display: block; width: clamp(28px, 6vmin, 44px); aspect-ratio: 1; }
+.moneda svg { display: block; width: 100%; height: 100%; }
+.moneda-vacia { border: 3px dashed var(--borde-fuerte); border-radius: 50%; }
+.moneda-entra { animation: moneda-entra 0.5s ease-out backwards; }
+@keyframes moneda-entra { 0% { transform: translateY(-40px) scale(0.5); opacity: 0; } 70% { transform: translateY(4px) scale(1.1); opacity: 1; } }
+.cofre-numero { font-size: 1.4rem; font-weight: 700; color: var(--texto-suave); }
+
+.calcomania-propia { display: grid; place-items: center; overflow: hidden; border-radius: 50%; border: 3px solid var(--amarillo); background: var(--amarillo-suave); }
+.calcomania-propia img { width: 100%; height: 100%; object-fit: cover; }
+.calcomania-emoji { font-size: 2.2rem; line-height: 1; }
+.calcomania-propia { container-type: inline-size; }
+.calcomania-propia .calcomania-emoji { font-size: 55cqw; } /* el emoji crece con la calcomanía (álbum chico o calcomanía grande) */
+.calcomania-grande.calcomania-propia { width: clamp(180px, 45vmin, 320px); aspect-ratio: 1; animation: aparecer 0.7s ease-out; }
+
+.premio-album, .premio-calcomania { display: flex; flex-direction: column; align-items: center; gap: 24px; width: 100%; }
+.album-completo { width: min(100%, 560px); }
+.album-pasado { width: min(100%, 560px); padding: 12px; border-radius: var(--radio); background: var(--tarjeta); border: 2px solid var(--borde); }
+.albumes-nino, .tienda-nino { justify-content: flex-start; padding-top: 112px; overflow-y: auto; }
+.albumes-zona, .tienda-zona { display: flex; flex-direction: column; align-items: center; gap: 24px; width: 100%; }
+
+.tienda-grilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 20px; width: min(100%, 760px); }
+.premio-carta {
+  display: flex; flex-direction: column; align-items: center; gap: 10px; min-height: 88px; padding: 16px;
+  border: 3px solid var(--borde-fuerte); border-radius: var(--radio); background: var(--tarjeta); color: var(--texto);
+  font: inherit; cursor: pointer; touch-action: manipulation;
+}
+.premio-carta .miniatura-grande { width: clamp(96px, 20vmin, 150px); height: clamp(96px, 20vmin, 150px); }
+.premio-lejos { opacity: 0.75; }
+.premio-nombre { font-size: 1.5rem; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.premio-nombre-grande { font-size: clamp(2rem, 7vmin, 3.2rem); margin: 0; }
+.premio-precio { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.tienda-nino > .tienda-zona > .miniatura-grande { width: clamp(150px, 32vmin, 260px); height: clamp(150px, 32vmin, 260px); }
+.mensaje-premio { color: var(--verde); font-weight: 700; }
+.boton-respuesta {
+  display: grid; place-items: center; width: clamp(96px, 22vmin, 150px); aspect-ratio: 1; padding: 0; border: 0;
+  border-radius: 50%; color: #fff; cursor: pointer; touch-action: manipulation;
+}
+.boton-respuesta svg { width: 52%; height: 52%; }
+.boton-si { background: var(--verde); }
+.boton-no { background: var(--azul); }
+
+/* Modo adulto: álbum y tienda */
+.lista-simple { display: grid; gap: 10px; margin: 0 0 12px; padding: 0; list-style: none; }
+.album-adulto { width: 100%; margin: 8px 0; }
+.casillas-calcomanias { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px; margin: 12px 0; }
+.casilla-calcomania {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 44px; padding: 8px;
+  border: 2px solid var(--borde-fuerte); border-radius: 12px; background: var(--tarjeta); font-size: 0.85rem; text-align: center; cursor: pointer;
+}
+.casilla-calcomania input { width: 22px; height: 22px; }
+.casilla-calcomania img, .casilla-calcomania .calcomania-emoji { width: 56px; height: 56px; object-fit: cover; }
+.casilla-calcomania .calcomania-emoji { display: grid; place-items: center; }
+.selector-imagen { display: grid; gap: 10px; margin: 12px 0; }
+.seccion-imagen { border: 2px solid var(--borde); border-radius: 12px; padding: 8px 12px; background: var(--tarjeta); }
+.seccion-imagen summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }
+.fila-movimiento { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--borde); font-size: 0.95rem; }
+
 /* ===== Movimiento reducido ===== */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -799,4 +871,5 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
   }
+  .moneda-entra { animation: none; }
 }

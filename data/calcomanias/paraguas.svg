@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Paraguas">
+  <circle cx="50" cy="50" r="48" fill="#d8ebf5" stroke="#6bb3d9" stroke-width="3"/>
+  <path d="M16 54 Q16 24 50 24 Q84 24 84 54 Q76 48 67 54 Q59 48 50 54 Q41 48 33 54 Q24 48 16 54 Z" fill="#b890c4" stroke="#8d6aa0" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M50 24 L50 54 M33 54 Q36 36 50 24 M67 54 Q64 36 50 24" fill="none" stroke="#8d6aa0" stroke-width="1.8"/>
+  <path d="M50 54 L50 76 Q50 84 42 82" fill="none" stroke="#7a5c3a" stroke-width="3.5" stroke-linecap="round"/>
+  <circle cx="26" cy="20" r="2" fill="#6bb3d9"/>
+  <circle cx="76" cy="18" r="2" fill="#6bb3d9"/>
+</svg>

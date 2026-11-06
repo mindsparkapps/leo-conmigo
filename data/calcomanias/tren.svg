@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Tren">
+  <circle cx="50" cy="50" r="48" fill="#fff3cf" stroke="#f2b632" stroke-width="3"/>
+  <rect x="26" y="34" width="48" height="36" rx="6" fill="#6bb3d9" stroke="#3f8fb8" stroke-width="2.5"/>
+  <rect x="32" y="40" width="14" height="12" rx="2" fill="#ffffff" stroke="#3f8fb8" stroke-width="1.5"/>
+  <rect x="54" y="40" width="14" height="12" rx="2" fill="#ffffff" stroke="#3f8fb8" stroke-width="1.5"/>
+  <rect x="36" y="58" width="28" height="6" rx="2" fill="#f2b632" stroke="#d99a12" stroke-width="1.5"/>
+  <circle cx="38" cy="74" r="5" fill="#3b4a56"/>
+  <circle cx="62" cy="74" r="5" fill="#3b4a56"/>
+  <path d="M20 82 L80 82" stroke="#8a6f4a" stroke-width="3" stroke-linecap="round"/>
+</svg>

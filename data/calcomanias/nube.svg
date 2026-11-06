@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Nube">
+  <circle cx="50" cy="50" r="48" fill="#d8ebf5" stroke="#6bb3d9" stroke-width="3"/>
+  <path d="M30 66 Q16 66 18 54 Q20 44 32 46 Q34 32 50 32 Q66 32 68 46 Q84 44 82 58 Q82 66 70 66 Z" fill="#ffffff" stroke="#8fb9d1" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="42" cy="54" r="2.5" fill="#1d2b36"/>
+  <circle cx="58" cy="54" r="2.5" fill="#1d2b36"/>
+  <path d="M45 60 Q50 64 55 60" fill="none" stroke="#1d2b36" stroke-width="2" stroke-linecap="round"/>
+</svg>

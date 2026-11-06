@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Conejo">
+  <circle cx="50" cy="50" r="48" fill="#f3e8f5" stroke="#b890c4" stroke-width="3"/>
+  <ellipse cx="38" cy="26" rx="7" ry="17" fill="#ffffff" stroke="#b890c4" stroke-width="2.5"/>
+  <ellipse cx="62" cy="26" rx="7" ry="17" fill="#ffffff" stroke="#b890c4" stroke-width="2.5"/>
+  <ellipse cx="38" cy="27" rx="3" ry="11" fill="#f6c6d6"/>
+  <ellipse cx="62" cy="27" rx="3" ry="11" fill="#f6c6d6"/>
+  <circle cx="50" cy="60" r="24" fill="#ffffff" stroke="#b890c4" stroke-width="2.5"/>
+  <circle cx="41" cy="56" r="3" fill="#1d2b36"/>
+  <circle cx="59" cy="56" r="3" fill="#1d2b36"/>
+  <ellipse cx="50" cy="64" rx="4" ry="3" fill="#f6a8c0"/>
+  <path d="M50 67 L50 71 M44 72 Q50 76 56 72" fill="none" stroke="#b890c4" stroke-width="2" stroke-linecap="round"/>
+</svg>

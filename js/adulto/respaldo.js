@@ -19,6 +19,9 @@ const NOMBRES = {
   calcomanias: ['calcomanía', 'calcomanías'],
   frases: ['frase', 'frases'],
   libros: ['libro', 'libros'],
+  calcomaniasPropias: ['calcomanía propia', 'calcomanías propias'],
+  premios: ['premio de la tienda', 'premios de la tienda'],
+  movimientos: ['movimiento de monedas', 'movimientos de monedas'],
 };
 const plural = (clave, n) => `${n} ${NOMBRES[clave][n === 1 ? 0 : 1]}`;
 const tamano = (bytes) => (bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);

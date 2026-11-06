@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Tortuga">
+  <circle cx="50" cy="50" r="48" fill="#e4f3e8" stroke="#6dbb8a" stroke-width="3"/>
+  <ellipse cx="22" cy="58" rx="7" ry="6" fill="#8ccf9f" stroke="#4d9a6a" stroke-width="2"/>
+  <rect x="34" y="66" width="9" height="12" rx="4" fill="#8ccf9f" stroke="#4d9a6a" stroke-width="2"/>
+  <rect x="58" y="66" width="9" height="12" rx="4" fill="#8ccf9f" stroke="#4d9a6a" stroke-width="2"/>
+  <path d="M70 62 L82 66 L72 68 Z" fill="#8ccf9f" stroke="#4d9a6a" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M30 66 Q30 36 52 36 Q74 36 74 66 Z" fill="#6dbb8a" stroke="#4d9a6a" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M42 66 L40 48 M52 66 L52 40 M62 66 L64 48 M34 56 L70 56" fill="none" stroke="#4d9a6a" stroke-width="2"/>
+  <circle cx="20" cy="56" r="1.8" fill="#1d2b36"/>
+</svg>

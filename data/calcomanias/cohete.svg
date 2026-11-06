@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Cohete">
+  <circle cx="50" cy="50" r="48" fill="#e9e6f7" stroke="#8d86c9" stroke-width="3"/>
+  <path d="M50 16 Q66 32 64 60 L36 60 Q34 32 50 16 Z" fill="#ffffff" stroke="#8d86c9" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M50 16 Q58 22 61 32 L39 32 Q42 22 50 16 Z" fill="#6bb3d9" stroke="#3f8fb8" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="50" cy="46" r="7" fill="#cfe8f6" stroke="#8d86c9" stroke-width="2"/>
+  <path d="M36 52 L24 68 L36 64 Z M64 52 L76 68 L64 64 Z" fill="#f2b632" stroke="#d99a12" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M42 62 Q50 84 58 62 Z" fill="#f29b4b" stroke="#d9783a" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="22" cy="28" r="2" fill="#ffffff"/>
+  <circle cx="80" cy="30" r="2.5" fill="#ffffff"/>
+</svg>

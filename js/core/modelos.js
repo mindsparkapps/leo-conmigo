@@ -2,6 +2,7 @@
 
 import { nuevoId } from './id.js';
 import { silabear } from './silabas.js';
+import { normalizarAlbum } from './album.js';
 
 export const AJUSTES_POR_DEFECTO = Object.freeze({
   ensayosPorSesion: 8, // 4 a 15
@@ -44,7 +45,7 @@ export function normalizarAjustes(ajustes = {}) {
   return a;
 }
 
-export function nuevoPerfil({ nombre, fotoMedioId = null, fechaNacimiento = null, etapaActual = 1, ajustes = {} }) {
+export function nuevoPerfil({ nombre, fotoMedioId = null, fechaNacimiento = null, etapaActual = 1, ajustes = {}, album = {} }) {
   if (!String(nombre ?? '').trim()) throw new Error('El perfil necesita un nombre');
   return {
     id: nuevoId(),
@@ -52,6 +53,7 @@ export function nuevoPerfil({ nombre, fotoMedioId = null, fechaNacimiento = null
     fotoMedioId,
     fechaNacimiento,
     ajustes: normalizarAjustes(ajustes),
+    album: normalizarAlbum(album), // tamaño del álbum, monedas por álbum y calcomanías en juego (fase 11)
     etapaActual,
     creado: new Date().toISOString(),
   };

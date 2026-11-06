@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Regalo">
+  <circle cx="50" cy="50" r="48" fill="#f3e8f5" stroke="#b890c4" stroke-width="3"/>
+  <rect x="26" y="46" width="48" height="32" rx="3" fill="#8ccf9f" stroke="#4d9a6a" stroke-width="2.5"/>
+  <rect x="22" y="38" width="56" height="12" rx="3" fill="#6dbb8a" stroke="#4d9a6a" stroke-width="2.5"/>
+  <rect x="45" y="38" width="10" height="40" fill="#f2b632" stroke="#d99a12" stroke-width="1.5"/>
+  <path d="M50 38 Q36 22 32 32 Q30 40 50 38 Z M50 38 Q64 22 68 32 Q70 40 50 38 Z" fill="#f2b632" stroke="#d99a12" stroke-width="2" stroke-linejoin="round"/>
+</svg>

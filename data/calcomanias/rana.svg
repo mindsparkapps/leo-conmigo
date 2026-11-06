@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Rana">
+  <circle cx="50" cy="50" r="48" fill="#e4f3e8" stroke="#6dbb8a" stroke-width="3"/>
+  <circle cx="35" cy="34" r="11" fill="#8ccf9f" stroke="#4d9a6a" stroke-width="2.5"/>
+  <circle cx="65" cy="34" r="11" fill="#8ccf9f" stroke="#4d9a6a" stroke-width="2.5"/>
+  <ellipse cx="50" cy="58" rx="28" ry="21" fill="#8ccf9f" stroke="#4d9a6a" stroke-width="2.5"/>
+  <circle cx="35" cy="34" r="5" fill="#ffffff"/>
+  <circle cx="65" cy="34" r="5" fill="#ffffff"/>
+  <circle cx="35" cy="35" r="2.5" fill="#1d2b36"/>
+  <circle cx="65" cy="35" r="2.5" fill="#1d2b36"/>
+  <path d="M34 62 Q50 74 66 62" fill="none" stroke="#3f7a56" stroke-width="3" stroke-linecap="round"/>
+</svg>

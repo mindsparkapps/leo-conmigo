@@ -1,0 +1,163 @@
+// Tienda del niño: gasta sus monedas de oro en los premios que el adulto creó (fase 11).
+// Sin sonido de error, sin rojo, sin bloqueos frustrantes: si no le alcanza, se le dice cuántas monedas le faltan.
+// Solo toques simples (sin mantener ni arrastrar), con 400 ms de bloqueo entre toques.
+
+import { el } from '../ui/dom.js';
+import { crearCandado } from '../ui/candado.js';
+import { crearMiniatura } from '../ui/miniatura.js';
+import { crearCofre, crearMonedas } from '../ui/moneda.js';
+import { habilitarAdulto, deshabilitarAdulto } from '../acceso.js';
+import { NOMBRE_APP } from '../config.js';
+import { obtenerStore, perfilActivo } from '../contexto.js';
+import { liberarUrls, urlDeMedio } from '../medios.js';
+import { desbloquearAudio, detener, hablarTexto } from '../audio.js';
+import { cargarMonedas } from '../albumes.js';
+import { crearCanje, faltan, premiosVisibles, puedeCanjear } from '../core/album.js';
+import { normalizarAjustes } from '../core/modelos.js';
+
+export const titulo = NOMBRE_APP;
+
+const BLOQUEO_MS = 400;
+
+const ICONO_CASA = `
+<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path d="M32 8L6 32h8v22h14V40h8v14h14V32h8z" fill="currentColor"/></svg>`;
+const ICONO_SI = `
+<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path d="M12 34l14 14 26-30" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const ICONO_ATRAS = `
+<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path d="M40 10L18 32l22 22" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+const textoMonedas = (n) => `${n} ${n === 1 ? 'moneda' : 'monedas'}`;
+
+export function montar(contenedor, { ir }) {
+  deshabilitarAdulto();
+  const candado = crearCandado({
+    alDesbloquear: () => {
+      habilitarAdulto();
+      ir('/adulto');
+    },
+  });
+  const casa = el('button', { type: 'button', class: 'boton-casa boton-casa-chico', 'aria-label': 'Volver al inicio', onclick: () => ir('/nino') });
+  casa.innerHTML = ICONO_CASA;
+  const zona = el('div', { class: 'tienda-zona' });
+  const vista = el('section', { class: 'vista-nino tienda-nino' }, zona, casa, candado);
+  contenedor.append(vista);
+
+  let vivo = true;
+  iniciar(zona, () => vivo).catch((error) => {
+    console.error(error);
+    zona.replaceChildren(el('p', { class: 'mensaje-nino' }, 'Algo no funcionó. Un adulto puede tocar el candado.'));
+  });
+  return () => {
+    vivo = false;
+    detener();
+    liberarUrls();
+  };
+}
+
+async function iniciar(zona, estaVivo) {
+  const store = await obtenerStore();
+  const perfil = await perfilActivo();
+  if (!estaVivo()) return;
+  if (!perfil) {
+    zona.replaceChildren(el('p', { class: 'mensaje-nino' }, 'Un adulto debe preparar la aplicación.'));
+    return;
+  }
+  const ajustes = normalizarAjustes(perfil.ajustes);
+  const decir = (texto, { siempre = false } = {}) => {
+    if (!siempre && !ajustes.sonido) return;
+    desbloquearAudio();
+    hablarTexto(texto, { velocidad: ajustes.velocidadVoz });
+  };
+  let ultimoToque = -Infinity;
+  const toqueValido = () => {
+    const t = performance.now();
+    if (t - ultimoToque < BLOQUEO_MS) return false;
+    ultimoToque = t;
+    return true;
+  };
+  let aviso = null;
+  let ocupado = false;
+
+  const imagenDe = async (premio, grande = true) =>
+    crearMiniatura({ url: await urlDeMedio(store, premio.medioImagenId), emoji: premio.emoji, texto: premio.nombre }, { grande });
+
+  async function lista() {
+    const datos = await cargarMonedas(store, perfil);
+    if (!estaVivo()) return;
+    const premios = premiosVisibles(datos.premios);
+    const cartas = await Promise.all(
+      premios.map(async (premio) => {
+        const alcanza = puedeCanjear(datos.saldo, premio);
+        const boton = el(
+          'button',
+          {
+            type: 'button',
+            class: alcanza ? 'premio-carta' : 'premio-carta premio-lejos',
+            'aria-label': `${premio.nombre}, ${textoMonedas(premio.precio)}`,
+            onclick: () => {
+              if (ocupado || !toqueValido()) return;
+              if (alcanza) confirmar(premio);
+              else decir(`${premio.nombre}. Te faltan ${textoMonedas(faltan(datos.saldo, premio))}`, { siempre: true });
+            },
+          },
+          await imagenDe(premio),
+          el('span', { class: 'premio-nombre' }, premio.nombre),
+          el('span', { class: 'premio-precio' }, crearMonedas({ total: premio.precio, llenas: datos.saldo }), el('span', { class: 'cofre-numero', 'aria-hidden': 'true' }, String(premio.precio))),
+        );
+        return boton;
+      }),
+    );
+    if (!estaVivo()) return;
+    zona.replaceChildren(
+      ...[
+        aviso ? el('p', { class: 'mensaje-nino mensaje-premio', role: 'status' }, aviso) : null,
+        crearCofre({ saldo: datos.saldo }),
+        premios.length ? el('div', { class: 'tienda-grilla' }, cartas) : el('p', { class: 'mensaje-nino' }, 'Todavía no hay premios.'),
+      ].filter(Boolean),
+    );
+    aviso = null;
+  }
+
+  async function confirmar(premio) {
+    const imagen = await imagenDe(premio);
+    if (!estaVivo()) return;
+    ultimoToque = performance.now(); // el dedo que eligió el premio no confirma por accidente
+    const si = el('button', {
+      type: 'button',
+      class: 'boton-respuesta boton-si',
+      'aria-label': 'Sí, lo quiero',
+      onclick: async () => {
+        if (ocupado || !toqueValido()) return;
+        ocupado = true;
+        try {
+          await store.guardar('movimientos', crearCanje({ perfilId: perfil.id, premio }));
+          aviso = '¡Es tuyo! Pídeselo a un adulto.';
+          decir('¡Es tuyo! Pídeselo a un adulto');
+          await lista();
+        } finally {
+          ocupado = false;
+        }
+      },
+    });
+    si.innerHTML = ICONO_SI;
+    const no = el('button', {
+      type: 'button',
+      class: 'boton-respuesta boton-no',
+      'aria-label': 'No, volver',
+      onclick: () => {
+        if (ocupado || !toqueValido()) return;
+        lista();
+      },
+    });
+    no.innerHTML = ICONO_ATRAS;
+    zona.replaceChildren(
+      imagen,
+      el('p', { class: 'premio-nombre premio-nombre-grande' }, premio.nombre),
+      el('span', { class: 'premio-precio' }, crearMonedas({ total: premio.precio }), el('span', { class: 'cofre-numero', 'aria-hidden': 'true' }, String(premio.precio))),
+      el('div', { class: 'acciones-inicio' }, no, si),
+    );
+    decir(`${premio.nombre}. ¿Lo quieres?`, { siempre: true });
+  }
+
+  await lista();
+}

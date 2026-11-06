@@ -30,6 +30,11 @@ export function crearStoreEnMemoria({ desde = 0, prefijo = 'id' } = {}) {
       encolar(almacen, guardado.id, guardado.updatedAt);
       return guardado;
     },
+    async guardarVarios(almacen, registros) {
+      const guardados = [];
+      for (const r of registros) guardados.push(await this.guardar(almacen, r));
+      return guardados;
+    },
     async pendientesSync() {
       return [...cola.values()].sort((a, b) => a.fecha.localeCompare(b.fecha) || a.clave.localeCompare(b.clave));
     },

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Helado">
+  <circle cx="50" cy="50" r="48" fill="#fff3cf" stroke="#f2b632" stroke-width="3"/>
+  <polygon points="34,50 66,50 50,86" fill="#e8b06a" stroke="#c48a3e" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M40 58 L56 74 M50 52 L58 66 M36 52 L50 80" fill="none" stroke="#c48a3e" stroke-width="1.5"/>
+  <circle cx="50" cy="40" r="17" fill="#f6b6c8" stroke="#d98aa3" stroke-width="2.5"/>
+  <circle cx="50" cy="26" r="9" fill="#f6b6c8" stroke="#d98aa3" stroke-width="2.5"/>
+  <circle cx="45" cy="38" r="2" fill="#ffffff"/>
+</svg>

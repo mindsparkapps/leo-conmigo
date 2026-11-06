@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Pájaro">
+  <circle cx="50" cy="50" r="48" fill="#d8ebf5" stroke="#6bb3d9" stroke-width="3"/>
+  <path d="M24 64 L12 70 L26 56 Z" fill="#3f8fb8" stroke="#2f6f94" stroke-width="2" stroke-linejoin="round"/>
+  <ellipse cx="48" cy="56" rx="26" ry="19" fill="#6bb3d9" stroke="#3f8fb8" stroke-width="2.5"/>
+  <circle cx="68" cy="42" r="13" fill="#6bb3d9" stroke="#3f8fb8" stroke-width="2.5"/>
+  <polygon points="79,42 90,46 79,50" fill="#f2b632" stroke="#d99a12" stroke-width="1.5" stroke-linejoin="round"/>
+  <circle cx="70" cy="39" r="2.6" fill="#1d2b36"/>
+  <path d="M34 54 Q46 44 58 56 Q46 68 34 54 Z" fill="#8fc7e6" stroke="#3f8fb8" stroke-width="2"/>
+  <path d="M44 74 L44 82 M54 74 L54 82" stroke="#d99a12" stroke-width="3" stroke-linecap="round"/>
+</svg>

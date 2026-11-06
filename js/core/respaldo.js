@@ -17,6 +17,9 @@ export const ALMACENES_RESPALDO = Object.freeze([
   'libros',
   'sesiones',
   'calcomanias',
+  'calcomaniasPropias',
+  'premios',
+  'movimientos',
 ]);
 
 export class ErrorRespaldo extends Error {

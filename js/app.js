@@ -22,6 +22,8 @@ crearRouter({
   rutas: [
     { ruta: '/nino/sesion', cargar: () => import('./nino/sesion.js') },
     { ruta: '/nino/premio', cargar: () => import('./nino/premio.js') },
+    { ruta: '/nino/tienda', cargar: () => import('./nino/tienda.js') },
+    { ruta: '/nino/albumes', cargar: () => import('./nino/albumes.js') },
     { ruta: '/nino/libros', cargar: () => import('./nino/libros.js') },
     { ruta: '/nino/libro', cargar: () => import('./nino/libros.js') },
     { ruta: '/nino', cargar: () => import('./nino/inicio.js') },
@@ -33,6 +35,8 @@ crearRouter({
     adulto('/adulto/libros', './adulto/libros.js'),
     adulto('/adulto/progreso', './adulto/progreso.js'),
     adulto('/adulto/ajustes', './adulto/ajustes.js'),
+    adulto('/adulto/album', './adulto/album.js'),
+    adulto('/adulto/tienda', './adulto/tienda.js'),
     adulto('/adulto/respaldo', './adulto/respaldo.js'),
     adulto('/adulto/cuenta', './adulto/cuenta.js'),
     adulto('/adulto/ayuda', './adulto/ayuda.js'),
