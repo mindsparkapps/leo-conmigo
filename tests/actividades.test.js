@@ -106,6 +106,8 @@ test('esSegundoDedo: solo se ignoran los punteros reales que no son el primario'
   assert.equal(esSegundoDedo({ pointerType: 'touch', isPrimary: false }), true, 'segundo dedo');
   assert.equal(esSegundoDedo({ pointerType: 'touch', isPrimary: true }), false, 'primer dedo');
   assert.equal(esSegundoDedo({ pointerType: 'mouse', isPrimary: true }), false);
+  assert.equal(esSegundoDedo({ pointerType: 'mouse', isPrimary: false }), false, 'el clic del ratón siempre vale');
+  assert.equal(esSegundoDedo({ pointerType: 'pen', isPrimary: false }), false);
   assert.equal(esSegundoDedo({ pointerType: '', isPrimary: false }), false, 'clic de teclado o pulsador: siempre válido');
   assert.equal(esSegundoDedo({}), false);
 });

@@ -17,7 +17,9 @@ import { crearBotonAudio } from '../ui/boton-audio.js';
  * pulsador, lector de pantalla) es siempre válido: no tiene "dedos".
  */
 export function esSegundoDedo(evento) {
-  return Boolean(evento.pointerType) && evento.isPrimary === false;
+  // Solo los dedos pueden ser «segundos»: un ratón o un lápiz nunca (algunos navegadores marcan el clic
+  // del ratón con isPrimary=false y la tarjeta no respondía).
+  return evento.pointerType === 'touch' && evento.isPrimary === false;
 }
 
 /**

@@ -16,7 +16,7 @@ export function crearBotonAudio({ grande = false, alToque }) {
   });
   boton.innerHTML = ICONO;
   boton.addEventListener('click', (e) => {
-    if (e.pointerType && e.isPrimary === false) return; // ignora el segundo dedo (un clic de teclado no trae pointerType)
+    if (e.pointerType === 'touch' && e.isPrimary === false) return; // ignora el segundo dedo (el ratón y el teclado siempre valen)
     alToque();
   });
   return boton;
