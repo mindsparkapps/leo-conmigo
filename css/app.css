@@ -385,6 +385,12 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 .picto[aria-pressed="true"] { border-color: var(--verde); background: var(--verde-suave); }
 .paleta-emoji { display: flex; flex-wrap: wrap; gap: 6px; }
 .paleta-emoji .chip { padding: 0 10px; font-size: 1.5rem; }
+.paleta-palabras { display: flex; flex-wrap: wrap; gap: 6px; }
+.frase-armada { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 52px; margin: 8px 0; padding: 8px; border: 2px dashed var(--borde); border-radius: 14px; background: var(--fondo); }
+.chip-frase { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 6px 0 14px; border-radius: 22px; background: var(--azul-suave); color: var(--azul-oscuro); font-weight: 700; }
+.quitar-chip { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 1.4rem; line-height: 1; cursor: pointer; }
+.pagina-editor { margin: 12px 0; padding: 12px; border: 2px solid var(--borde); border-radius: 16px; background: #fff; }
+.pagina-editor h3 { margin: 0; flex: 1; font-size: 1.1rem; }
 .creditos { margin-top: 16px; font-size: 0.85rem; }
 
 /* ===== Modo niño: inicio, álbum y premio ===== */
@@ -594,6 +600,165 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 .vista-previa .palabra-texto { font-size: 2.5rem; }
 .vista-previa.letra-grande .palabra-texto { font-size: 3.5rem; }
 .vista-previa .carta-emoji { font-size: 2.5rem; }
+
+/* ===== Fase 6: etapa 0, frases, armar la frase, lectura asistida y libros ===== */
+.acciones-inicio { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 28px; }
+.boton-libro {
+  display: grid;
+  place-items: center;
+  width: clamp(96px, 20vmin, 150px);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--azul);
+  color: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.boton-libro svg { width: 56%; height: 56%; }
+
+/* Una frase en una carta: puede ocupar varias líneas y su imagen es un collage de hasta 3 dibujos */
+.carta-frase .palabra-texto { white-space: normal; text-align: center; font-size: clamp(2.2rem, 7vmin, 4rem); }
+.carta-frase.carta-grande .palabra-texto { font-size: clamp(2.6rem, 8vmin, 4.6rem); }
+.collage { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+.collage .carta-foto { width: auto; max-width: 32%; max-height: clamp(70px, 14vmin, 130px); }
+.collage .carta-emoji { font-size: clamp(2.6rem, 9vmin, 4.6rem); }
+.carta-frase .collage .carta-foto { max-height: clamp(70px, 14vmin, 130px); }
+.carta-imagen.carta-frase .collage .carta-emoji { font-size: clamp(3rem, 10vmin, 5rem); }
+.zona-modelo[data-suena] .carta-frase { border-color: var(--amarillo); }
+
+/* «Armo la frase» (F3): una franja con un hueco por palabra y, abajo, las palabras para tocar en orden */
+.franja { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; padding: 8px 16px; }
+.hueco {
+  display: grid;
+  place-items: center;
+  min-width: clamp(70px, 16vmin, 130px);
+  min-height: clamp(64px, 12vmin, 100px);
+  padding: 4px 12px;
+  border: 4px dashed var(--borde);
+  border-radius: 18px;
+  background: #fff;
+}
+.hueco.lleno { border: 4px solid var(--azul); }
+.hueco .palabra-texto { font-size: clamp(2rem, 7vmin, 3.6rem); }
+.franja.acierto .hueco { border-color: var(--verde); background: var(--verde-suave); }
+.franja.celebrar { animation: salto 0.7s ease-out; }
+.zona-fichas { display: flex; flex: 1; flex-wrap: wrap; align-content: center; align-items: center; justify-content: center; gap: 16px; padding: 16px; }
+.ficha {
+  min-width: clamp(110px, 24vmin, 200px);
+  min-height: clamp(84px, 16vmin, 130px);
+  padding: 8px 18px;
+  border: 4px solid var(--borde);
+  border-radius: 24px;
+  background: #fff;
+  color: var(--texto);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.ficha .palabra-texto { font-size: clamp(2.4rem, 9vmin, 4.4rem); }
+.ficha.atenuada { opacity: 0.3; }
+.ficha.ayuda { border-color: var(--amarillo); background: var(--amarillo-suave); animation: latido 1.3s ease-in-out infinite; }
+.ficha.usada { visibility: hidden; }
+.alto-contraste .ficha, .alto-contraste .hueco { border-color: #000; }
+
+/* «Leo en voz alta» (L6): solo la palabra y, en las esquinas de abajo, los botones discretos del adulto */
+.controles-adulto { position: absolute; right: 16px; bottom: 16px; left: 16px; display: flex; justify-content: space-between; pointer-events: none; }
+.boton-adulto {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 3px solid var(--borde);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--texto-suave);
+  font: inherit;
+  font-size: 2rem;
+  line-height: 1;
+  opacity: 0.7;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.boton-adulto.ok { border-color: var(--verde); color: var(--verde); }
+
+/* Libros */
+.libros-nino { justify-content: flex-start; gap: 16px; padding-top: 88px; }
+.boton-nav {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: clamp(72px, 14vmin, 110px);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--azul);
+  color: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.boton-nav svg { width: 52%; height: 52%; }
+.boton-nav-listo { background: var(--verde); }
+.boton-nav.oculto { visibility: hidden; }
+.boton-nav-casa { position: absolute; top: 12px; left: 12px; width: 56px; background: var(--azul-oscuro); }
+.estante { display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center; gap: 20px; width: 100%; }
+.tapa-libro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(100%, 340px);
+  padding: 12px;
+  border: 4px solid var(--azul);
+  border-radius: 24px;
+  background: #fff;
+  color: var(--texto);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.tapa-libro .carta { width: 100%; min-width: 0; border: 0; padding: 0; }
+.titulo-libro { font-size: clamp(2rem, 6vmin, 3rem); white-space: normal; }
+.pagina-libro { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: space-around; gap: 12px; width: 100%; }
+.foto-libro { cursor: pointer; }
+.texto-libro { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 14px; margin: 0; }
+.palabra-libro {
+  padding: 2px 12px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--texto);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.palabra-libro .palabra-texto { font-size: clamp(2.6rem, 9vmin, 4.8rem); }
+.palabra-libro.suena { background: var(--amarillo); }
+.alto-contraste .palabra-libro.suena { background: var(--amarillo); outline: 4px solid #000; }
+.navegacion-libro { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: min(100%, 520px); }
+
+/* Celular acostado: «armo la frase» en tres columnas (imagen · franja · palabras). Va después de las reglas base. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .franja { flex: 1; align-content: center; padding: 8px; }
+  .hueco { min-width: 0; min-height: 0; padding: 4px 10px; }
+  .hueco:not(.lleno) { width: 14vh; height: 11vh; }
+  .hueco .palabra-texto { font-size: 9vh; }
+  .zona-fichas { flex: 0 0 34%; flex-direction: column; flex-wrap: nowrap; gap: 8px; padding: 8px 76px 8px 8px; }
+  .ficha { width: 100%; min-width: 0; min-height: 0; padding: 4px 12px; }
+  .ficha .palabra-texto { font-size: 10vh; }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .libros-nino { padding-top: 12px; }
+  .pagina-libro { flex-direction: row; flex-wrap: wrap; }
+  .foto-libro { max-width: 40%; }
+  .foto-libro .carta-foto { max-height: 40vh; }
+  .navegacion-libro { width: 100%; }
+}
 
 /* ===== Movimiento reducido ===== */
 @media (prefers-reduced-motion: reduce) {

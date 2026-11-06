@@ -21,6 +21,28 @@ export const TIPOS = Object.freeze([
 
 export const MAX_LARGO_PALABRA = 30;
 
+/** ¿Se puede mostrar? Con foto/pictograma o, al menos, con emoji. */
+export function tieneImagen(palabra) {
+  return Boolean(palabra.medioImagenId || palabra.emoji);
+}
+
+/** ¿Tiene un símbolo (pictograma o emoji) además de su imagen? Hace falta para «misma cosa». */
+export function tieneSimbolo(palabra) {
+  return Boolean(palabra.medioSimboloId || palabra.emoji);
+}
+
+/** Pregunta hablada de la actividad «clasificar» (P3). Las categorías sin sentido para preguntar no tienen. */
+export const PREGUNTAS_CATEGORIA = Object.freeze({
+  personas: '¿Cuál es una persona?',
+  cuerpo: '¿Cuál es una parte del cuerpo?',
+  comida: '¿Cuál es una comida?',
+  casa: '¿Cuál es algo de la casa?',
+  animales: '¿Cuál es un animal?',
+  juguetes: '¿Cuál es un juguete o una cosa?',
+});
+
+export const preguntaDeCategoria = (categoria) => PREGUNTAS_CATEGORIA[categoria] ?? null;
+
 export function nombreDeCategoria(id) {
   return CATEGORIAS.find((c) => c.id === id)?.nombre ?? 'Otras';
 }

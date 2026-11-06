@@ -234,18 +234,18 @@ js/
     estadisticas.js estado por palabra, tabla, precisión semanal, historial, marcado manual
     respaldo.js   copia de seguridad: armar, validar, decodificar y fusionar (sin DOM)
     vocabulario.js categorías, orden, sílabas editables, palabras del asistente
-    frases.js     (fase 6)
-  actividades/    comun.js (armarEnsayo sin DOM + renderEnsayo), indice.js, L1.js … L5.js
-                  (fases 6 y 8: P1–P3, F1–F3, S1–S4)
+    frases.js     frases y libros: validar, texto, collage, elementos del motor, páginas legibles
+  actividades/    comun.js (armarEnsayo sin DOM + renderEnsayo), indice.js, secuencia.js («armo la frase»),
+                  P1–P3, L1–L6, F1–F3  (fase 8: S1–S4)
   ui/             dom.js (el), candado.js, adulto.js (cabecera, errores, campo), miniatura.js,
                   selector-foto.js, carta.js, boton-audio.js, ajustar-texto.js, grafico-semanal.js
-  nino/           inicio.js (con el álbum), sesion.js, premio.js
+  nino/           inicio.js (con el álbum y el botón de libros), sesion.js, premio.js, libros.js (estante y lectura)
   adulto/         panel.js, asistente.js, perfiles.js, vocabulario.js, editor-palabra.js,
-                  progreso.js, ajustes.js, respaldo.js
-                  (fases 6-7: frases.js, libros.js, cuenta.js con Google y sincronización)
-tests/            *.test.js para js/core (node --test) + ayudas.js y simulador.js (apoyo)
-  navegador/      store.html (IndexedDB real) y actividades.html (ver L1–L5 con datos de ejemplo:
-                  ?a=L4&n=3&ayuda&largo&mayus&grande); se abren en el servidor local
+                  frases.js, libros.js, progreso.js, ajustes.js, respaldo.js
+                  (fase 7: cuenta.js con Google y sincronización)
+tests/            *.test.js para js/core (node --test) + ayudas.js, escenarios.js, jugar.js y simulador.js (apoyo)
+  navegador/      store.html (IndexedDB real) y actividades.html (ver cada actividad con datos de ejemplo:
+                  ?a=F3&n=3&ayuda&largo&mayus&grande); se abren en el servidor local
 ```
 
 ### Interfaz común de actividades
@@ -275,15 +275,17 @@ Todo registro tiene `id` (UUID), `updatedAt` (ISO) y `deleted` (booleano) para l
 ```js
 perfil     { id, nombre, fotoMedioId, fechaNacimiento?, ajustes:{...}, etapaActual, creado }
 palabra    { id, perfilId, texto, silabas:['ma','má'], categoria, tipo:'sustantivo'|'enlace',
-             medioImagenId?, arasaacId?, emoji?, medioAudioId?, busquedaPicto?, orden, activa }
+             medioImagenId?, medioSimboloId?, arasaacId?, emoji?, medioAudioId?, busquedaPicto?, orden, activa }
              // orden = cola de introducción (la fija el adulto); busquedaPicto = texto para buscar su pictograma
+             // medioSimboloId = pictograma «de apoyo» junto a la foto (P2); el emoji sirve de símbolo si no hay pictograma
 progreso   { id: `${perfilId}:${elementoId}:${actividad}`, perfilId, elementoId, actividad, estado,
              historial:[{ fecha, correctoAlPrimerIntento, opciones }] (últimos 10), cajaLeitner (1-5),
              proximoRepaso ('AAAA-MM-DD' o null), fallosRepaso }
              // elementoId = id de una palabra (etapas 0, 1 y 3) o de una frase (etapa 2)
 nivel      { id: `${perfilId}:${actividad}`, perfilId, actividad, opciones (2-4), ultimos:[true|false] (ventana de 10) }
-frase      { id, perfilId, palabraIds:[...], medioImagenId? }
-libro      { id, perfilId, titulo, paginas:[{ medioImagenId, fraseId }] }
+frase      { id, perfilId, palabraIds:[...] (2 a 6), texto, medioImagenId? (sin ella se usa un collage), orden, activa }
+libro      { id, perfilId, titulo, paginas:[{ medioImagenId?, fraseId }] (1 a 10), creado }
+ajustes    (dentro del perfil) + etapasForzadas:[0-3], etapasBloqueadas:[0-3], habilitarL6; el perfil guarda etapaActual
 sesion     { id, perfilId, inicio, fin, fatiga, ensayos:[{ elementoId, actividad, tipo, esFacil, correctoAlPrimerIntento, intentos, ms }] }
 calcomania { id, perfilId, codigo, fecha }
 medio      { id, tipo:'imagen'|'audio', mime, blob (solo local), driveFileId?, subido }
@@ -366,12 +368,22 @@ Cada fase termina con un commit y con su lista de aceptación verificada en el n
   - **Progreso (`#/adulto/progreso`):** resumen (palabras leídas = dominadas en L4, en práctica, sesiones, última sesión); gráfico de barras de aciertos al primer intento de las últimas 8 semanas (lunes a domingo, hora local; semana sin sesiones = línea punteada) con resumen accesible; tabla palabra × L1–L5 (✓ dominada, `3/5` en práctica = aciertos sin ayuda / ensayos, `·` sin empezar) con filtro por estado; últimas 20 sesiones con duración, ensayos y aciertos sin ayuda. El estado general de cada palabra (Nueva, En práctica, Leída, Completa) también aparece en la lista de Vocabulario.
   - **Marcado manual:** «Ya la sabe» deja la palabra dominada en L1–L5 sin fecha de repaso (se repasa en la próxima sesión) y conserva su historial; «Empezar de nuevo» (con confirmación) borra su progreso y vuelve a ser nueva.
   - **Ajustes (`#/adulto/ajustes`):** ensayos por sesión (4–15), máximo de opciones (2–4), actividades que se usan (al menos una), mayúsculas, tamaño de letra, alto contraste (con vista previa), consignas y felicitaciones habladas, velocidad de la voz (con botón de prueba), vibración y celebración (normal, suave, ninguna). Se guardan en `perfil.ajustes` y rigen desde la sesión siguiente.
-  - **Se dejó para la fase 6 a propósito** (no tendrían ningún efecto hoy, serían botones muertos): elegir la etapa inicial, forzar o bloquear etapas (`etapasDesbloqueadas` ya lo soporta) y habilitar L6. La pantalla de progreso solo informa cuándo se abre la etapa de frases.
+  - **Se dejó para la fase 6 a propósito** (no tendrían ningún efecto hoy, serían botones muertos): elegir la etapa inicial, forzar o bloquear etapas (`etapasDesbloqueadas` ya lo soporta) y habilitar L6. *(Hecho en la fase 6.)*
   - **Copia de seguridad (`#/adulto/respaldo`):** un JSON con todos los niños y sus datos, **incluidas fotos y voces** en base64 (sin ellas restaurar dejaría palabras sin imagen ni sonido). Al restaurar no se borra nada: se suma lo que falta y, si un registro está en los dos lados, gana el más reciente (`updatedAt`); restaurar dos veces no cambia nada; un archivo dañado se rechaza **antes** de escribir. No viajan los registros borrados. El inicio de sesión con Google y la sincronización (fase 7) irán en una pantalla «Cuenta».
   - **Almacén más robusto:** si otra pestaña actualiza o borra la base, la conexión se cierra y `contexto.js` la reabre sola en la siguiente llamada (antes quedaba rota hasta recargar).
 
-### Fase 6 — Etapa 0, frases y libros (P1–P3, F1–F3, B1, L6)
+### Fase 6 — Etapa 0, frases y libros (P1–P3, F1–F3, B1, L6) ✔ hecha
 - **Acepta si:** la etapa 2 se desbloquea sola con 10 palabras dominadas en L4; F3 se resuelve solo con toques; un libro de 4 páginas creado por el adulto se lee con resaltado y audio.
+- **Decisiones de implementación (ya en el código):**
+  - **Etapa que se practica:** la elige el adulto (`perfil.etapaActual`, en Ajustes › Las etapas); el desbloqueo es automático (etapa 2 con 10 palabras dominadas en L4). Se puede **abrir ya** la etapa 2 o **bloquear** cualquiera (`ajustes.etapasForzadas/Bloqueadas`; si una está en las dos listas, se abre). Si la elegida está cerrada o no hay nada que practicar (p. ej. sin frases), se baja a la anterior (`etapaEfectiva` y el respaldo del controlador). La etapa 3 aún no existe (`ETAPAS_HECHAS = [0, 1, 2]`).
+  - **Etapa 0:** P1 «toca la imagen igual» (foto con foto/emoji), P2 «misma cosa» (foto con su dibujo: solo palabras con foto **y** símbolo —pictograma de apoyo o emoji—), P3 «¿cuál es…?» (clasificar por categoría; solo palabras de las 6 categorías con pregunta y distractores de otra categoría). Cada actividad puede declarar `aplicaA`, `esOpcionValida` y `reglas`; el motor las respeta.
+  - **Etapa 2 (frases):** una frase es un «elemento» del motor igual que una palabra (`frasesComoElementos`; el progreso usa su id). F1 igualar frase, F2 leer la frase y tocar su dibujo, **F3 «armo la frase»**: se tocan las palabras en orden, sin arrastrar; una ficha equivocada se atenúa (nunca rojo ni vibración), se ilumina la siguiente, y las atenuadas vuelven a poder usarse tras el próximo acierto. Con 3 y 4 opciones se suman 1 y 2 palabras de relleno tomadas de otras frases. La frase se dice palabra por palabra (con la voz grabada de cada una si existe).
+  - **Frase sin foto propia:** se muestra un collage con los dibujos de hasta 3 de sus palabras. Una frase solo se practica si todas sus palabras existen y hay algo que mostrar.
+  - **L6 «Leo en voz alta»:** solo con el interruptor de Ajustes, solo con palabras ya dominadas en L4, como máximo 2 por sesión y nunca primero ni último. El adulto toca ↻ «otra vez» o ✓ «lo leyó» en las esquinas de abajo; la app no evalúa la voz. No mueve el nivel de opciones.
+  - **Libros (B1):** el adulto arma libros de 1 a 10 páginas (frase + foto opcional; sin foto se usa la de la frase o el collage). El niño los ve desde un botón junto al ▶ (solo si hay alguno legible), elige uno en el estante y lo lee: tocar la foto o el altavoz lee la frase resaltando cada palabra, tocar una palabra la dice sola; ◀ ▶ con bloqueo de 400 ms. No se evalúa nada.
+  - **Editor de palabra:** la foto y el emoji ya son independientes (antes elegir un emoji borraba la foto); se puede guardar un pictograma de ARASAAC como «dibujo para emparejar» (`medioSimboloId`).
+  - **Adulto:** `#/adulto/frases` (elegir palabras en orden, foto opcional, editar, pausar, quitar) y `#/adulto/libros` (páginas con frase y foto, subir/bajar, quitar); progreso muestra «Otras actividades» (P1–P3, F1–F3, L6).
+  - **Pendiente para la fase 8:** etapa 3 (sílabas) y etapa 4.
 
 ### Fase 7 — Login con Google y sincronización con Drive
 - `auth.js`, `drive.js`, `sync.js` según el estándar MindSpark (alcance `drive.appdata`), indicador de estado (sincronizado / pendiente / sin conexión), subida y bajada de medios.

@@ -23,6 +23,16 @@ export function contarDominadas(progresos, actividad = ACTIVIDAD_CLAVE) {
   return ids.size;
 }
 
+/** Etapas cuyas actividades ya existen en la app (la 3 llega en la fase 8). */
+export const ETAPAS_HECHAS = Object.freeze([0, 1, 2]);
+
+export const NOMBRE_ETAPA = Object.freeze({
+  0: 'Etapa 0 · Ver y emparejar imágenes',
+  1: 'Etapa 1 · Palabras',
+  2: 'Etapa 2 · Frases',
+  3: 'Etapa 3 · Sílabas',
+});
+
 /**
  * Etapas disponibles para el niño. Las etapas 0 y 1 están siempre disponibles;
  * la 2 y la 3 se abren solas por umbral. El adulto puede forzar o bloquear cualquiera.
@@ -35,4 +45,22 @@ export function etapasDesbloqueadas({ progresos = [], forzadas = [], bloqueadas 
   for (const e of forzadas) etapas.add(e);
   for (const e of bloqueadas) etapas.delete(e);
   return [...etapas].sort((a, b) => a - b);
+}
+
+/** Cuántas palabras leídas faltan para abrir una etapa (0 si ya se alcanzó o no depende de eso). */
+export function palabrasQueFaltan(etapa, progresos) {
+  const umbral = etapa === 2 ? UMBRAL_ETAPA_2 : etapa === 3 ? UMBRAL_ETAPA_3 : 0;
+  return Math.max(0, umbral - contarDominadas(progresos));
+}
+
+/**
+ * Etapa que se practica hoy: la elegida por el adulto (`etapaActual`) si está abierta y hecha;
+ * si no, la más alta abierta y hecha que sea menor; y si tampoco, la 1.
+ */
+export function etapaEfectiva({ etapaActual = 1, desbloqueadas, hechas = ETAPAS_HECHAS }) {
+  const usables = desbloqueadas.filter((e) => hechas.includes(e));
+  if (usables.includes(etapaActual)) return etapaActual;
+  const menores = usables.filter((e) => e < etapaActual);
+  if (menores.length) return Math.max(...menores);
+  return usables.length ? Math.min(...usables) : 1;
 }

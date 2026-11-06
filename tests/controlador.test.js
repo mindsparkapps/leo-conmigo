@@ -78,9 +78,11 @@ test('sin ninguna palabra practicable: no hay ensayos y la sesión ya está term
   assert.equal(vacio.iniciar(0), null);
 });
 
-test('actividadesDeLaEtapa: la etapa 1 son L1–L5; las etapas aún sin actividades usan la 1', () => {
+test('actividadesDeLaEtapa: cada etapa con sus actividades; las que aún no existen usan la 1', () => {
+  assert.deepEqual(actividadesDeLaEtapa(0), ['P1', 'P2', 'P3']);
   assert.deepEqual(actividadesDeLaEtapa(1), ['L1', 'L2', 'L3', 'L4', 'L5']);
-  assert.deepEqual(actividadesDeLaEtapa(2), ['L1', 'L2', 'L3', 'L4', 'L5']);
+  assert.deepEqual(actividadesDeLaEtapa(2), ['F1', 'F2', 'F3']);
+  assert.deepEqual(actividadesDeLaEtapa(3), ['L1', 'L2', 'L3', 'L4', 'L5'], 'la etapa 3 llega en la fase 8');
   assert.deepEqual(actividadesDeLaEtapa(undefined), ['L1', 'L2', 'L3', 'L4', 'L5']);
 });
 

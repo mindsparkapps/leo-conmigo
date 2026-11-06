@@ -88,10 +88,34 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null } = {})
       { class: 'ayuda' },
       'Una palabra está «leída» cuando el niño la reconoce escrita y toca su dibujo sin ayuda (actividad L4). ',
       etapa2Abierta
-        ? 'Ya llegó a las 10 palabras leídas que abren la etapa de frases; esas actividades llegan en una próxima versión.'
+        ? 'Ya llegó a las 10 palabras leídas que abren la etapa de frases. Puedes elegirla en Ajustes › Las etapas.'
         : `Con ${UMBRAL_ETAPA_2} palabras leídas se abre la etapa de frases.`,
     ),
   );
+
+  // ---- etapas 0 y 2: cuántas cosas domina en cada actividad ----
+  const dominadasEn = (actividad) =>
+    new Set(progresos.filter((p) => !p.deleted && p.actividad === actividad && p.estado === 'dominada').map((p) => p.elementoId)).size;
+  const practicadasEn = (actividad) => new Set(progresos.filter((p) => !p.deleted && p.actividad === actividad).map((p) => p.elementoId)).size;
+  const otras = ['P1', 'P2', 'P3', 'F1', 'F2', 'F3', 'L6'].filter((id) => practicadasEn(id) > 0);
+  const panelOtras = otras.length
+    ? el(
+        'div',
+        { class: 'panel' },
+        el('h2', {}, 'Otras actividades'),
+        el(
+          'ul',
+          { class: 'lista-estado' },
+          otras.map((id) =>
+            el(
+              'li',
+              {},
+              el('span', {}, `${id} · ${ACTIVIDADES[id].nombre}`),
+              el('strong', {}, id === 'L6' ? `${practicadasEn(id)} leída${practicadasEn(id) === 1 ? '' : 's'} en voz alta` : `${dominadasEn(id)} de ${practicadasEn(id)} dominada${dominadasEn(id) === 1 ? '' : 's'}`),
+            )),
+        ),
+      )
+    : null;
 
   // ---- gráfico ----
   const semanas = precisionSemanal(sesiones);
@@ -261,5 +285,5 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null } = {})
       : el('p', { class: 'ayuda' }, 'Aún no hay sesiones.'),
   );
 
-  raiz.replaceChildren(cabecera('Progreso'), panelResumen, panelGrafico, panelPalabras, panelHistorial);
+  raiz.replaceChildren(cabecera('Progreso'), panelResumen, panelOtras, panelGrafico, panelPalabras, panelHistorial);
 }

@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Actividades L1–L5 (prueba visual)</title>
+  <title>Actividades (prueba visual)</title>
   <link rel="stylesheet" href="../../css/app.css">
 </head>
 <body>
   <!--
     Muestra una actividad con datos de ejemplo, usando el mismo render que la app.
-    Parámetros: ?a=L1..L5  &n=1..4 (opciones)  &largo (palabra larga)  &mayus  &grande  &ayuda (tras un error)  &acierto
-    Ej.: /tests/navegador/actividades.html?a=L4&n=3&ayuda
+    Parámetros: ?a=P1..P3, L1..L6, F1..F3  &n=1..4 (opciones)  &largo (palabra larga)  &mayus  &grande
+                &ayuda (tras un error)  &acierto (solo actividades de elegir)
+    Ej.: /tests/navegador/actividades.html?a=L4&n=3&ayuda   ·   ?a=F3&n=3&ayuda
   -->
   <div id="app"><main id="vista"></main></div>
   <script type="module">
@@ -33,18 +34,35 @@
       return c.toDataURL('image/png');
     }
     const objetivoTexto = q.has('largo') ? 'refrigerador' : 'perro';
-    const palabras = new Map([
-      [objetivoTexto, { id: objetivoTexto, texto: objetivoTexto, medioImagenId: 'm1' }],
-      ['gato', { id: 'gato', texto: 'gato', emoji: '🐱' }],
-      ['pan', { id: 'pan', texto: 'pan', medioImagenId: 'm2' }],
-      ['mamá', { id: 'mamá', texto: 'mamá', medioImagenId: 'm3' }],
+    const palabrasPorId = new Map([
+      [objetivoTexto, { id: objetivoTexto, texto: objetivoTexto, categoria: 'animales', medioImagenId: 'm1', emoji: '🐶' }],
+      ['gato', { id: 'gato', texto: 'gato', categoria: 'animales', emoji: '🐱' }],
+      ['pan', { id: 'pan', texto: 'pan', categoria: 'comida', medioImagenId: 'm2', emoji: '🍞' }],
+      ['mamá', { id: 'mamá', texto: 'mamá', categoria: 'personas', medioImagenId: 'm3', emoji: '👩' }],
+      ['come', { id: 'come', texto: 'come', categoria: 'otras', emoji: '😋' }],
     ]);
     const urls = new Map([['m1', foto('#2f7fa8', objetivoTexto[0].toUpperCase())], ['m2', foto('#c98b3c', 'P')], ['m3', foto('#8e44ad', 'M')]]);
 
-    const distractores = ['gato', 'pan', 'mamá'].slice(0, Math.max(0, n - 1));
+    // Frases para F1–F3 (se muestran con collage de los dibujos de sus palabras)
+    const frase = (fid, ids) => ({
+      id: fid, texto: ids.join(' '), esFrase: true, palabraIds: ids, partes: ids.map((p) => palabrasPorId.get(p)).filter((p) => p.medioImagenId || p.emoji).slice(0, 3),
+    });
+    const frases = new Map([
+      ['fr1', frase('fr1', [objetivoTexto, 'come', 'pan'])],
+      ['fr2', frase('fr2', ['gato', 'come', 'pan'])],
+      ['fr3', frase('fr3', ['mamá', 'come', 'pan'])],
+    ]);
+
+    const esFrases = id.startsWith('F');
+    const palabras = esFrases ? frases : palabrasPorId;
+    const elemento = esFrases ? 'fr1' : objetivoTexto;
+    // P3 («¿cuál es…?») usa distractores de otra categoría
+    const candidatos = esFrases ? ['fr2', 'fr3', 'fr2'] : id === 'P3' ? ['pan', 'mamá', 'come'] : ['gato', 'pan', 'mamá'];
+    const distractores = candidatos.slice(0, Math.max(0, n - 1));
     const ensayo = ACTIVIDADES[id].crearEnsayo({
-      ensayo: { elementoId: objetivoTexto, distractorIds: distractores, tipo: 'practica', esFacil: false },
+      ensayo: { elementoId: elemento, distractorIds: distractores, tipo: 'practica', esFacil: false },
       palabras,
+      palabrasPorId,
       aleatorio: () => 0.3,
     });
 
@@ -62,12 +80,19 @@
     });
     ajustarTextos(area);
     if (q.has('ayuda')) {
-      const mala = ensayo.cartas.find((c) => c.id !== ensayo.correctaId);
-      if (mala) manejador.atenuar(mala.id);
-      manejador.resaltar(ensayo.correctaId);
-      manejador.revelarAudio();
+      if (ensayo.modo === 'secuencia') { // se tocó una palabra que no tocaba: se atenúa y se ilumina la que sigue
+        const siguiente = ensayo.fichas.find((f) => f.palabraId === ensayo.orden[0]);
+        const otra = ensayo.fichas.find((f) => f.palabraId !== ensayo.orden[0]);
+        if (otra) manejador.atenuar(otra.id);
+        manejador.resaltar(siguiente.id);
+      } else if (ensayo.modo === 'simple') {
+        const mala = ensayo.cartas.find((c) => c.id !== ensayo.correctaId);
+        if (mala) manejador.atenuar(mala.id);
+        manejador.resaltar(ensayo.correctaId);
+        manejador.revelarAudio();
+      }
     }
-    if (q.has('acierto')) manejador.marcarAcierto(ensayo.correctaId, { celebrar: false });
+    if (q.has('acierto') && ensayo.modo === 'simple') manejador.marcarAcierto(ensayo.correctaId, { celebrar: false });
     window.__prueba = { ensayo, toques, manejador };
   </script>
 </body>

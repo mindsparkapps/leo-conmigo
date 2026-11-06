@@ -113,6 +113,8 @@ async function pintarNino(zona, estaVivo) {
       'div',
       { class: 'acciones' },
       el('a', { class: 'boton', href: '#/adulto/vocabulario' }, 'Vocabulario'),
+      el('a', { class: 'boton', href: '#/adulto/frases' }, 'Frases'),
+      el('a', { class: 'boton', href: '#/adulto/libros' }, 'Libros'),
       el('a', { class: 'boton', href: '#/adulto/progreso' }, 'Progreso'),
       el('a', { class: 'boton secundario', href: '#/adulto/ajustes' }, 'Ajustes'),
       el('a', { class: 'boton secundario', href: '#/adulto/perfiles' }, 'Perfiles'),

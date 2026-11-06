@@ -9,6 +9,9 @@ import { crearCarta } from '../ui/carta.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { ACTIVIDADES } from '../actividades/indice.js';
 import { AJUSTES_POR_DEFECTO, normalizarAjustes } from '../core/modelos.js';
+import {
+  ACTIVIDADES_POR_ETAPA, ETAPAS_HECHAS, NOMBRE_ETAPA, UMBRAL_ETAPA_2, etapasDesbloqueadas, palabrasQueFaltan,
+} from '../core/etapas.js';
 import { hablarTexto, desbloquearAudio } from '../audio.js';
 import { vibrar } from '../hardware.js';
 
@@ -38,6 +41,7 @@ async function pintar(raiz, estaVivo) {
     );
     return;
   }
+  const progresos = await store.listar('progresos', { perfilId: perfil.id });
   if (!estaVivo()) return;
   const a = normalizarAjustes(perfil.ajustes);
 
@@ -52,10 +56,12 @@ async function pintar(raiz, estaVivo) {
     [[2, '2 (lo más fácil)'], [3, '3'], [4, '4 (lo más difícil)']].map(([v, t]) => el('option', { value: String(v), selected: v === a.maxOpciones }, t)),
   );
 
-  const actividades = Object.values(ACTIVIDADES).map((act) => {
+  // Las actividades de cada etapa (L6 no va aquí: se activa aparte, con su interruptor)
+  const actividades = ETAPAS_HECHAS.flatMap((etapa) => ACTIVIDADES_POR_ETAPA[etapa].filter((id) => ACTIVIDADES[id]).map((id) => {
+    const act = ACTIVIDADES[id];
     const casilla = el('input', { type: 'checkbox', checked: !a.actividadesHabilitadas || a.actividadesHabilitadas.includes(act.id) });
-    return { id: act.id, casilla, elemento: el('label', { class: 'item-catalogo' }, casilla, el('span', {}, `${act.id} · ${act.nombre}`)) };
-  });
+    return { id: act.id, etapa, casilla, elemento: el('label', { class: 'item-catalogo' }, casilla, el('span', {}, `${act.id} · ${act.nombre}`)) };
+  }));
   const errorActividades = el('p', { class: 'error-texto', role: 'alert', hidden: true });
 
   const panelSesion = el(
@@ -65,9 +71,49 @@ async function pintar(raiz, estaVivo) {
     campo('Ensayos por sesión', el('div', { class: 'fila' }, ensayos, ensayosValor), 'De 4 a 15. Sesiones cortas funcionan mejor.'),
     campo('Máximo de opciones', maxOpciones, 'Cuántas opciones puede ver como mucho. Empieza con 2 y sube solo según cómo le va.'),
     el('p', { class: 'campo-etiqueta' }, 'Actividades que se usan'),
-    el('div', { class: 'catalogo-items' }, actividades.map((x) => x.elemento)),
+    ETAPAS_HECHAS.map((etapa) =>
+      el(
+        'div',
+        { class: 'grupo-catalogo' },
+        el('h3', {}, NOMBRE_ETAPA[etapa]),
+        el('div', { class: 'catalogo-items' }, actividades.filter((x) => x.etapa === etapa).map((x) => x.elemento)),
+      )),
     el('p', { class: 'ayuda' }, 'Si apagas L4, las palabras no llegarán a contar como «leídas».'),
     errorActividades,
+  );
+
+  // ---------- Etapas ----------
+  const abiertas = etapasDesbloqueadas({ progresos, forzadas: a.etapasForzadas, bloqueadas: a.etapasBloqueadas });
+  const selEtapaActual = el(
+    'select',
+    {},
+    ETAPAS_HECHAS.map((e) => el('option', { value: String(e), selected: e === (perfil.etapaActual ?? 1) }, NOMBRE_ETAPA[e])),
+  );
+  const modosEtapa = ETAPAS_HECHAS.map((etapa) => {
+    const valorInicial = a.etapasForzadas.includes(etapa) ? 'abrir' : a.etapasBloqueadas.includes(etapa) ? 'bloquear' : 'auto';
+    const opciones = [
+      ['auto', etapa === 2 ? `Automática (se abre con ${UMBRAL_ETAPA_2} palabras leídas)` : 'Siempre disponible'],
+      ...(etapa === 2 ? [['abrir', 'Abrir ahora']] : []),
+      ['bloquear', 'Bloquear'],
+    ];
+    const seleccion = el('select', {}, opciones.map(([v, t]) => el('option', { value: v, selected: v === valorInicial }, t)));
+    const falta = palabrasQueFaltan(etapa, progresos);
+    const situacion = abiertas.includes(etapa) ? 'Abierta ahora.' : falta > 0 ? `Cerrada: faltan ${falta} palabra${falta === 1 ? '' : 's'} leída${falta === 1 ? '' : 's'}.` : 'Cerrada.';
+    return { etapa, seleccion, elemento: campo(NOMBRE_ETAPA[etapa], seleccion, situacion) };
+  });
+  const lecturaVozAlta = interruptor(
+    'Leo en voz alta (L6)',
+    a.habilitarL6,
+    'Con palabras que ya lee, hasta 2 por sesión. Él lee en voz alta y tú tocas ✓ («lo leyó») o ↻ («otra vez») en las esquinas de abajo. La app no evalúa su voz.',
+  );
+  const panelEtapas = el(
+    'div',
+    { class: 'panel' },
+    el('h2', {}, 'Las etapas'),
+    el('p', { class: 'ayuda' }, 'La etapa 2 (frases) se abre sola cuando lee 10 palabras. Tú eliges cuál practica hoy, y puedes abrir o bloquear etapas.'),
+    campo('Etapa que practica', selEtapaActual, 'Si esa etapa está cerrada o no tiene nada que practicar, se usa la anterior.'),
+    modosEtapa.map((m) => m.elemento),
+    lecturaVozAlta.elemento,
   );
 
   // ---------- Pantalla ----------
@@ -146,6 +192,9 @@ async function pintar(raiz, estaVivo) {
       ensayosPorSesion: Number(ensayos.value),
       maxOpciones: Number(maxOpciones.value),
       actividadesHabilitadas: marcadas.length === actividades.length ? null : marcadas,
+      etapasForzadas: modosEtapa.filter((m) => m.seleccion.value === 'abrir').map((m) => m.etapa),
+      etapasBloqueadas: modosEtapa.filter((m) => m.seleccion.value === 'bloquear').map((m) => m.etapa),
+      habilitarL6: lecturaVozAlta.casilla.checked,
       mayusculas: mayusculas.casilla.checked,
       tamanoLetra: tamano.value,
       altoContraste: contraste.casilla.checked,
@@ -168,7 +217,7 @@ async function pintar(raiz, estaVivo) {
     }
     guardar.disabled = true;
     try {
-      await store.guardar('perfiles', { ...perfil, ajustes: leer() });
+      await store.guardar('perfiles', { ...perfil, etapaActual: Number(selEtapaActual.value), ajustes: leer() });
       estado.textContent = 'Guardado. Se usará desde la próxima sesión.';
     } catch (e) {
       console.error(e);
@@ -185,6 +234,9 @@ async function pintar(raiz, estaVivo) {
     ensayos.value = String(d.ensayosPorSesion); ensayos.dispatchEvent(new Event('input'));
     maxOpciones.value = String(d.maxOpciones);
     for (const x of actividades) x.casilla.checked = true;
+    selEtapaActual.value = '1';
+    for (const m of modosEtapa) m.seleccion.value = 'auto';
+    lecturaVozAlta.casilla.checked = d.habilitarL6;
     mayusculas.casilla.checked = d.mayusculas;
     tamano.value = d.tamanoLetra;
     contraste.casilla.checked = d.altoContraste;
@@ -199,6 +251,7 @@ async function pintar(raiz, estaVivo) {
   raiz.replaceChildren(
     cabecera('Ajustes'),
     el('p', { class: 'ayuda' }, `Ajustes de ${perfil.nombre}. Cambian desde la próxima sesión.`),
+    panelEtapas,
     panelSesion,
     panelPantalla,
     panelSonido,

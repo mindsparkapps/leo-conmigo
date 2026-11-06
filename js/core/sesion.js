@@ -134,9 +134,15 @@ function ordenarSesion(candidatos, aleatorio) {
 
 // ---------- Análisis del vocabulario ----------
 
-function analizar({ perfilId, elementos, actividades, mapaProgresos }) {
-  return elementos.map((elemento) => {
-    const progresos = actividades.map((a) => mapaProgresos.get(idProgreso(perfilId, elemento.id, a)));
+/**
+ * Cada elemento recorre solo las actividades que le corresponden (`puedeHacer`): por ejemplo
+ * «misma cosa» exige una foto y un símbolo. Los que no pueden hacer ninguna se descartan.
+ */
+function analizar({ perfilId, elementos, actividades, mapaProgresos, puedeHacer }) {
+  const analizados = elementos.map((elemento) => {
+    const lista = actividades.filter((a) => puedeHacer(elemento, a));
+    if (!lista.length) return null;
+    const progresos = lista.map((a) => mapaProgresos.get(idProgreso(perfilId, elemento.id, a)));
     const indiceActual = progresos.findIndex((p) => p?.estado !== ESTADOS.DOMINADA);
     const vista = progresos.some((p) => p && (p.historial.length > 0 || p.estado === ESTADOS.DOMINADA));
     const ultima = Math.max(
@@ -146,8 +152,9 @@ function analizar({ perfilId, elementos, actividades, mapaProgresos }) {
     let categoria = 'practica';
     if (indiceActual === -1) categoria = 'completa';
     else if (indiceActual === 0 && !vista) categoria = 'nueva';
-    return { elemento, progresos, indiceActual, vista, ultima, categoria };
+    return { elemento, actividades: lista, progresos, indiceActual, vista, ultima, categoria };
   });
+  return analizados.filter(Boolean);
 }
 
 /**
@@ -182,21 +189,28 @@ function tomarRepasos(vencidos, resto, n) {
  * @param actividades   actividades de la etapa, de la más sencilla a la más difícil (['L1', ..., 'L5'])
  * @param hoy           Date o texto de fecha
  * @param aleatorio     función de azar (inyectable para pruebas)
+ * @param puedeHacer    (elemento, actividad) => ¿le corresponde esa actividad? (por defecto, todas)
+ * @param puedeSerOpcion (elemento, actividad) => ¿puede aparecer como opción en esa actividad?
+ * @param reglasDe      (actividad) => { soloOtraCategoria } reglas extra para elegir distractores
  */
-export function crearSesion({ perfil, elementos, progresos = [], niveles = [], actividades, hoy = new Date(), aleatorio = Math.random }) {
+export function crearSesion({
+  perfil, elementos, progresos = [], niveles = [], actividades, hoy = new Date(), aleatorio = Math.random,
+  puedeHacer = () => true, puedeSerOpcion = () => true, reglasDe = () => ({}),
+}) {
   const ajustes = normalizarAjustes(perfil.ajustes);
   const total = ajustes.ensayosPorSesion;
   const dia = claveDia(hoy);
-  const secuenciaActividades = actividades.filter(
-    (a) => !ajustes.actividadesHabilitadas || ajustes.actividadesHabilitadas.includes(a),
-  );
+  // Las actividades que el adulto apagó se saltan; si apagó todas las de esta etapa, se usan todas
+  // (los ajustes valen para varias etapas y no deben dejar una etapa sin nada que hacer).
+  const habilitadas = actividades.filter((a) => !ajustes.actividadesHabilitadas || ajustes.actividadesHabilitadas.includes(a));
+  const secuenciaActividades = habilitadas.length ? habilitadas : [...actividades];
 
   const activos = elementos
     .filter((e) => e.activa !== false && !e.deleted)
     .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
   const mapaProgresos = new Map(progresos.map((p) => [p.id, p]));
   const mapaNiveles = new Map(niveles.map((n) => [n.id, n]));
-  const infos = analizar({ perfilId: perfil.id, elementos: activos, actividades: secuenciaActividades, mapaProgresos });
+  const infos = analizar({ perfilId: perfil.id, elementos: activos, actividades: secuenciaActividades, mapaProgresos, puedeHacer });
 
   const sesionVacia = { perfilId: perfil.id, fecha: dia, ensayos: [], reservaFacil: [], resumen: { repasos: 0, nuevas: 0, practica: 0 } };
   if (!infos.length || !secuenciaActividades.length) return sesionVacia;
@@ -214,7 +228,7 @@ export function crearSesion({ perfil, elementos, progresos = [], niveles = [], a
   const pares = [];
   for (const info of infos) {
     info.progresos.forEach((progreso, i) => {
-      if (progreso?.estado === ESTADOS.DOMINADA) pares.push({ info, actividad: secuenciaActividades[i], progreso });
+      if (progreso?.estado === ESTADOS.DOMINADA) pares.push({ info, actividad: info.actividades[i], progreso });
     });
   }
   const vencidos = pares
@@ -260,7 +274,7 @@ export function crearSesion({ perfil, elementos, progresos = [], niveles = [], a
       candidatos.push({
         ensayo: {
           elementoId: info.elemento.id,
-          actividad: secuenciaActividades[info.indiceActual],
+          actividad: info.actividades[info.indiceActual],
           tipo: info.categoria === 'nueva' ? 'nueva' : 'practica',
         },
         puntaje: info.categoria === 'nueva' ? -1 : tasaAciertoHistorial(progreso?.historial ?? []),
@@ -292,12 +306,11 @@ export function crearSesion({ perfil, elementos, progresos = [], niveles = [], a
     const nivel = mapaNiveles.get(idNivel(perfil.id, ensayo.actividad));
     const deseadas = opcionesForzadas ?? (ensayo.esFacil ? OPCIONES_MIN : opcionesEfectivas(nivel, ajustes.maxOpciones));
     const facil = ensayo.esFacil || deseadas <= OPCIONES_MIN || esNivelFacil(nivel);
-    const distractores = elegirDistractores(porId.get(ensayo.elementoId), activos, {
-      cantidad: deseadas - 1,
-      facil,
-      vistas,
-      aleatorio,
-    });
+    const distractores = elegirDistractores(
+      porId.get(ensayo.elementoId),
+      activos.filter((p) => puedeSerOpcion(p, ensayo.actividad)),
+      { cantidad: deseadas - 1, facil, vistas, aleatorio, ...reglasDe(ensayo.actividad) },
+    );
     ensayo.distractorIds = distractores.map((d) => d.id);
     ensayo.opciones = 1 + ensayo.distractorIds.length;
     vistas.add(ensayo.elementoId); // desde este ensayo el niño ya vio la palabra
@@ -309,10 +322,10 @@ export function crearSesion({ perfil, elementos, progresos = [], niveles = [], a
   const reservaFacil = infos
     .map((info) => {
       const iDominada = info.progresos.findIndex((p) => p?.estado === ESTADOS.DOMINADA);
-      if (iDominada !== -1) return { info, actividad: secuenciaActividades[iDominada], puntaje: 10 + aleatorio() };
+      if (iDominada !== -1) return { info, actividad: info.actividades[iDominada], puntaje: 10 + aleatorio() };
       const progreso = info.progresos[info.indiceActual];
       if (info.categoria === 'practica' && progreso?.historial.length) {
-        return { info, actividad: secuenciaActividades[info.indiceActual], puntaje: tasaAciertoHistorial(progreso.historial) };
+        return { info, actividad: info.actividades[info.indiceActual], puntaje: tasaAciertoHistorial(progreso.historial) };
       }
       return null;
     })
@@ -341,9 +354,14 @@ export function ensayoActual(estado) {
   return estado.cierre ?? estado.plan.ensayos[estado.indice] ?? null;
 }
 
+/** Errores seguidos al final. «Leo en voz alta» (L6) lo decide el adulto y no cuenta para el cansancio. */
 function erroresSeguidos(resultados) {
   let n = 0;
-  for (let i = resultados.length - 1; i >= 0 && !resultados[i].correctoAlPrimerIntento; i--) n += 1;
+  for (let i = resultados.length - 1; i >= 0; i--) {
+    if (resultados[i].tipo === 'lectura') continue;
+    if (resultados[i].correctoAlPrimerIntento) break;
+    n += 1;
+  }
   return n;
 }
 

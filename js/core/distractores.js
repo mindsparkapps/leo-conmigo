@@ -20,20 +20,23 @@ const normalizar = (texto) => texto.normalize('NFD').replace(/\p{Diacritic}/gu, 
  * @param opciones   { cantidad, facil, vistas (Set de ids ya vistos), aleatorio }
  * @returns lista de palabras (como máximo `cantidad`)
  */
-export function elegirDistractores(objetivo, vocabulario, { cantidad, facil = false, vistas, aleatorio = Math.random }) {
+export function elegirDistractores(objetivo, vocabulario, { cantidad, facil = false, vistas, aleatorio = Math.random, soloOtraCategoria = false }) {
   if (!(vistas instanceof Set)) {
     throw new TypeError('`vistas` debe ser un Set con los ids de las palabras que el niño ya vio');
   }
   if (!(cantidad > 0)) return [];
 
   const textoObjetivo = normalizar(objetivo.texto);
+  // `soloOtraCategoria` (actividad «clasificar»): ningún distractor puede ser de la misma categoría
+  // que la correcta, porque entonces habría dos respuestas válidas.
   const candidatas = vocabulario.filter(
     (p) =>
       p.id !== objetivo.id &&
       p.activa !== false &&
       !p.deleted &&
       vistas.has(p.id) &&
-      normalizar(p.texto) !== textoObjetivo,
+      normalizar(p.texto) !== textoObjetivo &&
+      !(soloOtraCategoria && p.categoria === objetivo.categoria),
   );
 
   const otraLetra = (p) => normalizar(p.texto)[0] !== textoObjetivo[0];

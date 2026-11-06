@@ -65,9 +65,13 @@ export function desbloquearAudio() {
 }
 
 let reproductor = null;
+// Sube cada vez que algo de afuera pide un sonido nuevo o corta el actual: así una frase en curso
+// (que dice palabra por palabra) se da cuenta y deja de seguir. Lo que hace la propia frase por
+// dentro no lo sube (usa las versiones "internas").
+let generacion = 0;
 
-/** Corta lo que esté sonando (grabación o voz sintética). */
-export function detener() {
+/** Corta el sonido que esté sonando, sin tocar la frase en curso (uso interno). */
+function pararSonido() {
   if (reproductor) {
     reproductor.pause();
     reproductor = null;
@@ -75,11 +79,16 @@ export function detener() {
   if (hayVozSintetica()) speechSynthesis.cancel();
 }
 
-/** Dice un texto con la voz sintética. Devuelve false si no hay voz o falló. */
-export async function hablarTexto(texto, { velocidad = 1 } = {}) {
+/** Corta lo que esté sonando (grabación, voz sintética o una frase a medias). */
+export function detener() {
+  generacion += 1;
+  pararSonido();
+}
+
+async function hablarTextoInterno(texto, { velocidad = 1 } = {}) {
   if (!hayVozSintetica() || !String(texto ?? '').trim()) return false;
   const voz = elegirVoz(await cargarVoces());
-  detener();
+  pararSonido();
   return new Promise((resolver) => {
     const u = new SpeechSynthesisUtterance(texto);
     u.lang = voz?.lang ?? 'es-CL';
@@ -92,9 +101,14 @@ export async function hablarTexto(texto, { velocidad = 1 } = {}) {
   });
 }
 
-/** Reproduce una grabación. Devuelve false si el navegador no la deja sonar. */
-export async function reproducirBlob(blob, { velocidad = 1 } = {}) {
-  detener();
+/** Dice un texto con la voz sintética. Devuelve false si no hay voz o falló. */
+export function hablarTexto(texto, opciones = {}) {
+  generacion += 1;
+  return hablarTextoInterno(texto, opciones);
+}
+
+async function reproducirBlobInterno(blob, { velocidad = 1 } = {}) {
+  pararSonido();
   const url = URL.createObjectURL(blob);
   const audio = new Audio(url);
   audio.playbackRate = velocidad;
@@ -117,14 +131,45 @@ export async function reproducirBlob(blob, { velocidad = 1 } = {}) {
   });
 }
 
+/** Reproduce una grabación. Devuelve false si el navegador no la deja sonar. */
+export function reproducirBlob(blob, opciones = {}) {
+  generacion += 1;
+  return reproducirBlobInterno(blob, opciones);
+}
+
+async function decirPalabraInterno(palabra, { obtenerMedio, velocidad = 1 } = {}) {
+  if (palabra.medioAudioId && obtenerMedio) {
+    const medio = await obtenerMedio(palabra.medioAudioId);
+    if (medio?.blob && (await reproducirBlobInterno(medio.blob, { velocidad }))) return true;
+  }
+  return hablarTextoInterno(palabra.texto, { velocidad });
+}
+
 /**
  * Dice una palabra: con la grabación del adulto si la tiene; si no, con voz sintética.
  * `obtenerMedio(id)` devuelve el registro de medio (con su blob).
  */
-export async function decirPalabra(palabra, { obtenerMedio, velocidad = 1 } = {}) {
-  if (palabra.medioAudioId && obtenerMedio) {
-    const medio = await obtenerMedio(palabra.medioAudioId);
-    if (medio?.blob && (await reproducirBlob(medio.blob, { velocidad }))) return true;
+export function decirPalabra(palabra, opciones = {}) {
+  generacion += 1;
+  return decirPalabraInterno(palabra, opciones);
+}
+
+/**
+ * Dice una frase palabra por palabra (con la voz grabada de cada una si existe). `alPalabra(i)` avisa
+ * qué palabra suena, para resaltarla; al terminar o al cortarse avisa `alPalabra(-1)`.
+ * Si algo corta el sonido (`detener`) en medio, deja de seguir. Devuelve true si la dijo entera.
+ */
+export async function decirFrase(palabras, { obtenerMedio, velocidad = 1, alPalabra = () => {}, pausaMs = 120 } = {}) {
+  detener();
+  const mia = generacion;
+  let completa = true;
+  for (let i = 0; i < palabras.length; i++) {
+    if (mia !== generacion) { completa = false; break; }
+    alPalabra(i);
+    await decirPalabraInterno(palabras[i], { obtenerMedio, velocidad });
+    if (mia !== generacion) { completa = false; break; } // alguien pidió otro sonido mientras sonaba esta palabra
+    await new Promise((r) => setTimeout(r, pausaMs));
   }
-  return hablarTexto(palabra.texto, { velocidad });
+  alPalabra(-1);
+  return completa;
 }

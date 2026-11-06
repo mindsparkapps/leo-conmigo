@@ -19,11 +19,12 @@ const ESPERADO = {
   L5: { modelo: 'audio', cartas: 'palabra', audioInicial: true, consigna: 'Escucha y toca la palabra' },
 };
 
-test('hay cinco actividades (L1 a L5) con la interfaz común', () => {
-  assert.deepEqual(Object.keys(ACTIVIDADES), ['L1', 'L2', 'L3', 'L4', 'L5']);
+test('hay doce actividades (P1–P3, L1–L6, F1–F3) con la interfaz común', () => {
+  assert.deepEqual(Object.keys(ACTIVIDADES).sort(), ['F1', 'F2', 'F3', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'P1', 'P2', 'P3']);
+  const etapaDe = { P: 0, L: 1, F: 2 };
   for (const [id, act] of Object.entries(ACTIVIDADES)) {
     assert.equal(act.id, id);
-    assert.equal(act.etapa, 1);
+    assert.equal(act.etapa, etapaDe[id[0]], `${id}: etapa`);
     assert.equal(typeof act.nombre, 'string');
     assert.equal(typeof act.consigna, 'string');
     assert.equal(typeof act.crearEnsayo, 'function');
@@ -51,8 +52,8 @@ for (const [id, esperado] of Object.entries(ESPERADO)) {
   });
 }
 
-test('L4 es la única donde la palabra se lee sin audio al comienzo', () => {
-  assert.deepEqual(Object.values(ACTIVIDADES).filter((a) => !crear(a.id).audioInicial).map((a) => a.id), ['L4']);
+test('entre L1 y L5, L4 es la única donde la palabra se lee sin audio al comienzo', () => {
+  assert.deepEqual(['L1', 'L2', 'L3', 'L4', 'L5'].filter((id) => !crear(id).audioInicial), ['L4']);
 });
 
 test('el ensayo conserva lo que viene del plan (tipo, facilidad) y es serializable', () => {

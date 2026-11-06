@@ -37,22 +37,27 @@ export function mezclarCartas(cartas, correctaId, aleatorio = Math.random, ultim
 
 /** Arma un ensayo visual a partir de un ensayo del plan de sesión. Sin DOM: se puede probar en Node. */
 export function armarEnsayo({
-  actividad, ensayo, palabras, formaModelo, formaCarta, audioInicial, consigna,
-  aleatorio = Math.random, ultimasPosiciones = [],
+  actividad, ensayo, palabras, formaModelo, formaCarta, fuenteCarta = null, audioInicial, consigna,
+  consignaSiempre = false, dicho = null, aleatorio = Math.random, ultimasPosiciones = [],
 }) {
   const ids = [ensayo.elementoId, ...ensayo.distractorIds];
   for (const id of ids) {
     if (!palabras.has(id)) throw new Error(`Palabra desconocida en el ensayo: ${id}`);
   }
-  const cartas = mezclarCartas(ids.map((id) => ({ id, forma: formaCarta })), ensayo.elementoId, aleatorio, ultimasPosiciones);
+  const fuente = fuenteCarta ? { fuente: fuenteCarta } : {};
+  const cartas = mezclarCartas(ids.map((id) => ({ id, forma: formaCarta, ...fuente })), ensayo.elementoId, aleatorio, ultimasPosiciones);
   return {
+    modo: 'simple',
     actividad,
     elementoId: ensayo.elementoId,
     tipo: ensayo.tipo,
     esFacil: ensayo.esFacil,
     consigna,
+    consignaSiempre, // true: la consigna cambia en cada ensayo (p. ej. la pregunta de «clasificar»)
+    dicho, // texto que se dice al tocar el modelo; si es null, se dice la palabra o la frase
     modelo: { forma: formaModelo, palabraId: ensayo.elementoId },
     cartas,
+    opciones: cartas.length,
     correctaId: ensayo.elementoId,
     audioInicial,
     posicionCorrecta: cartas.findIndex((c) => c.id === ensayo.elementoId),
@@ -66,7 +71,12 @@ export function armarEnsayo({
  */
 export function renderEnsayo(contenedor, ensayo, ctx) {
   const { palabras, urls, alToque, alToqueModelo } = ctx;
-  const urlDe = (p) => (p.medioImagenId ? urls.get(p.medioImagenId) ?? null : null);
+  // `fuente`: 'principal' (su foto o pictograma) o 'simbolo' (el pictograma guardado al lado de la foto)
+  const urlDe = (p, fuente = 'principal') => {
+    const id = fuente === 'simbolo' ? p.medioSimboloId : p.medioImagenId;
+    return id ? urls.get(id) ?? null : null;
+  };
+  const partesDe = (p) => (p.partes ?? []).map((parte) => ({ palabra: parte, url: urlDe(parte) }));
   const objetivo = palabras.get(ensayo.modelo.palabraId);
 
   let audioDisponible = ensayo.audioInicial;
@@ -76,7 +86,7 @@ export function renderEnsayo(contenedor, ensayo, ctx) {
     modelo = crearBotonAudio({ grande: true, alToque: alToqueModelo });
     audioDisponible = true;
   } else {
-    modelo = crearCarta({ forma: ensayo.modelo.forma, palabra: objetivo, url: urlDe(objetivo), grande: true, interactiva: false });
+    modelo = crearCarta({ forma: ensayo.modelo.forma, palabra: objetivo, url: urlDe(objetivo), partes: partesDe(objetivo), grande: true, interactiva: false });
     modelo.addEventListener('click', (e) => {
       if (audioDisponible && !esSegundoDedo(e)) alToqueModelo(); // tocar lo que se ve permite escucharlo
     });
@@ -89,13 +99,18 @@ export function renderEnsayo(contenedor, ensayo, ctx) {
   const elementos = new Map();
   const zonaOpciones = el('div', {
     class: 'zona-opciones',
-    'data-forma': ensayo.cartas[0].forma,
+    'data-forma': ensayo.cartas[0]?.forma ?? '',
     'data-n': String(ensayo.cartas.length),
     style: `--n:${ensayo.cartas.length}`,
   });
   for (const carta of ensayo.cartas) {
     const palabra = palabras.get(carta.id);
-    const elemento = crearCarta({ forma: carta.forma, palabra, url: urlDe(palabra) });
+    const elemento = crearCarta({
+      forma: carta.forma,
+      palabra,
+      url: urlDe(palabra, carta.fuente),
+      partes: carta.fuente === 'simbolo' ? [] : partesDe(palabra),
+    });
     elemento.addEventListener('click', (e) => {
       if (esSegundoDedo(e)) return;
       alToque(carta.id);

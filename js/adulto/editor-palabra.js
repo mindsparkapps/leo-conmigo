@@ -115,11 +115,10 @@ async function iniciar(raiz, id, ir, limpiezas, estaVivo) {
   );
 
   // ================= Imagen =================
-  let seleccion = palabra?.medioImagenId
-    ? { tipo: 'mantener' }
-    : palabra?.emoji
-      ? { tipo: 'emoji', emoji: palabra.emoji }
-      : { tipo: 'ninguna' };
+  // La imagen principal (foto o pictograma) y el emoji son independientes: una palabra puede tener
+  // una foto Y un emoji. El emoji se muestra cuando no hay foto, y sirve de «dibujo» para emparejar (P2).
+  let seleccion = palabra?.medioImagenId ? { tipo: 'mantener' } : { tipo: 'ninguna' };
+  let emojiElegido = palabra?.emoji ?? null;
   let urlNueva = null;
   const soltarUrlNueva = () => {
     if (urlNueva) URL.revokeObjectURL(urlNueva);
@@ -127,19 +126,30 @@ async function iniciar(raiz, id, ir, limpiezas, estaVivo) {
   };
   limpiezas.push(soltarUrlNueva);
 
+  // El pictograma «de apoyo» (medioSimboloId) va al lado de la foto para la actividad «misma cosa» (P2)
+  let simbolo = palabra?.medioSimboloId ? { tipo: 'mantener' } : { tipo: 'ninguna' };
+  let urlSimboloNuevo = null;
+  const soltarUrlSimbolo = () => {
+    if (urlSimboloNuevo) URL.revokeObjectURL(urlSimboloNuevo);
+    urlSimboloNuevo = null;
+  };
+  limpiezas.push(soltarUrlSimbolo);
+
   const vistaImagen = crearMiniatura({}, { grande: true });
   const descripcionImagen = el('p', { class: 'ayuda', role: 'status' });
   async function actualizarVistaImagen() {
     const texto = entradaTexto.value;
+    const emoji = emojiElegido;
+    const sufijoEmoji = emoji ? ` Emoji: ${emoji}.` : '';
     if (seleccion.tipo === 'mantener') {
-      pintarMiniatura(vistaImagen, { url: await urlDeMedio(store, palabra.medioImagenId), texto });
-      descripcionImagen.textContent = palabra.arasaacId ? 'Imagen actual: pictograma de ARASAAC.' : 'Imagen actual: foto.';
+      pintarMiniatura(vistaImagen, { url: await urlDeMedio(store, palabra.medioImagenId), emoji, texto });
+      descripcionImagen.textContent = (palabra.arasaacId ? 'Imagen actual: pictograma de ARASAAC.' : 'Imagen actual: foto.') + sufijoEmoji;
     } else if (seleccion.tipo === 'nueva') {
-      pintarMiniatura(vistaImagen, { url: urlNueva, texto });
-      descripcionImagen.textContent = seleccion.origen === 'arasaac' ? 'Imagen elegida: pictograma de ARASAAC.' : 'Imagen elegida: foto.';
-    } else if (seleccion.tipo === 'emoji') {
-      pintarMiniatura(vistaImagen, { emoji: seleccion.emoji, texto });
-      descripcionImagen.textContent = 'Imagen elegida: emoji.';
+      pintarMiniatura(vistaImagen, { url: urlNueva, emoji, texto });
+      descripcionImagen.textContent = (seleccion.origen === 'arasaac' ? 'Imagen elegida: pictograma de ARASAAC.' : 'Imagen elegida: foto.') + sufijoEmoji;
+    } else if (emoji) {
+      pintarMiniatura(vistaImagen, { emoji, texto });
+      descripcionImagen.textContent = 'Solo emoji. Una foto real se aprende mucho más fácil.';
     } else {
       pintarMiniatura(vistaImagen, { texto });
       descripcionImagen.textContent = 'Sin imagen. Una palabra con foto real se aprende mucho más fácil.';
@@ -150,6 +160,37 @@ async function iniciar(raiz, id, ir, limpiezas, estaVivo) {
     urlNueva = URL.createObjectURL(blob);
     seleccion = { tipo: 'nueva', blob, mime, origen, arasaacId };
     actualizarVistaImagen();
+  }
+
+  const vistaSimbolo = crearMiniatura({}, { grande: false });
+  const descripcionSimbolo = el('p', { class: 'ayuda', role: 'status' });
+  const botonQuitarSimbolo = el('button', {
+    type: 'button',
+    class: 'boton secundario chico',
+    onclick: () => {
+      soltarUrlSimbolo();
+      simbolo = { tipo: 'ninguna' };
+      actualizarVistaSimbolo();
+    },
+  }, 'Quitar el dibujo');
+  async function actualizarVistaSimbolo() {
+    const texto = entradaTexto.value;
+    let url = null;
+    if (simbolo.tipo === 'mantener') url = await urlDeMedio(store, palabra.medioSimboloId);
+    else if (simbolo.tipo === 'nueva') url = urlSimboloNuevo;
+    pintarMiniatura(vistaSimbolo, url ? { url, texto } : { emoji: emojiElegido, texto });
+    botonQuitarSimbolo.hidden = simbolo.tipo === 'ninguna';
+    descripcionSimbolo.textContent = url
+      ? 'Dibujo para «misma cosa»: pictograma de ARASAAC.'
+      : emojiElegido
+        ? 'Para «misma cosa» se usará el emoji. Puedes elegir un pictograma en su lugar.'
+        : 'Sin dibujo: la actividad «misma cosa» no usará esta palabra.';
+  }
+  function elegirSimboloNuevo({ blob, mime, arasaacId = null }) {
+    soltarUrlSimbolo();
+    urlSimboloNuevo = URL.createObjectURL(blob);
+    simbolo = { tipo: 'nueva', blob, mime, arasaacId };
+    actualizarVistaSimbolo();
   }
 
   // --- pestaña Foto ---
@@ -197,7 +238,8 @@ async function iniciar(raiz, id, ir, limpiezas, estaVivo) {
       estadoBusqueda.textContent = 'Descargando el pictograma…';
       try {
         const d = await descargarPictograma(resultado.id);
-        elegirImagenNueva({ blob: d.blob, mime: d.mime, origen: 'arasaac', arasaacId: d.arasaacId });
+        if (selDestinoPicto.value === 'simbolo') elegirSimboloNuevo({ blob: d.blob, mime: d.mime, arasaacId: d.arasaacId });
+        else elegirImagenNueva({ blob: d.blob, mime: d.mime, origen: 'arasaac', arasaacId: d.arasaacId });
         cuadricula.querySelectorAll('.picto').forEach((b) => b.setAttribute('aria-pressed', 'false'));
         boton.setAttribute('aria-pressed', 'true');
         estadoBusqueda.textContent = 'Pictograma elegido. Ya queda guardado para usarlo sin conexión.';
@@ -236,9 +278,17 @@ async function iniciar(raiz, id, ir, limpiezas, estaVivo) {
   entradaBusqueda.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); buscar(); }
   });
+  const selDestinoPicto = el(
+    'select',
+    {},
+    el('option', { value: 'imagen' }, 'La imagen principal de la palabra'),
+    el('option', { value: 'simbolo' }, 'Un dibujo para emparejar con su foto («misma cosa»)'),
+  );
   const panelPicto = el(
     'div',
     { class: 'panel-pestana' },
+    campo('Usar el pictograma como', selDestinoPicto, 'Con una foto y un dibujo de la misma cosa, el niño puede practicar a emparejarlos.'),
+    el('div', { class: 'fila fila-imagen' }, vistaSimbolo, descripcionSimbolo, botonQuitarSimbolo),
     el('div', { class: 'fila' }, campo('Buscar pictograma', entradaBusqueda), el('button', { type: 'button', class: 'boton chico', onclick: buscar }, 'Buscar')),
     estadoBusqueda,
     cuadricula,
@@ -248,22 +298,17 @@ async function iniciar(raiz, id, ir, limpiezas, estaVivo) {
   // --- pestaña Emoji ---
   const entradaEmoji = el('input', {
     type: 'text', maxlength: 16, autocomplete: 'off', placeholder: 'Pega o escribe un emoji',
-    value: seleccion.tipo === 'emoji' ? seleccion.emoji : '',
+    value: emojiElegido ?? '',
   });
   entradaEmoji.addEventListener('input', () => {
-    const valor = entradaEmoji.value.trim();
-    if (valor) {
-      soltarUrlNueva();
-      seleccion = { tipo: 'emoji', emoji: valor };
-    } else if (seleccion.tipo === 'emoji') {
-      seleccion = { tipo: 'ninguna' };
-    }
+    emojiElegido = entradaEmoji.value.trim() || null;
     actualizarVistaImagen();
+    actualizarVistaSimbolo();
   });
   const panelEmoji = el(
     'div',
     { class: 'panel-pestana' },
-    campo('Emoji', entradaEmoji),
+    campo('Emoji', entradaEmoji, 'Se muestra cuando la palabra no tiene foto. Si tiene foto, el emoji sirve de dibujo para «misma cosa».'),
     el(
       'div',
       { class: 'paleta-emoji' },
@@ -288,11 +333,15 @@ async function iniciar(raiz, id, ir, limpiezas, estaVivo) {
       class: 'boton secundario',
       onclick: () => {
         soltarUrlNueva();
+        soltarUrlSimbolo();
         entradaEmoji.value = '';
+        emojiElegido = null;
         seleccion = { tipo: 'ninguna' };
+        simbolo = { tipo: 'ninguna' };
         actualizarVistaImagen();
+        actualizarVistaSimbolo();
       },
-    }, 'Quitar la imagen'),
+    }, 'Quitar la foto, el emoji y el dibujo'),
   );
 
   // --- pestañas ---
@@ -495,8 +544,9 @@ async function iniciar(raiz, id, ir, limpiezas, estaVivo) {
     try {
       const campos = { texto, silabas, categoria: selCategoria.value, tipo: selTipo.value };
       let medioImagenId = palabra?.medioImagenId ?? null;
+      let medioSimboloId = palabra?.medioSimboloId ?? null;
       let arasaacId = palabra?.arasaacId ?? null;
-      let emoji = palabra?.emoji ?? null;
+      const emoji = emojiElegido;
       let medioAudioId = palabra?.medioAudioId ?? null;
 
       if (seleccion.tipo === 'nueva') {
@@ -504,17 +554,19 @@ async function iniciar(raiz, id, ir, limpiezas, estaVivo) {
         await borrarMedio(store, medioImagenId);
         medioImagenId = medio.id;
         arasaacId = seleccion.arasaacId;
-        emoji = null;
-      } else if (seleccion.tipo === 'emoji') {
-        await borrarMedio(store, medioImagenId);
-        medioImagenId = null;
-        arasaacId = null;
-        emoji = seleccion.emoji;
       } else if (seleccion.tipo === 'ninguna') {
         await borrarMedio(store, medioImagenId);
         medioImagenId = null;
         arasaacId = null;
-        emoji = null;
+      }
+
+      if (simbolo.tipo === 'nueva') {
+        const medio = await guardarMedio(store, { tipo: 'imagen', blob: simbolo.blob, mime: simbolo.mime, origen: 'arasaac', arasaacId: simbolo.arasaacId });
+        await borrarMedio(store, medioSimboloId);
+        medioSimboloId = medio.id;
+      } else if (simbolo.tipo === 'ninguna') {
+        await borrarMedio(store, medioSimboloId);
+        medioSimboloId = null;
       }
 
       if (audio.origen === 'nueva') {
@@ -526,7 +578,7 @@ async function iniciar(raiz, id, ir, limpiezas, estaVivo) {
         medioAudioId = null;
       }
 
-      const datos = { ...campos, medioImagenId, arasaacId, emoji, medioAudioId };
+      const datos = { ...campos, medioImagenId, medioSimboloId, arasaacId, emoji, medioAudioId };
       if (palabra) {
         await store.guardar('palabras', { ...palabra, ...datos });
       } else {
@@ -548,6 +600,7 @@ async function iniciar(raiz, id, ir, limpiezas, estaVivo) {
     if (!globalThis.confirm(`¿Quitar «${palabra.texto}» de la lista? Se borrarán también su imagen y su voz.`)) return;
     try {
       await borrarMedio(store, palabra.medioImagenId);
+      await borrarMedio(store, palabra.medioSimboloId);
       await borrarMedio(store, palabra.medioAudioId);
       await store.borrar('palabras', palabra.id);
       ir('/adulto/vocabulario');
@@ -574,6 +627,7 @@ async function iniciar(raiz, id, ir, limpiezas, estaVivo) {
   if (esNueva) sugerirSilabas();
   refrescarVoz();
   actualizarVistaImagen();
-  mostrarPestana(seleccion.tipo === 'emoji' ? 'emoji' : palabra?.arasaacId ? 'picto' : 'foto');
+  actualizarVistaSimbolo();
+  mostrarPestana(!palabra?.medioImagenId && emojiElegido ? 'emoji' : palabra?.arasaacId ? 'picto' : 'foto');
   if (esNueva) entradaTexto.focus();
 }

@@ -13,7 +13,7 @@ import { habilitarAdulto, deshabilitarAdulto } from '../acceso.js';
 import { NOMBRE_APP } from '../config.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { liberarUrls, urlDeMedio } from '../medios.js';
-import { decirPalabra, desbloquearAudio, detener, hablarTexto } from '../audio.js';
+import { decirFrase, decirPalabra, desbloquearAudio, detener, hablarTexto } from '../audio.js';
 import { vibrar } from '../hardware.js';
 import { crearControlador } from '../core/controlador.js';
 import { elegirCalcomania } from '../core/calcomanias.js';
@@ -63,12 +63,13 @@ async function iniciar({ vista, area, ir, sesion }) {
   if (!sesion.vivo) return;
   if (!perfil) { ir('/nino'); return; }
 
-  const [palabras, progresos, niveles] = await Promise.all([
+  const [palabras, frases, progresos, niveles] = await Promise.all([
     store.listar('palabras', { perfilId: perfil.id }),
+    store.listar('frases', { perfilId: perfil.id }),
     store.listar('progresos', { perfilId: perfil.id }),
     store.listar('niveles', { perfilId: perfil.id }),
   ]);
-  const ctl = crearControlador({ perfil, palabras, progresos, niveles });
+  const ctl = crearControlador({ perfil, palabras, frases, progresos, niveles });
   const ajustes = ctl.ajustes;
   if (ctl.terminada) { ir('/nino'); return; } // no hay nada que practicar
 
@@ -78,9 +79,7 @@ async function iniciar({ vista, area, ir, sesion }) {
 
   // Las imágenes se preparan antes de empezar para que cada ensayo aparezca completo
   const urls = new Map();
-  for (const p of ctl.palabras.values()) {
-    if (p.medioImagenId) urls.set(p.medioImagenId, await urlDeMedio(store, p.medioImagenId));
-  }
+  for (const id of ctl.idsDeMedios) urls.set(id, await urlDeMedio(store, id));
   if (!sesion.vivo) return;
 
   const inicio = new Date();
@@ -101,7 +100,23 @@ async function iniciar({ vista, area, ir, sesion }) {
   };
 
   const palabraActual = () => ctl.palabras.get(ctl.actual().elementoId);
-  const decirLaPalabra = () => decirPalabra(palabraActual(), { obtenerMedio, velocidad: ajustes.velocidadVoz });
+  // Dice lo que corresponde al ensayo: un texto fijo (la pregunta de «clasificar»), una frase palabra por
+  // palabra (resaltando la que suena) o una palabra suelta.
+  function decirLaPalabra() {
+    const ensayo = ctl.actual();
+    if (ensayo.dicho) return hablarTexto(ensayo.dicho, { velocidad: ajustes.velocidadVoz });
+    const elemento = palabraActual();
+    if (elemento.esFrase) {
+      const partes = elemento.palabraIds.map((id) => ctl.palabrasPorId.get(id)).filter(Boolean);
+      const modelo = area.querySelector('.zona-modelo');
+      return decirFrase(partes, {
+        obtenerMedio,
+        velocidad: ajustes.velocidadVoz,
+        alPalabra: (i) => modelo?.setAttribute('data-suena', String(i)),
+      }).finally(() => modelo?.removeAttribute('data-suena'));
+    }
+    return decirPalabra(elemento, { obtenerMedio, velocidad: ajustes.velocidadVoz });
+  }
 
   async function presentar(ensayo) {
     const mio = ++turno;
@@ -139,10 +154,17 @@ async function iniciar({ vista, area, ir, sesion }) {
     const r = ctl.tocar(id, ahora());
     if (r.efecto === 'ignorado') return;
 
+    if (r.efecto === 'paso') {
+      // «Armo la frase»: la ficha acertada salta a la franja y vuelven a poder usarse las atenuadas
+      manejador.limpiarAyudas();
+      manejador.colocar(r.fichaId);
+      return;
+    }
+
     if (r.efecto === 'ayuda') {
       // Sin sonido de error, sin vibración, sin rojo: se guía hacia la correcta y se repite la palabra
       for (const a of r.atenuadas) manejador.atenuar(a);
-      manejador.resaltar(r.correctaId);
+      manejador.resaltar(r.siguienteId ?? r.correctaId);
       manejador.revelarAudio();
       turno += 1;
       decirLaPalabra();
@@ -152,6 +174,10 @@ async function iniciar({ vista, area, ir, sesion }) {
     // correcto
     cerrando = true;
     turno += 1;
+    if (r.fichaId) { // la última ficha de la frase
+      manejador.limpiarAyudas();
+      manejador.colocar(r.fichaId);
+    }
     manejador.marcarAcierto(id, { celebrar: celebracion !== 'ninguna' });
     if (celebracion === 'normal') lluviaDeEstrellas(vista);
     if (celebracion !== 'ninguna' && ajustes.sonido) hablarTexto(r.elogio, { velocidad: ajustes.velocidadVoz });
@@ -164,7 +190,7 @@ async function iniciar({ vista, area, ir, sesion }) {
     if (!sesion.vivo) return;
     const r = ctl.avanzar(ahora());
     guardar(() => store.guardar('progresos', r.guardar.progreso));
-    guardar(() => store.guardar('niveles', r.guardar.nivel));
+    if (r.guardar.nivel) guardar(() => store.guardar('niveles', r.guardar.nivel)); // la lectura asistida no mueve el nivel
     if (r.terminada) { await finalizar(); return; }
     cerrando = false;
     mostrar(r.siguiente);
