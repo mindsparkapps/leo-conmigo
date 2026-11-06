@@ -32,7 +32,7 @@ function interruptor(etiqueta, marcado, ayuda = null) {
 
 async function pintar(raiz, estaVivo) {
   const store = await obtenerStore();
-  const perfil = await perfilActivo();
+  let perfil = await perfilActivo();
   if (!perfil) {
     raiz.replaceChildren(
       cabecera('Ajustes'),
@@ -43,7 +43,7 @@ async function pintar(raiz, estaVivo) {
   }
   const progresos = await store.listar('progresos', { perfilId: perfil.id });
   if (!estaVivo()) return;
-  const a = normalizarAjustes(perfil.ajustes);
+  let a = normalizarAjustes(perfil.ajustes);
 
   // ---------- Sesión ----------
   const ensayos = el('input', { type: 'range', min: '4', max: '15', step: '1', value: String(a.ensayosPorSesion) });
@@ -114,6 +114,38 @@ async function pintar(raiz, estaVivo) {
     campo('Etapa que practica', selEtapaActual, 'Si esa etapa está cerrada o no tiene nada que practicar, se usa la anterior.'),
     modosEtapa.map((m) => m.elemento),
     lecturaVozAlta.elemento,
+  );
+
+  // ---------- Lo que la app hace sola (fase 14) ----------
+  const avanceRapido = interruptor(
+    'Avance rápido',
+    a.avanceRapido,
+    'Si acierta a la primera los 3 primeros ensayos de una palabra en una actividad (con 2 opciones o más), esa actividad cuenta como dominada «a prueba» y se repasa al día siguiente. Si falla ese repaso, vuelve a practicarla.',
+  );
+  const nuevasPorSesion = el(
+    'select',
+    {},
+    [[1, '1 palabra nueva por sesión'], [2, '2 palabras nuevas por sesión']].map(([v, t]) => el('option', { value: String(v), selected: v === a.palabrasNuevasPorSesion }, t)),
+  );
+  const modoAuto = (clave) => {
+    const seleccion = el('select', {}, [['auto', 'Automático'], ['manual', 'Lo elijo yo']].map(([v, t]) => el('option', { value: v, selected: v === (a.automaticos[clave] ? 'auto' : 'manual') }, t)));
+    return seleccion;
+  };
+  const autoEnsayos = modoAuto('ensayosPorSesion');
+  const autoOpciones = modoAuto('maxOpciones');
+  const autoNuevas = modoAuto('palabrasNuevas');
+  const autoEtapa = modoAuto('etapa');
+  const panelAuto = el(
+    'div',
+    { class: 'panel' },
+    el('h2', {}, 'Lo que la app hace sola'),
+    el('p', { class: 'ayuda' }, 'Al terminar cada sesión la app mira las últimas 3 y puede ajustar estas cosas, como máximo una vez por día. Siempre te avisa en el panel y puedes deshacerlo. Si cambias a mano uno de estos ajustes, pasa a «Lo elijo yo». El niño no ve nada de esto.'),
+    avanceRapido.elemento,
+    campo('Palabras nuevas por sesión', nuevasPorSesion, 'Como máximo 2: más de 2 cansa y confunde.'),
+    campo('Ensayos por sesión', autoEnsayos, 'Sube de 2 en 2 (hasta 12) si termina sin cansarse; baja si se cansa o la sesión se alarga.'),
+    campo('Máximo de opciones', autoOpciones, 'Sube una si acierta casi todo con el máximo actual. Nunca baja sola.'),
+    campo('Palabras nuevas (1 o 2)', autoNuevas, 'Baja a 1 si las palabras en práctica le cuestan mucho; vuelve a 2 si le salen bien.'),
+    campo('Etapa', autoEtapa, 'Sube a la siguiente cuando domina o aprendió 8 de cada 10 palabras. Nunca baja sola: solo te lo sugiere.'),
   );
 
   // ---------- Pantalla ----------
@@ -187,8 +219,18 @@ async function pintar(raiz, estaVivo) {
 
   function leer() {
     const marcadas = actividades.filter((x) => x.casilla.checked).map((x) => x.id);
+    // Si cambia a mano un ajuste que estaba en «Automático» (y lo deja así), pasa a «Lo elijo yo»
+    const automaticos = {
+      ensayosPorSesion: autoEnsayos.value === 'auto' && !(a.automaticos.ensayosPorSesion && Number(ensayos.value) !== a.ensayosPorSesion),
+      maxOpciones: autoOpciones.value === 'auto' && !(a.automaticos.maxOpciones && Number(maxOpciones.value) !== a.maxOpciones),
+      palabrasNuevas: autoNuevas.value === 'auto' && !(a.automaticos.palabrasNuevas && Number(nuevasPorSesion.value) !== a.palabrasNuevasPorSesion),
+      etapa: autoEtapa.value === 'auto' && !(a.automaticos.etapa && Number(selEtapaActual.value) !== (perfil.etapaActual ?? 1)),
+    };
     return normalizarAjustes({
       ...perfil.ajustes,
+      automaticos,
+      avanceRapido: avanceRapido.casilla.checked,
+      palabrasNuevasPorSesion: Number(nuevasPorSesion.value),
       ensayosPorSesion: Number(ensayos.value),
       maxOpciones: Number(maxOpciones.value),
       actividadesHabilitadas: marcadas.length === actividades.length ? null : marcadas,
@@ -217,7 +259,13 @@ async function pintar(raiz, estaVivo) {
     }
     guardar.disabled = true;
     try {
-      await store.guardar('perfiles', { ...perfil, etapaActual: Number(selEtapaActual.value), ajustes: leer() });
+      const nuevo = { ...perfil, etapaActual: Number(selEtapaActual.value), ajustes: leer() };
+      await store.guardar('perfiles', nuevo);
+      perfil = nuevo; // lo que sigue se compara con lo ya guardado
+      a = normalizarAjustes(nuevo.ajustes);
+      for (const [clave, seleccion] of [['ensayosPorSesion', autoEnsayos], ['maxOpciones', autoOpciones], ['palabrasNuevas', autoNuevas], ['etapa', autoEtapa]]) {
+        seleccion.value = a.automaticos[clave] ? 'auto' : 'manual';
+      }
       estado.textContent = 'Guardado. Se usará desde la próxima sesión.';
     } catch (e) {
       console.error(e);
@@ -233,6 +281,9 @@ async function pintar(raiz, estaVivo) {
     const d = AJUSTES_POR_DEFECTO;
     ensayos.value = String(d.ensayosPorSesion); ensayos.dispatchEvent(new Event('input'));
     maxOpciones.value = String(d.maxOpciones);
+    avanceRapido.casilla.checked = d.avanceRapido;
+    nuevasPorSesion.value = String(d.palabrasNuevasPorSesion);
+    for (const s of [autoEnsayos, autoOpciones, autoNuevas, autoEtapa]) s.value = 'auto';
     for (const x of actividades) x.casilla.checked = true;
     selEtapaActual.value = '1';
     for (const m of modosEtapa) m.seleccion.value = 'auto';
@@ -253,6 +304,7 @@ async function pintar(raiz, estaVivo) {
     el('p', { class: 'ayuda' }, `Ajustes de ${perfil.nombre}. Cambian desde la próxima sesión.`),
     panelEtapas,
     panelSesion,
+    panelAuto,
     panelPantalla,
     panelSonido,
     error,

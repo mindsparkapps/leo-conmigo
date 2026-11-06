@@ -51,7 +51,7 @@ async function pintar(raiz, estado, { editando = null } = {}) {
   const palabrasPorId = new Map(palabras.map((p) => [p.id, p]));
   const frases = listaFrases.filter((f) => !f.deleted).sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
   const leidas = new Set(
-    tablaDePalabras({ palabras, progresos }).filter((f) => f.estado === 'leida' || f.estado === 'completa').map((f) => f.palabra.id),
+    tablaDePalabras({ palabras, progresos }).filter((f) => f.estado === 'leida' || f.estado === 'completa' || f.estado === 'aprendida').map((f) => f.palabra.id),
   );
   const urls = new Map();
   for (const f of frases) if (f.medioImagenId) urls.set(f.medioImagenId, await urlDeMedio(store, f.medioImagenId));

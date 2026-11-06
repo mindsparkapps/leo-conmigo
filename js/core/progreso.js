@@ -13,6 +13,12 @@ export const DIAS_PARA_DOMINAR = 2; // ...repartidos en al menos 2 días distint
 export const INTERVALOS_LEITNER = Object.freeze([1, 2, 4, 8, 16]); // días de cada caja (1 a 5)
 export const FALLOS_PARA_RETROCEDER = 2; // fallos seguidos en repaso para volver a "práctica"
 
+// --- Avance rápido y palabras aprendidas (fase 14) ---
+export const ENSAYOS_AVANCE_RAPIDO = 3; // los primeros 3 ensayos contados, todos acertados al primer intento...
+export const OPCIONES_MIN_AVANCE = 2; // ...y con 2 opciones o más (no cuentan los de 1 opción ni los fáciles)
+export const CAJA_APRENDIDA = 5; // un repaso acertado estando en la caja 5 (16 días) hace «aprendida» a la palabra
+export const DIAS_CONTROL = 30; // las aprendidas solo tienen un repaso de control cada 30 días
+
 // --- Número de opciones por actividad ---
 export const OPCIONES_MIN = 2;
 export const OPCIONES_MAX = 4;
@@ -92,8 +98,17 @@ export function estaVencido(progreso, dia) {
  * - Dominada: un acierto en un repaso vencido sube de caja (1, 2, 4, 8, 16 días);
  *   un error vuelve a la caja 1; dos errores seguidos devuelven la palabra a "práctica".
  */
-export function registrarEnsayo(progreso, { fecha, correctoAlPrimerIntento, opciones = null }) {
+const cuentaParaAvance = (e) => !e.esFacil && (e.opciones ?? 0) >= OPCIONES_MIN_AVANCE;
+
+/**
+ * `esFacil` marca un ensayo fácil de relleno (queda en el historial solo cuando es verdad).
+ * `avanceRapido` (fase 14): si los primeros 3 ensayos que cuentan fueron aciertos al primer intento con 2 o más
+ * opciones, la actividad queda dominada **provisional** (caja 1, repaso al día siguiente). Si ese repaso falla,
+ * vuelve a práctica con un solo error; si acierta, deja de ser provisional.
+ */
+export function registrarEnsayo(progreso, { fecha, correctoAlPrimerIntento, opciones = null, esFacil = false }, { avanceRapido = false } = {}) {
   const entrada = { fecha: aTexto(fecha), correctoAlPrimerIntento: Boolean(correctoAlPrimerIntento), opciones };
+  if (esFacil) entrada.esFacil = true;
   const historial = [...progreso.historial, entrada].slice(-MAX_HISTORIAL);
   const dia = claveDia(entrada.fecha);
   const siguiente = { ...progreso, historial };
@@ -102,13 +117,23 @@ export function registrarEnsayo(progreso, { fecha, correctoAlPrimerIntento, opci
     if (entrada.correctoAlPrimerIntento) {
       siguiente.fallosRepaso = 0;
       if (estaVencido(progreso, dia)) {
+        if (progreso.provisional) siguiente.provisional = false;
+        if (progreso.cajaLeitner >= CAJA_APRENDIDA) siguiente.aciertosEnCaja5 = (progreso.aciertosEnCaja5 ?? 0) + 1;
         const caja = Math.min(INTERVALOS_LEITNER.length, progreso.cajaLeitner + 1);
         siguiente.cajaLeitner = caja;
         siguiente.proximoRepaso = sumarDias(dia, INTERVALOS_LEITNER[caja - 1]);
       } // un acierto antes de tiempo no adelanta la caja
+    } else if (progreso.provisional) {
+      // Avance rápido que no se sostuvo: vuelve a práctica con un solo error (no hacen falta dos)
+      siguiente.estado = ESTADOS.PRACTICA;
+      siguiente.provisional = false;
+      siguiente.cajaLeitner = 1;
+      siguiente.proximoRepaso = null;
+      siguiente.fallosRepaso = 0;
     } else {
       const fallos = (progreso.fallosRepaso ?? 0) + 1;
       siguiente.cajaLeitner = 1;
+      if (progreso.aciertosEnCaja5) siguiente.aciertosEnCaja5 = 0; // si falla, ya no cuenta como aprendida
       if (fallos >= FALLOS_PARA_RETROCEDER) {
         siguiente.estado = ESTADOS.PRACTICA;
         siguiente.proximoRepaso = null;
@@ -122,13 +147,42 @@ export function registrarEnsayo(progreso, { fecha, correctoAlPrimerIntento, opci
   }
 
   siguiente.estado = ESTADOS.PRACTICA;
-  if (cumpleDominio(historial)) {
+  const contados = historial.filter(cuentaParaAvance);
+  const avanza =
+    avanceRapido &&
+    progreso.historial.length < MAX_HISTORIAL && // son de verdad los primeros ensayos de la palabra
+    cuentaParaAvance(entrada) &&
+    contados.length === ENSAYOS_AVANCE_RAPIDO &&
+    contados.every((e) => e.correctoAlPrimerIntento);
+  if (avanza || cumpleDominio(historial)) {
     siguiente.estado = ESTADOS.DOMINADA;
     siguiente.cajaLeitner = 1;
     siguiente.proximoRepaso = sumarDias(dia, INTERVALOS_LEITNER[0]);
     siguiente.fallosRepaso = 0;
+    if (avanza && !cumpleDominio(historial)) siguiente.provisional = true;
   }
   return siguiente;
+}
+
+/**
+ * Palabra «aprendida» (fase 14): todas sus actividades dominadas de verdad (no provisionales) y al menos un
+ * repaso acertado estando en la caja 5. `progresos` = el progreso de la palabra en cada actividad que le toca
+ * (si falta alguno, no está aprendida). No necesita ningún campo obligatorio nuevo.
+ */
+export function estaAprendida(progresos) {
+  if (!progresos.length || progresos.some((p) => !p || p.estado !== ESTADOS.DOMINADA || p.provisional)) return false;
+  return progresos.some((p) => (p.aciertosEnCaja5 ?? 0) > 0);
+}
+
+/** Día (AAAA-MM-DD) desde el que toca el repaso de control de una actividad de una palabra aprendida. */
+export function diaDeControl(progreso) {
+  const ultimo = progreso.historial.at(-1);
+  return ultimo ? sumarDias(claveDia(ultimo.fecha), DIAS_CONTROL) : (progreso.proximoRepaso ?? '0000-00-00');
+}
+
+/** «Volver a practicar»: la palabra deja de ser aprendida y queda dominada en caja 1, con repaso en la próxima sesión. */
+export function desmarcarAprendida(progreso) {
+  return { ...progreso, cajaLeitner: 1, proximoRepaso: null, fallosRepaso: 0, aciertosEnCaja5: 0, provisional: false };
 }
 
 // ---------- Nivel de una actividad (cuántas opciones se muestran) ----------
@@ -187,9 +241,9 @@ export function opcionesEfectivas(nivel, maxOpciones = OPCIONES_MAX) {
  * `contarParaNivel` debe ser false en los ensayos "fáciles" (primero, último y cierre por
  * fatiga), que se muestran con menos opciones y no deben inflar la precisión del nivel.
  */
-export function aplicarResultado({ progreso, nivel, resultado, maxOpciones = OPCIONES_MAX, contarParaNivel = true }) {
+export function aplicarResultado({ progreso, nivel, resultado, maxOpciones = OPCIONES_MAX, contarParaNivel = true, avanceRapido = false }) {
   return {
-    progreso: registrarEnsayo(progreso, resultado),
+    progreso: registrarEnsayo(progreso, resultado, { avanceRapido }),
     nivel: contarParaNivel ? registrarEnNivel(nivel, resultado.correctoAlPrimerIntento, maxOpciones) : nivel,
   };
 }

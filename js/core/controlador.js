@@ -13,6 +13,7 @@
 //   'lectura'   leer en voz alta y el adulto decide (`entrada` = 'ok' o 'otra')
 
 import { ACTIVIDADES } from '../actividades/indice.js';
+import { analizar, dificultadesDe } from './analisis.js';
 import { ACTIVIDADES_POR_ETAPA, ETAPAS_HECHAS, etapaEfectiva, etapasDesbloqueadas } from './etapas.js';
 import { elegirElogio } from './elogios.js';
 import { frasesComoElementos } from './frases.js';
@@ -48,10 +49,12 @@ export function actividadesDeLaEtapa(etapa = 1) {
 }
 
 export function crearControlador({
-  perfil, palabras, frases = [], progresos = [], niveles = [], hoy = new Date(), aleatorio = Math.random, reloj = () => new Date(),
-  sesionId = nuevoId(),
+  perfil, palabras, frases = [], progresos = [], niveles = [], respuestas = [], hoy = new Date(), aleatorio = Math.random,
+  reloj = () => new Date(), sesionId = nuevoId(),
 }) {
   const ajustes = normalizarAjustes(perfil.ajustes);
+  // Lo que ya se sabe de lo que le cuesta (fase 13) orienta la sesión: más práctica a lo difícil y cuidado con las confusiones
+  const dificultades = respuestas.length ? dificultadesDe(analizar(respuestas, { hoy })) : new Map();
   const palabrasPorId = new Map(palabras.filter((p) => !p.deleted).map((p) => [p.id, p]));
   const mapaProgresos = new Map(progresos.map((p) => [p.id, p]));
   const mapaNiveles = new Map(niveles.map((n) => [n.id, n]));
@@ -85,6 +88,7 @@ export function crearControlador({
       puedeSerOpcion: (elemento, actividad) => ACTIVIDADES[actividad].esOpcionValida?.(elemento) ?? true,
       reglasDe: (actividad) => ACTIVIDADES[actividad].reglas ?? {},
       vistasPrevias,
+      dificultades,
     });
     return { etapa, elementos, plan };
   }
@@ -220,9 +224,10 @@ export function crearControlador({
       const { progreso, nivel } = aplicarResultado({
         progreso: progresoAntes,
         nivel: nivelAntes,
-        resultado: { fecha, correctoAlPrimerIntento: resultado.correctoAlPrimerIntento, opciones: visual.opciones },
+        resultado: { fecha, correctoAlPrimerIntento: resultado.correctoAlPrimerIntento, opciones: visual.opciones, esFacil: Boolean(ensayo.esFacil) },
         maxOpciones: ajustes.maxOpciones,
         contarParaNivel: !ensayo.esFacil && !esLectura,
+        avanceRapido: ajustes.avanceRapido && !esLectura, // la lectura en voz alta la decide el adulto: no acelera
       });
       mapaProgresos.set(idP, progreso);
       if (!esLectura) mapaNiveles.set(idN, nivel);

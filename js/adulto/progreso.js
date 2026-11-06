@@ -8,7 +8,7 @@ import { obtenerStore, perfilActivo } from '../contexto.js';
 import { ACTIVIDADES } from '../actividades/indice.js';
 import {
   ACTIVIDADES_ETAPA_1, formatearDuracion, historialDeSesiones, idsDeProgresoDe, marcarDominada, precisionSemanal,
-  resumenGeneral, tablaDePalabras,
+  resumenGeneral, tablaDePalabras, volverAPracticar,
 } from '../core/estadisticas.js';
 import { UMBRAL_ETAPA_2, etapasDesbloqueadas } from '../core/etapas.js';
 
@@ -18,9 +18,10 @@ const FILTROS = [
   ['todas', 'Todas'],
   ['practica', 'En práctica'],
   ['leida', 'Leídas'],
+  ['aprendida', 'Aprendidas'],
   ['nueva', 'Nuevas'],
 ];
-const NOMBRE_ESTADO = { nueva: 'Nueva', practica: 'En práctica', leida: 'Leída', completa: 'Completa' };
+const NOMBRE_ESTADO = { nueva: 'Nueva', practica: 'En práctica', leida: 'Leída', completa: 'Completa', aprendida: 'Aprendida' };
 
 export function montar(contenedor) {
   const raiz = el('section', { class: 'vista-adulto' }, cabecera('Progreso'), cargando());
@@ -150,7 +151,7 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null } = {})
   selFiltro.addEventListener('change', () => repintar({ filtro: selFiltro.value }));
 
   const visibles = filas.filter(
-    (f) => filtro === 'todas' || (filtro === 'leida' ? f.estado === 'leida' || f.estado === 'completa' : f.estado === filtro),
+    (f) => filtro === 'todas' || (filtro === 'leida' ? f.estado === 'leida' || f.estado === 'completa' || f.estado === 'aprendida' : f.estado === filtro),
   );
 
   const cuerpo = el('tbody', {});
@@ -194,7 +195,7 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null } = {})
       }
       return el('li', {}, el('strong', {}, `${c.actividad} · ${ACTIVIDADES[c.actividad]?.nombre ?? ''}: `), texto);
     });
-    const sabe = el('button', { type: 'button', class: 'boton chico', disabled: fila.estado === 'completa' }, 'Ya la sabe');
+    const sabe = el('button', { type: 'button', class: 'boton chico', disabled: fila.estado === 'completa' || fila.estado === 'aprendida' }, 'Ya la sabe');
     sabe.addEventListener('click', async () => {
       sabe.disabled = true;
       try {
@@ -217,12 +218,26 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null } = {})
         reiniciar.disabled = false;
       }
     });
+    const repracticar = el('button', { type: 'button', class: 'boton secundario chico' }, 'Volver a practicar');
+    repracticar.addEventListener('click', async () => {
+      repracticar.disabled = true;
+      try {
+        await store.guardarVarios('progresos', volverAPracticar({ elementoId: palabra.id, existentes: progresos }));
+        repintar({ filtro, abierta: palabra.id });
+      } catch (e) {
+        fallar(e);
+        repracticar.disabled = false;
+      }
+    });
     detalle.append(
       el(
         'td',
         { colspan: String(ACTIVIDADES_ETAPA_1.length + 2) },
+        fila.estado === 'aprendida'
+          ? el('p', { class: 'ayuda' }, 'Aprendida: ya no sale en los repasos normales, solo en un repaso de control cada 30 días. «Volver a practicar» la devuelve a los repasos.')
+          : null,
         el('ul', { class: 'lista-ayuda' }, lineas),
-        el('div', { class: 'acciones' }, sabe, reiniciar),
+        el('div', { class: 'acciones' }, sabe, reiniciar, fila.estado === 'aprendida' ? repracticar : null),
         el('p', { class: 'ayuda' }, '«Ya la sabe» deja la palabra como aprendida y se repasa en la próxima sesión.'),
       ),
     );

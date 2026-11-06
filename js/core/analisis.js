@@ -213,6 +213,18 @@ export function analizar(respuestas, { hoy = new Date(), dias = DIAS_VENTANA } =
   };
 }
 
+/**
+ * Para armar la sesión (fase 14): Map elementoId -> { indice, confiable, tasa, confusionId }, con la confusión más
+ * frecuente de cada palabra (la que más veces tocó por error al pedírsela).
+ */
+export function dificultadesDe(analisis) {
+  const confusionDe = new Map();
+  for (const c of analisis.confusiones) if (!confusionDe.has(c.objetivoId)) confusionDe.set(c.objetivoId, c.tocadaId); // ya vienen de más a menos
+  return new Map(analisis.palabras.map((p) => [p.elementoId, {
+    indice: p.indice, confiable: p.confiable, tasa: p.tasa, confusionId: confusionDe.get(p.elementoId) ?? null,
+  }]));
+}
+
 // ---------- exportar para analizar con una IA ----------
 
 export const ESQUEMA = Object.freeze({

@@ -582,7 +582,7 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 
 /* ===== Progreso, ajustes y copia de seguridad (modo adulto) ===== */
 .insignia.suave { background: var(--azul-suave); color: var(--azul-oscuro); }
-.insignia.suave.estado-leida, .insignia.suave.estado-completa { background: var(--verde-suave); color: #1d5a3a; }
+.insignia.suave.estado-leida, .insignia.suave.estado-completa, .insignia.suave.estado-aprendida { background: var(--verde-suave); color: #1d5a3a; }
 .insignia.suave.estado-nueva { background: #eef1f3; color: var(--texto-suave); }
 
 .datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin: 8px 0 12px; }

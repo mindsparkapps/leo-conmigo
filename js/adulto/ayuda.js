@@ -48,6 +48,17 @@ export function montar(contenedor) {
         ),
       ),
       seccion(
+        'Lo que la app hace sola',
+        el('p', {}, 'Para que el niño no pierda tiempo con lo que ya sabe y no se canse, la app se adapta. Todo se puede apagar en Ajustes › «Lo que la app hace sola», y el niño nunca ve nada de esto.'),
+        lista(
+          'Avance rápido: si acierta a la primera los 3 primeros ensayos de una palabra en una actividad, esa actividad queda dominada «a prueba» y se repasa al día siguiente. Si falla ese repaso, vuelve a practicarla.',
+          'Palabras aprendidas: cuando una palabra está dominada en todas las actividades y la repasó bien a los 16 días, sale de los repasos normales. Solo se le hace un repaso de control cada 30 días. En Progreso aparece como «Aprendida» y puedes tocar «Volver a practicar».',
+          'Más práctica a lo difícil: las palabras que más le cuestan (mira «Qué le cuesta») tienen un ensayo más y las que le salen solas, uno menos. Mientras acierte menos del 80 % de una palabra, no se usa como distractor la que suele confundir con ella.',
+          'Ajustes que se adaptan: al terminar cada sesión la app mira las últimas 3. Puede subir o bajar los ensayos por sesión, subir el máximo de opciones, pasar de 2 a 1 palabras nuevas por sesión (y volver), y subir de etapa. Nunca baja la etapa: solo te lo sugiere. Cada cambio te lo avisa en el panel, con «Deshacer».',
+          'Si cambias a mano un ajuste automático, pasa a «Lo elijo yo» y la app ya no lo toca. También puedes elegir «Lo elijo yo» en cada uno.',
+        ),
+      ),
+      seccion(
         'Que no salga de la app',
         el('p', {}, 'La pantalla del niño no tiene menús ni enlaces, pero puede salir con los botones del dispositivo. Para evitarlo:'),
         lista(

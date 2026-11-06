@@ -13,8 +13,8 @@ import { barajar } from './azar.js';
 import { elegirDistractores } from './distractores.js';
 import { normalizarAjustes } from './modelos.js';
 import {
-  ESTADOS, OPCIONES_MIN, claveDia, estaVencido, esNivelFacil, idNivel, idProgreso, opcionesEfectivas,
-  tasaAciertoHistorial,
+  ESTADOS, OPCIONES_MIN, claveDia, diaDeControl, estaAprendida, estaVencido, esNivelFacil, idNivel, idProgreso,
+  opcionesEfectivas, tasaAciertoHistorial,
 } from './progreso.js';
 
 export const FRACCION_REPASO = 0.3; // ~30 % de los ensayos son repaso de lo ya dominado
@@ -24,6 +24,10 @@ export const MAX_NUEVAS_POR_SESION = 2;
 export const MAX_MISMA_ACTIVIDAD_SEGUIDA = 3;
 export const ERRORES_PARA_FATIGA = 3;
 export const UMBRAL_ENSAYO_FACIL = 0.6; // tasa de acierto mínima para llamar "fácil" a un ensayo
+export const INDICE_DIFICIL = 50; // fase 14: una palabra en práctica con este índice (fase 13) o más recibe un ensayo extra...
+export const INDICE_FACIL = 20; // ...y una con menos de este índice cede uno (siempre quedan al menos 1)
+export const PRECISION_PARA_CONFUSION = 0.8; // con menos precisión, la confusión de una palabra NO se usa como distractor; con esta o más, sí (una vez por sesión)
+export const MAX_CONTROLES_POR_SESION = 1; // repasos de control de palabras aprendidas
 const INTENTOS_ORDEN = 120; // intentos al azar para ordenar los ensayos con unos extremos dados
 const MAX_PARES_EXTREMOS = 40; // pares (primero, último) que se prueban, de mayor a menor puntaje
 const MAX_CIERRES = 3;
@@ -152,7 +156,9 @@ function analizar({ perfilId, elementos, actividades, mapaProgresos, puedeHacer 
     let categoria = 'practica';
     if (indiceActual === -1) categoria = 'completa';
     else if (indiceActual === 0 && !vista) categoria = 'nueva';
-    return { elemento, actividades: lista, progresos, indiceActual, vista, ultima, categoria };
+    // «Aprendida»: todas sus actividades de esta etapa dominadas de verdad y un repaso acertado en la caja 5
+    const aprendida = categoria === 'completa' && estaAprendida(progresos);
+    return { elemento, actividades: lista, progresos, indiceActual, vista, ultima, categoria, aprendida };
   });
   return analizados.filter(Boolean);
 }
@@ -179,6 +185,30 @@ function tomarRepasos(vencidos, resto, n) {
   return elegidos;
 }
 
+/**
+ * Prioridad a lo difícil (fase 14): entre las palabras en práctica con datos confiables, las de índice alto reciben
+ * un ensayo más y las de índice bajo ceden uno. El total no cambia, ninguna pasa de `tope` ni se queda sin ensayos.
+ * Modifica `cuentas` (ensayos de práctica por palabra de `trabajo`).
+ */
+export function reajustarPorDificultad(trabajo, cuentas, dificultades, tope) {
+  const indiceDe = (info) => {
+    const d = dificultades.get(info.elemento.id);
+    return info.categoria === 'practica' && d?.confiable ? d.indice : null;
+  };
+  const receptoras = trabajo.map((info, i) => i).filter((i) => (indiceDe(trabajo[i]) ?? -1) >= INDICE_DIFICIL)
+    .sort((a, b) => indiceDe(trabajo[b]) - indiceDe(trabajo[a]));
+  const donantes = trabajo.map((info, i) => i).filter((i) => indiceDe(trabajo[i]) !== null && indiceDe(trabajo[i]) < INDICE_FACIL)
+    .sort((a, b) => indiceDe(trabajo[a]) - indiceDe(trabajo[b]));
+  for (const d of donantes) {
+    if (cuentas[d] <= 1) continue;
+    const r = receptoras.find((i) => cuentas[i] < tope);
+    if (r === undefined) break;
+    cuentas[d] -= 1;
+    cuentas[r] += 1;
+  }
+  return cuentas;
+}
+
 // ---------- Crear la sesión ----------
 
 /**
@@ -193,10 +223,12 @@ function tomarRepasos(vencidos, resto, n) {
  * @param puedeSerOpcion (elemento, actividad) => ¿puede aparecer como opción en esa actividad?
  * @param reglasDe      (actividad) => { soloOtraCategoria } reglas extra para elegir distractores
  * @param vistasPrevias Set de ids de elementos que ya cuentan como vistos (pueden ser distractores desde el primer ensayo)
+ * @param dificultades  Map elementoId -> { indice, confiable, tasa, confusionId } (análisis de la fase 13; vacío = sin datos)
  */
 export function crearSesion({
   perfil, elementos, progresos = [], niveles = [], actividades, hoy = new Date(), aleatorio = Math.random,
   puedeHacer = () => true, puedeSerOpcion = () => true, reglasDe = () => ({}), vistasPrevias = new Set(),
+  dificultades = new Map(),
 }) {
   const ajustes = normalizarAjustes(perfil.ajustes);
   const total = ajustes.ensayosPorSesion;
@@ -221,25 +253,35 @@ export function crearSesion({
     .filter((i) => i.categoria === 'practica')
     .sort((a, b) => a.ultima - b.ultima)
     .slice(0, MAX_EN_PRACTICA);
-  const nuevasNecesarias = enPractica.length < MIN_EN_PRACTICA ? Math.min(MAX_NUEVAS_POR_SESION, MAX_EN_PRACTICA - enPractica.length) : 0;
+  const maxNuevas = Math.min(MAX_NUEVAS_POR_SESION, ajustes.palabrasNuevasPorSesion);
+  const nuevasNecesarias = enPractica.length < MIN_EN_PRACTICA ? Math.min(maxNuevas, MAX_EN_PRACTICA - enPractica.length) : 0;
   const nuevas = infos.filter((i) => i.categoria === 'nueva').slice(0, nuevasNecesarias);
   const trabajo = [...enPractica, ...nuevas];
 
   // 2. Repasos: primero los vencidos (Leitner); si faltan, dominadas al azar.
+  // Las aprendidas no entran en los repasos normales: solo un repaso de control cada 30 días, uno por sesión.
   const pares = [];
+  const controles = [];
   for (const info of infos) {
     info.progresos.forEach((progreso, i) => {
-      if (progreso?.estado === ESTADOS.DOMINADA) pares.push({ info, actividad: info.actividades[i], progreso });
+      if (progreso?.estado !== ESTADOS.DOMINADA) return;
+      const par = { info, actividad: info.actividades[i], progreso };
+      if (!info.aprendida) pares.push(par);
+      else if (diaDeControl(progreso) <= dia) controles.push(par);
     });
   }
+  controles.sort((a, b) => diaDeControl(a.progreso).localeCompare(diaDeControl(b.progreso)));
+  const control = controles.slice(0, MAX_CONTROLES_POR_SESION)[0] ?? null;
+  const conControl = control ? 1 : 0;
   const vencidos = pares
     .filter((p) => estaVencido(p.progreso, dia))
     .sort((a, b) => (a.progreso.proximoRepaso ?? '').localeCompare(b.progreso.proximoRepaso ?? '') || a.info.ultima - b.info.ultima);
   const restoDeRepasos = barajar(pares.filter((p) => !vencidos.includes(p)), aleatorio);
   const totalRepasosPosibles = vencidos.length + restoDeRepasos.length;
 
-  let nRepasos = Math.min(Math.round(total * FRACCION_REPASO), totalRepasosPosibles);
-  if (trabajo.length === 0) nRepasos = totalRepasosPosibles ? total : 0; // nada nuevo que practicar: todo es repaso
+  let nRepasos = Math.min(Math.round(total * FRACCION_REPASO), totalRepasosPosibles + conControl);
+  if (trabajo.length === 0) nRepasos = totalRepasosPosibles ? total : conControl; // nada nuevo que practicar: todo es repaso
+  else if (conControl && nRepasos === 0) nRepasos = 1; // el control ocupa un lugar aunque no haya otros repasos
   let nPractica = trabajo.length ? total - nRepasos : 0;
 
   // Reparto de la práctica entre las palabras, de a una por vuelta. Ninguna ocupa más de la
@@ -267,6 +309,7 @@ export function crearSesion({
     else repartidas += repartir(nPractica - repartidas, Infinity); // sin repasos que lo compensen
   }
   nPractica = repartidas;
+  reajustarPorDificultad(trabajo, cuentas, dificultades, tope);
 
   const candidatos = [];
   trabajo.forEach((info, i) => {
@@ -282,9 +325,10 @@ export function crearSesion({
       });
     }
   });
-  const repasos = tomarRepasos(vencidos, restoDeRepasos, nRepasos);
+  const usaControl = conControl && nRepasos > 0;
+  const repasos = tomarRepasos(vencidos, restoDeRepasos, nRepasos - (usaControl ? 1 : 0));
   for (let i = 0; i < nRepasos; i++) {
-    const par = repasos[i % repasos.length]; // si hay menos pares que ensayos, se repiten en ciclo
+    const par = usaControl && i === 0 ? control : repasos[(i - (usaControl ? 1 : 0)) % repasos.length]; // si hay menos pares que ensayos, se repiten en ciclo
     candidatos.push({
       ensayo: { elementoId: par.info.elemento.id, actividad: par.actividad, tipo: 'repaso' },
       puntaje: 10,
@@ -304,14 +348,29 @@ export function crearSesion({
   // `vistasPrevias`: elementos que el niño ya vio en otra etapa (la etapa 3 parte de palabras que ya conoce)
   const vistas = new Set([...vistasPrevias, ...infos.filter((i) => i.vista).map((i) => i.elemento.id)]);
   const porId = new Map(activos.map((e) => [e.id, e]));
+  const confusionesUsadas = new Set();
   const completar = (ensayo, opcionesForzadas = null) => {
     const nivel = mapaNiveles.get(idNivel(perfil.id, ensayo.actividad));
     const deseadas = opcionesForzadas ?? (ensayo.esFacil ? OPCIONES_MIN : opcionesEfectivas(nivel, ajustes.maxOpciones));
     const facil = ensayo.esFacil || deseadas <= OPCIONES_MIN || esNivelFacil(nivel);
+    const posibles = activos.filter((p) => puedeSerOpcion(p, ensayo.actividad));
+    // Confusiones (fase 14): mientras la palabra no se sepa bien (< 80 %), su confusión más frecuente no se usa de
+    // distractor (no se refuerza el error); con 80 % o más se usa a propósito, una vez por sesión, para afinar.
+    const dificultad = dificultades.get(ensayo.elementoId);
+    const confusionId = !ensayo.esFacil && ensayo.tipo !== 'cierre' && dificultad?.confiable ? dificultad.confusionId : null;
+    let excluirIds = [];
+    let incluirIds = [];
+    if (confusionId) {
+      if (dificultad.tasa < PRECISION_PARA_CONFUSION) excluirIds = [confusionId];
+      else if (!confusionesUsadas.has(ensayo.elementoId) && deseadas > 1 && vistas.has(confusionId) && posibles.some((p) => p.id === confusionId)) {
+        incluirIds = [confusionId];
+        confusionesUsadas.add(ensayo.elementoId);
+      }
+    }
     const distractores = elegirDistractores(
       porId.get(ensayo.elementoId),
-      activos.filter((p) => puedeSerOpcion(p, ensayo.actividad)),
-      { cantidad: deseadas - 1, facil, vistas, aleatorio, ...reglasDe(ensayo.actividad) },
+      posibles,
+      { cantidad: deseadas - 1, facil, vistas, aleatorio, excluirIds, incluirIds, ...reglasDe(ensayo.actividad) },
     );
     ensayo.distractorIds = distractores.map((d) => d.id);
     ensayo.opciones = 1 + ensayo.distractorIds.length;

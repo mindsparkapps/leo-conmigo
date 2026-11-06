@@ -16,6 +16,7 @@ import { liberarUrls, urlDeMedio } from '../medios.js';
 import { decirFrase, decirPalabra, desbloquearAudio, detener, hablarTexto } from '../audio.js';
 import { vibrar } from '../hardware.js';
 import { crearControlador } from '../core/controlador.js';
+import { aplicarAutoajuste } from '../autoajuste.js';
 import { ganarCalcomania } from '../albumes.js';
 import { ACTIVIDADES } from '../actividades/indice.js';
 import { establecerPremio, lluviaDeEstrellas } from './premio.js';
@@ -63,13 +64,14 @@ async function iniciar({ vista, area, ir, sesion }) {
   if (!sesion.vivo) return;
   if (!perfil) { ir('/nino'); return; }
 
-  const [palabras, frases, progresos, niveles] = await Promise.all([
+  const [palabras, frases, progresos, niveles, respuestas] = await Promise.all([
     store.listar('palabras', { perfilId: perfil.id }),
     store.listar('frases', { perfilId: perfil.id }),
     store.listar('progresos', { perfilId: perfil.id }),
     store.listar('niveles', { perfilId: perfil.id }),
+    store.listar('respuestas', { perfilId: perfil.id }),
   ]);
-  const ctl = crearControlador({ perfil, palabras, frases, progresos, niveles });
+  const ctl = crearControlador({ perfil, palabras, frases, progresos, niveles, respuestas });
   const ajustes = ctl.ajustes;
   if (ctl.terminada) { ir('/nino'); return; } // no hay nada que practicar
 
@@ -204,6 +206,12 @@ async function iniciar({ vista, area, ir, sesion }) {
     try {
       await guardado;
       await store.guardar('sesiones', ctl.registro({ inicio, fin }));
+      // Ajustes automáticos (fase 14): se revisan al terminar, nunca a mitad de una sesión. Un fallo aquí no debe afectar al niño.
+      try {
+        await aplicarAutoajuste(store, perfil.id, fin);
+      } catch (error) {
+        console.error('No se pudieron revisar los ajustes automáticos', error);
+      }
       // La calcomanía de hoy; si completa el álbum, también guarda sus monedas (fase 11)
       const { codigo, album, saldo } = await ganarCalcomania(store, perfil);
       establecerPremio({ codigo, ajustes, album, saldo });
@@ -219,7 +227,7 @@ async function iniciar({ vista, area, ir, sesion }) {
     clearTimeout(temporizador);
     quitarAjuste();
     if (!sesion.finalizada && ctl.ensayosHechos > 0) {
-      guardar(() => store.guardar('sesiones', ctl.registro({ inicio, fin: new Date() })));
+      guardar(() => store.guardar('sesiones', { ...ctl.registro({ inicio, fin: new Date() }), interrumpida: true }));
     }
   };
 

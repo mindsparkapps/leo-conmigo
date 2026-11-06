@@ -7,12 +7,14 @@ import { obtenerStore, perfilActivo } from '../contexto.js';
 import { crearMiniatura } from '../ui/miniatura.js';
 import { describirError } from '../ui/adulto.js';
 import { urlDeMedio, liberarUrls } from '../medios.js';
+import { avisosPendientes, deshacerCambio, marcarVisto, nombreDeAjuste } from '../core/autoajuste.js';
 import { FASES, clasePunto, observarNube, refrescarEstado, textoDeEstado } from '../nube.js';
 
 export const titulo = 'Modo adulto · Leo Conmigo';
 
 export function montar(contenedor, { ir }) {
   const zonaAviso = el('div');
+  const zonaAuto = el('div');
   const zonaNino = el('div', { class: 'panel' }, el('p', { class: 'ayuda' }, 'Cargando…'));
   const zonaEstado = el('div', { class: 'panel' });
   const zonaNube = el('div', { class: 'panel' });
@@ -30,6 +32,7 @@ export function montar(contenedor, { ir }) {
         el('button', { type: 'button', class: 'boton', onclick: () => ir('/nino') }, 'Volver al modo niño'),
       ),
       zonaAviso,
+      zonaAuto,
       zonaNino,
       zonaNube,
       zonaEstado,
@@ -48,6 +51,7 @@ export function montar(contenedor, { ir }) {
     ),
   );
 
+  pintarAvisosAutomaticos(zonaAuto, () => vivo).catch((error) => console.error(error));
   pintarNino(zonaNino, () => vivo).catch((error) => {
     zonaNino.replaceChildren(el('h2', {}, 'El niño'), el('p', { class: 'error-texto' }, describirError(error)));
   });
@@ -84,6 +88,47 @@ export function montar(contenedor, { ir }) {
     dejarDeObservarNube();
     liberarUrls();
   };
+}
+
+// Avisos de lo que la app ajustó sola (fase 14), con «Deshacer» y «Entendido». El niño nunca los ve.
+async function pintarAvisosAutomaticos(zona, estaVivo) {
+  const store = await obtenerStore();
+  const perfil = await perfilActivo();
+  if (!estaVivo()) return;
+  const avisos = perfil ? avisosPendientes(perfil) : [];
+  if (!avisos.length) {
+    zona.replaceChildren();
+    return;
+  }
+  const guardar = async (nuevo) => {
+    await store.guardar('perfiles', nuevo);
+    await pintarAvisosAutomaticos(zona, estaVivo);
+  };
+  const texto = (a) => {
+    if (a.sugerencia) return `Sugerencia: ${a.motivo}.`;
+    const nombre = nombreDeAjuste(a.ajuste);
+    return `La app ajustó: ${nombre} ${a.antes} → ${a.despues} (${a.motivo}).`;
+  };
+  zona.replaceChildren(
+    el(
+      'div',
+      { class: 'aviso aviso-auto', role: 'status' },
+      el('h2', {}, 'La app ajustó algo sola'),
+      ...avisos.map((a) =>
+        el(
+          'div',
+          { class: 'aviso-auto-fila' },
+          el('p', {}, texto(a)),
+          el(
+            'div',
+            { class: 'acciones' },
+            a.sugerencia ? null : el('button', { type: 'button', class: 'boton secundario chico', onclick: () => guardar(deshacerCambio(perfil, a.indice)).catch(console.error) }, 'Deshacer'),
+            el('button', { type: 'button', class: 'boton chico', onclick: () => guardar(marcarVisto(perfil, a.indice)).catch(console.error) }, 'Entendido'),
+          ),
+        )),
+      el('p', { class: 'ayuda' }, 'Al deshacer, ese ajuste queda en «Lo elijo yo» y la app no lo vuelve a tocar. Puedes cambiarlo en Ajustes.'),
+    ),
+  );
 }
 
 async function pintarNino(zona, estaVivo) {

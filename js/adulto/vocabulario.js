@@ -13,7 +13,7 @@ import { tablaDePalabras } from '../core/estadisticas.js';
 
 export const titulo = 'Vocabulario · Leo Conmigo';
 
-const NOMBRE_ESTADO = { nueva: 'Nueva', practica: 'En práctica', leida: 'Leída', completa: 'Completa' };
+const NOMBRE_ESTADO = { nueva: 'Nueva', practica: 'En práctica', leida: 'Leída', completa: 'Completa', aprendida: 'Aprendida' };
 
 export function montar(contenedor) {
   const raiz = el('section', { class: 'vista-adulto' }, cabecera('Vocabulario'), cargando());

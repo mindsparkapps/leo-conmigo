@@ -18,7 +18,13 @@ export const AJUSTES_POR_DEFECTO = Object.freeze({
   habilitarL6: false, // «Leo en voz alta» (L6): el adulto confirma si el niño leyó bien
   etapasForzadas: [], // etapas que el adulto abre aunque aún no se alcance el umbral
   etapasBloqueadas: [], // etapas que el adulto cierra aunque se haya alcanzado el umbral
+  avanceRapido: true, // fase 14: si acierta los 3 primeros ensayos de una actividad, queda dominada provisional
+  palabrasNuevasPorSesion: 2, // fase 14: 1 o 2 (el tope del §2 sigue siendo 2)
+  // fase 14: qué ajustes puede cambiar la app sola (true = «Automático», false = «Lo elijo yo»)
+  automaticos: Object.freeze({ ensayosPorSesion: true, maxOpciones: true, etapa: true, palabrasNuevas: true }),
 });
+
+export const AJUSTES_AUTOMATICOS = Object.freeze(['ensayosPorSesion', 'maxOpciones', 'etapa', 'palabrasNuevas']);
 
 const limitar = (n, min, max) => Math.min(max, Math.max(min, n));
 const entero = (valor, porDefecto) => (Number.isFinite(Number(valor)) ? Math.round(Number(valor)) : porDefecto);
@@ -42,6 +48,10 @@ export function normalizarAjustes(ajustes = {}) {
   const etapas = (lista) => [...new Set((Array.isArray(lista) ? lista : []).map(Number).filter((e) => [0, 1, 2, 3].includes(e)))].sort();
   a.etapasForzadas = etapas(a.etapasForzadas);
   a.etapasBloqueadas = etapas(a.etapasBloqueadas).filter((e) => !a.etapasForzadas.includes(e)); // si hay duda, se abre
+  a.avanceRapido = a.avanceRapido !== false;
+  a.palabrasNuevasPorSesion = limitar(entero(a.palabrasNuevasPorSesion, 2), 1, 2);
+  const automaticos = a.automaticos && typeof a.automaticos === 'object' ? a.automaticos : {};
+  a.automaticos = Object.fromEntries(AJUSTES_AUTOMATICOS.map((clave) => [clave, automaticos[clave] !== false]));
   return a;
 }
 

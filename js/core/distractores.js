@@ -20,7 +20,9 @@ const normalizar = (texto) => texto.normalize('NFD').replace(/\p{Diacritic}/gu, 
  * @param opciones   { cantidad, facil, vistas (Set de ids ya vistos), aleatorio }
  * @returns lista de palabras (como máximo `cantidad`)
  */
-export function elegirDistractores(objetivo, vocabulario, { cantidad, facil = false, vistas, aleatorio = Math.random, soloOtraCategoria = false }) {
+export function elegirDistractores(objetivo, vocabulario, {
+  cantidad, facil = false, vistas, aleatorio = Math.random, soloOtraCategoria = false, excluirIds = [], incluirIds = [],
+}) {
   if (!(vistas instanceof Set)) {
     throw new TypeError('`vistas` debe ser un Set con los ids de las palabras que el niño ya vio');
   }
@@ -29,7 +31,7 @@ export function elegirDistractores(objetivo, vocabulario, { cantidad, facil = fa
   const textoObjetivo = normalizar(objetivo.texto);
   // `soloOtraCategoria` (actividad «clasificar»): ningún distractor puede ser de la misma categoría
   // que la correcta, porque entonces habría dos respuestas válidas.
-  const candidatas = vocabulario.filter(
+  let candidatas = vocabulario.filter(
     (p) =>
       p.id !== objetivo.id &&
       p.activa !== false &&
@@ -38,6 +40,11 @@ export function elegirDistractores(objetivo, vocabulario, { cantidad, facil = fa
       normalizar(p.texto) !== textoObjetivo &&
       !(soloOtraCategoria && p.categoria === objetivo.categoria),
   );
+  // `excluirIds`: palabras que se prefiere no usar (si quedan palabras de sobra); `incluirIds`: se usan primero.
+  if (excluirIds.length) {
+    const sin = candidatas.filter((p) => !excluirIds.includes(p.id));
+    if (sin.length >= cantidad) candidatas = sin;
+  }
 
   const otraLetra = (p) => normalizar(p.texto)[0] !== textoObjetivo[0];
   const otroLargo = (p) => Math.abs(p.texto.length - objetivo.texto.length) >= 2;
@@ -49,6 +56,11 @@ export function elegirDistractores(objetivo, vocabulario, { cantidad, facil = fa
 
   const elegidas = [];
   const textosUsados = new Set([textoObjetivo]);
+  for (const p of candidatas.filter((c) => incluirIds.includes(c.id))) {
+    if (elegidas.length >= cantidad) break;
+    elegidas.push(p);
+    textosUsados.add(normalizar(p.texto));
+  }
   for (const reglas of pasos) {
     if (elegidas.length >= cantidad) break;
     for (const p of barajar(candidatas, aleatorio)) {

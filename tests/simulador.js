@@ -53,7 +53,10 @@ export function minimoViolaciones(ensayos) {
  * @param ajustes         ajustes del perfil (ensayosPorSesion, maxOpciones, ...)
  * @param revisar         si es true, comprueba invariantes en cada sesión
  */
-export function simular({ dias = 40, semilla = 1, aprendizaje = 0.08, inicio = 0.4, palabras = 14, ajustes = {}, revisar = true, alPlan = null } = {}) {
+export function simular({
+  dias = 40, semilla = 1, aprendizaje = 0.08, inicio = 0.4, palabras = 14, ajustes = {}, revisar = true, alPlan = null,
+  avanceRapido = false, conocidas = 0, dificultades = new Map(),
+} = {}) {
   const azar = crearAleatorio(semilla);
   const elementos = vocabulario(palabras);
   const progresos = new Map();
@@ -73,6 +76,7 @@ export function simular({ dias = 40, semilla = 1, aprendizaje = 0.08, inicio = 0
       actividades: ACTIVIDADES,
       hoy,
       aleatorio: azar,
+      dificultades,
     });
     if (plan.ensayos.length === 0) break;
     if (alPlan) alPlan(plan, dia);
@@ -102,6 +106,7 @@ export function simular({ dias = 40, semilla = 1, aprendizaje = 0.08, inicio = 0
       const claveExpo = `${ensayo.elementoId}:${ensayo.actividad}`;
       const veces = exposiciones.get(claveExpo) ?? 0;
       let p = Math.min(0.95, inicio + aprendizaje * veces);
+      if (elementos.findIndex((e) => e.id === ensayo.elementoId) < conocidas) p = 0.97; // una palabra que ya conoce
       if (ensayo.tipo === 'repaso') p = 0.9;
       if (ensayo.tipo === 'cierre') p = 0.95;
       const correcto = azar() < p;
@@ -112,9 +117,10 @@ export function simular({ dias = 40, semilla = 1, aprendizaje = 0.08, inicio = 0
       const res = aplicarResultado({
         progreso: progresos.get(idP) ?? nuevoProgreso({ perfilId: PERFIL_ID, elementoId: ensayo.elementoId, actividad: ensayo.actividad }),
         nivel: niveles.get(idN) ?? nuevoNivel(PERFIL_ID, ensayo.actividad),
-        resultado: { fecha: new Date(hoy.getTime() + stats.ensayos * 1000), correctoAlPrimerIntento: correcto, opciones: ensayo.opciones },
+        resultado: { fecha: new Date(hoy.getTime() + stats.ensayos * 1000), correctoAlPrimerIntento: correcto, opciones: ensayo.opciones, esFacil: Boolean(ensayo.esFacil) },
         maxOpciones: ajustes.maxOpciones,
         contarParaNivel: !ensayo.esFacil,
+        avanceRapido,
       });
       progresos.set(idP, res.progreso);
       niveles.set(idN, res.nivel);

@@ -1,7 +1,7 @@
 // Estadísticas para el panel de progreso del adulto (PLAN.md §5). Lógica pura, sin DOM.
 
 import { ACTIVIDADES_POR_ETAPA } from './etapas.js';
-import { ESTADOS, claveDia, nuevoProgreso, sumarDias } from './progreso.js';
+import { ESTADOS, claveDia, desmarcarAprendida, estaAprendida, nuevoProgreso, sumarDias } from './progreso.js';
 import { ordenadas } from './vocabulario.js';
 
 export const ACTIVIDADES_ETAPA_1 = ACTIVIDADES_POR_ETAPA[1];
@@ -24,7 +24,7 @@ export function celdaDeProgreso(progreso) {
 
 /**
  * Estado general de una palabra a partir de sus celdas (en el orden de `actividades`):
- * 'completa' (todas dominadas), 'leida' (dominada en L4), 'practica' (ya empezó) o 'nueva'.
+ * 'aprendida' (completa y con repaso acertado en caja 5; la decide `tablaDePalabras`), 'completa' (todas dominadas), 'leida' (dominada en L4), 'practica' (ya empezó) o 'nueva'.
  */
 export function estadoDePalabra(celdas, actividades = ACTIVIDADES_ETAPA_1) {
   if (celdas.length && celdas.every((c) => c.estado === ESTADOS.DOMINADA)) return 'completa';
@@ -51,8 +51,16 @@ export function tablaDePalabras({ palabras, progresos, actividades = ACTIVIDADES
       actividad,
       ...celdaDeProgreso(porClave.get(`${palabra.id}:${actividad}`)),
     }));
-    return { palabra, celdas, estado: estadoDePalabra(celdas, actividades), actividadActual: actividadActualDe(celdas, actividades) };
+    let estado = estadoDePalabra(celdas, actividades);
+    // «Aprendida» (fase 14): completa y con un repaso acertado en la caja 5; sale sola de los repasos normales
+    if (estado === 'completa' && estaAprendida(actividades.map((a) => porClave.get(`${palabra.id}:${a}`)))) estado = 'aprendida';
+    return { palabra, celdas, estado, actividadActual: actividadActualDe(celdas, actividades) };
   });
+}
+
+/** «Volver a practicar»: los progresos de una palabra aprendida, listos para guardar, sin la marca de aprendida. */
+export function volverAPracticar({ elementoId, existentes = [] }) {
+  return existentes.filter((p) => p.elementoId === elementoId && !p.deleted).map(desmarcarAprendida);
 }
 
 /** Números grandes del panel: palabras, leídas, en práctica, sesiones y la última. */
@@ -62,7 +70,7 @@ export function resumenGeneral({ filas, sesiones }) {
   return {
     palabras: filas.length,
     leidas: filas.filter((f) => f.celdas[iLeer]?.estado === ESTADOS.DOMINADA).length,
-    completas: filas.filter((f) => f.estado === 'completa').length,
+    completas: filas.filter((f) => f.estado === 'completa' || f.estado === 'aprendida').length,
     enPractica: filas.filter((f) => f.estado === 'practica' || f.estado === 'leida').length,
     nuevas: filas.filter((f) => f.estado === 'nueva').length,
     sesiones: sesiones.length,
