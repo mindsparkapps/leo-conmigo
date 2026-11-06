@@ -586,7 +586,15 @@ respuesta {
 
 ---
 
-### Fase 13 — Análisis: qué le cuesta, qué le es fácil, exportar para IA
+### Fase 13 — Análisis: qué le cuesta, qué le es fácil, exportar para IA ✔ hecha
+
+**Decisiones de implementación (ya en el código, con pruebas en `tests/analisis.test.js`):**
+- **Qué cuenta:** `respuestasAnalizables` deja fuera `esFacil`, L6, `tipo: 'lectura'`, las preguntas de cuentos (`tipo: 'cuento'`: no son ensayos del motor), lo borrado y lo anterior a 60 días (el día 60 todavía entra). Las constantes están arriba de `core/analisis.js`.
+- **Tiempo relativo:** como una palabra se practica en varias actividades, se divide cada acierto al primer intento (sin `distraido`) por la mediana del niño en **esa** actividad y se toma la mediana de esos cocientes. Sin aciertos válidos no suma al índice.
+- **Tendencia:** últimos 5 contra los 5 anteriores; hacen falta al menos 3 anteriores, si no queda «igual».
+- **Listas:** «más difíciles» = confiables con índice > 0 (una palabra con índice 0 no es «difícil»); «más fáciles» = confiables que no están en la anterior, por menor índice (empate: más acierto, luego más rápida); «para repetir más» incluye también palabras con pocos datos si fallaron un repaso en los últimos 7 días. Franjas del día: mañana 5–11, tarde 12–18, noche 19–4; solo se muestran con ≥ 20 ensayos cada una y solo si hay al menos dos.
+- **Pantalla `#/adulto/analisis`** («Qué le cuesta»; enlaces desde el panel y desde Progreso): las cinco tarjetas más «según el momento del día» cuando hay datos, detalle por palabra (últimos 20 ensayos, «Ya la sabe» / «Empezar de nuevo»), texto de ayuda y exportación. La barra de dificultad es azul. Sin ninguna palabra con 5 ensayos explica que hay pocos datos en vez de mostrar listas vacías.
+- **Exportar:** `construirExportacion` trae `esquema`, `metodo` (5 líneas), `perfil` (solo nombre de pila, edad en años —nunca la fecha de nacimiento—, etapa y ajustes), métricas, confusiones, por actividad, por hora, sesiones (resumidas) y **todas** las respuestas. Sin fotos ni audios. «Ocultar el nombre» cambia el nombre por «el niño» en **todos** los textos (incluso si es una de las palabras), sin tocar palabras que solo empiezan igual. «Copiar resumen para IA» da un Markdown de ≤ 4 000 caracteres (si se pasa, recorta las listas).
 
 **Lógica pura (`core/analisis.js`, con pruebas y datos de ejemplo):**
 

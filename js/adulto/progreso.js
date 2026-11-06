@@ -285,5 +285,11 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null } = {})
       : el('p', { class: 'ayuda' }, 'Aún no hay sesiones.'),
   );
 
-  raiz.replaceChildren(cabecera('Progreso'), panelResumen, panelOtras, panelGrafico, panelPalabras, panelHistorial);
+  const enlaceAnalisis = el(
+    'p',
+    { class: 'ayuda' },
+    '¿Qué palabras le cuestan más? ',
+    el('a', { href: '#/adulto/analisis' }, 'Ver «Qué le cuesta»'),
+  );
+  raiz.replaceChildren(cabecera('Progreso'), panelResumen, enlaceAnalisis, panelOtras, panelGrafico, panelPalabras, panelHistorial);
 }

@@ -213,6 +213,30 @@ export function descargarArchivo(blob, nombre) {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
+/** Copia un texto al portapapeles. true si se pudo; false si el navegador no lo permite. Llamar desde un toque. */
+export async function copiarTexto(texto) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(texto);
+      return true;
+    }
+  } catch { /* se prueba el otro método */ }
+  try {
+    const area = document.createElement('textarea');
+    area.value = texto;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.append(area);
+    area.select();
+    const bien = document.execCommand('copy');
+    area.remove();
+    return bien;
+  } catch {
+    return false;
+  }
+}
+
 /** Vibración breve; no hace nada si el dispositivo no la tiene (p. ej. iPhone). */
 export function vibrar(patron = 40) {
   try {

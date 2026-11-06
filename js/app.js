@@ -34,6 +34,7 @@ crearRouter({
     adulto('/adulto/frases', './adulto/frases.js'),
     adulto('/adulto/libros', './adulto/libros.js'),
     adulto('/adulto/progreso', './adulto/progreso.js'),
+    adulto('/adulto/analisis', './adulto/analisis.js'),
     adulto('/adulto/ajustes', './adulto/ajustes.js'),
     adulto('/adulto/album', './adulto/album.js'),
     adulto('/adulto/tienda', './adulto/tienda.js'),

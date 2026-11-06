@@ -598,6 +598,20 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 .grafico-semanal .barra-vacia { stroke: var(--borde); stroke-width: 3; stroke-dasharray: 3 3; }
 .detalle-numeros summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 700; }
 
+/* ===== Qué le cuesta (análisis, fase 13). La dificultad va en azul: nunca en rojo. ===== */
+.item-analisis { border: 2px solid var(--borde); border-radius: 16px; background: #fff; }
+.item-analisis.abierto { border-color: var(--azul); }
+.fila-analisis {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 10px;
+  border: 0; border-radius: 14px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.fila-analisis:focus-visible { outline: 3px solid var(--azul); outline-offset: 2px; }
+.barra-indice { display: block; width: 100%; max-width: 260px; height: 10px; border-radius: 999px; background: var(--azul-suave); overflow: hidden; }
+.barra-indice-relleno { display: block; height: 100%; border-radius: 999px; background: var(--azul); }
+.detalle-analisis { display: grid; gap: 10px; padding: 0 12px 12px; }
+.casilla { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 700; }
+.casilla input { width: 24px; height: 24px; }
+
 .tabla-contenedor { overflow-x: auto; margin: 8px 0; }
 .tabla-progreso { width: 100%; border-collapse: collapse; font-size: 1rem; }
 .tabla-progreso th, .tabla-progreso td { padding: 6px 4px; text-align: center; border-bottom: 1px solid var(--borde); }
