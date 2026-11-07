@@ -2,3 +2,4 @@ node_modules/
 .claude/
 .DS_Store
 Thumbs.db
+graphify-out/
