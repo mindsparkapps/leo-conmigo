@@ -5,7 +5,8 @@ import { el } from '../ui/dom.js';
 import { crearCandado } from '../ui/candado.js';
 import { crearMiniatura } from '../ui/miniatura.js';
 import { habilitarAdulto, deshabilitarAdulto } from '../acceso.js';
-import { NOMBRE_APP } from '../config.js';
+import { NOMBRE_APP, TEXTO_VERSION } from '../config.js';
+import { observar, instalar } from '../pwa.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { urlDeMedio, liberarUrls } from '../medios.js';
 import { desbloquearAudio } from '../audio.js';
@@ -56,7 +57,25 @@ async function pintar(vista, ir, estaVivo) {
   if (!estaVivo()) return;
 
   if (!perfil) {
-    vista.prepend(el('h1', { class: 'titulo-nino' }, NOMBRE_APP), el('p', { class: 'mensaje-nino' }, 'Un adulto debe preparar la aplicación.'));
+    // Primera pantalla en un dispositivo nuevo: aquí el adulto puede instalar la app y ver la versión
+    const instalacion = el('p', { class: 'instalar-inicio' });
+    let dejar = null;
+    dejar = observar((estado) => {
+      if (dejar && !instalacion.isConnected) { dejar(); return; }
+      instalacion.replaceChildren(
+        ...(estado.puedeInstalar
+          ? [el('button', { type: 'button', class: 'boton', onclick: () => instalar() }, 'Instalar en este dispositivo')]
+          : estado.instalada
+            ? []
+            : [el('span', { class: 'ayuda' }, 'Para instalarla: en Android/Chrome abre el menú ⋮ y elige «Instalar aplicación»; en iPhone o iPad usa Compartir → «Agregar a pantalla de inicio».')]),
+      );
+    });
+    vista.prepend(
+      el('h1', { class: 'titulo-nino' }, NOMBRE_APP),
+      el('p', { class: 'mensaje-nino' }, 'Un adulto debe preparar la aplicación.'),
+      instalacion,
+      el('p', { class: 'version-app' }, TEXTO_VERSION),
+    );
     return;
   }
 

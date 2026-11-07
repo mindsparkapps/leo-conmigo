@@ -2,7 +2,14 @@
 
 // Al cambiar VERSION se registra un service worker nuevo (sw.js?v=...) y se
 // crea una caché nueva. Súbela en cada publicación que cambie archivos.
-export const VERSION = '0.14.0';
+export const VERSION = '0.14.1';
+
+// Commit publicado. Lo reemplaza el flujo .github/workflows/pages.yml al publicar en GitHub Pages;
+// en el computador queda «local».
+export const COMMIT = 'local';
+
+/** Texto corto para saber qué versión está cargada, p. ej. «v0.14.1 · 3999c4c». */
+export const TEXTO_VERSION = `v${VERSION} · ${COMMIT}`;
 
 export const NOMBRE_APP = 'Leo Conmigo';
 

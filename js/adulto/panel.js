@@ -1,7 +1,7 @@
 // Panel del modo adulto: el niño activo, accesos a perfiles y vocabulario, estado de la app y créditos.
 
 import { el } from '../ui/dom.js';
-import { VERSION } from '../config.js';
+import { TEXTO_VERSION } from '../config.js';
 import { observar, instalar, aplicarActualizacion } from '../pwa.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { crearMiniatura } from '../ui/miniatura.js';
@@ -195,7 +195,7 @@ function panelEstado(estado, protegido) {
     el(
       'ul',
       { class: 'lista-estado' },
-      fila('Versión', VERSION),
+      fila('Versión', TEXTO_VERSION),
       fila('Conexión', estado.enLinea ? 'En línea' : 'Sin conexión'),
       fila('Funciona sin conexión', estado.offlineListo ? 'Sí' : 'Preparando…'),
       fila('Instalada en este dispositivo', estado.instalada ? 'Sí' : 'No'),

@@ -1,0 +1,40 @@
+# Publica la app en GitHub Pages con el commit escrito en js/config.js (COMMIT), para saber en la
+# app qué versión está cargada. En el repositorio: Settings › Pages › Source: «GitHub Actions».
+name: Publicar en GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Escribir el commit en config.js
+        run: |
+          corto="${GITHUB_SHA::7}"
+          sed -i "s/export const COMMIT = 'local';/export const COMMIT = '${corto}';/" js/config.js
+          grep -q "COMMIT = '${corto}'" js/config.js
+      - name: Armar el sitio
+        run: |
+          mkdir -p _sitio
+          cp -r index.html manifest.webmanifest sw.js .nojekyll css data fonts icons js _sitio/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _sitio
+      - id: despliegue
+        uses: actions/deploy-pages@v4

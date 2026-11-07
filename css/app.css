@@ -437,6 +437,8 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 .boton-jugar svg { margin-left: 8%; }
 
 .mensaje-nino { max-width: 24ch; margin: 0; font-size: 1.5rem; color: var(--texto-suave); text-align: center; }
+.instalar-inicio { max-width: 36ch; margin: 0; text-align: center; }
+.version-app { margin: 0; font-size: 0.85rem; color: var(--texto-suave); }
 
 .album {
   display: grid;
