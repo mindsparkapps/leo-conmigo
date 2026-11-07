@@ -73,12 +73,12 @@ export function montar(contenedor, { ir }) {
 
   const dejarDeObservarNube = observarNube((e) => {
     const punto = el('span', { class: `punto-estado ${clasePunto(e.fase)}`, 'aria-hidden': 'true' });
-    zonaNube.replaceChildren(
+    zonaNube.replaceChildren(...[
       el('h2', {}, 'Cuenta de Google'),
       el('p', { class: 'estado-nube', role: 'status' }, punto, el('strong', {}, textoDeEstado(e)), e.email ? el('span', { class: 'ayuda' }, ` · ${e.email}`) : null),
       e.mensaje ? el('p', { class: 'error-texto', role: 'alert' }, e.mensaje) : null,
       el('div', { class: 'acciones' }, el('a', { class: 'boton secundario', href: '#/adulto/cuenta' }, e.fase === FASES.SIN_CUENTA ? 'Iniciar sesión' : 'Abrir la cuenta')),
-    );
+    ].filter(Boolean)); // el replaceChildren nativo escribe «null» si recibe null
   });
   refrescarEstado().catch(() => {});
 

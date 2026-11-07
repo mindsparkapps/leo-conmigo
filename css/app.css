@@ -169,6 +169,26 @@ body {
   stroke-dashoffset: 0;
   transition: stroke-dashoffset 3s linear;
 }
+/* Copia grande del candado abajo al centro mientras se sostiene (el dedo tapa el de la esquina) */
+.candado-indicador {
+  position: fixed;
+  left: 50%;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  z-index: 50;
+  width: 120px;
+  height: 120px;
+  padding: 10px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.18);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.candado-indicador svg { width: 100%; height: 100%; display: block; }
+.candado-indicador .candado-pista,
+.candado-indicador .candado-avance { stroke-width: 4; }
+.candado-indicador .candado-avance { animation: candado-llenar 3s linear forwards; }
+@keyframes candado-llenar { to { stroke-dashoffset: 0; } }
 .candado-icono { fill: var(--texto-suave); }
 .candado-icono-linea {
   fill: none;

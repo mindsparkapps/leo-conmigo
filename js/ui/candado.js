@@ -24,13 +24,24 @@ export function crearCandado({ alDesbloquear }) {
   boton.innerHTML = ICONO;
 
   let temporizador = null;
+  // En el celular el dedo tapa el candado: mientras se sostiene, el avance se ve también abajo, al centro
+  let indicador = null;
+
+  const quitarIndicador = () => {
+    indicador?.remove();
+    indicador = null;
+  };
 
   const iniciar = () => {
     if (temporizador) return;
     boton.classList.add('sosteniendo');
+    indicador = el('div', { class: 'candado-indicador', 'aria-hidden': 'true' });
+    indicador.innerHTML = ICONO;
+    document.body.append(indicador);
     temporizador = setTimeout(() => {
       temporizador = null;
       boton.classList.remove('sosteniendo');
+      quitarIndicador();
       pedirSuma(alDesbloquear);
     }, MS_SOSTENER);
   };
@@ -39,6 +50,7 @@ export function crearCandado({ alDesbloquear }) {
     clearTimeout(temporizador);
     temporizador = null;
     boton.classList.remove('sosteniendo');
+    quitarIndicador();
   };
 
   boton.addEventListener('pointerdown', (e) => {
