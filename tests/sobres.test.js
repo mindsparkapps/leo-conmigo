@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { comprarSobre, cargarMonedas, reiniciarAlbumes, venderRepetida } from '../js/albumes.js';
+import { comprarSobre, cargarMonedas, pagarLeccion, reiniciarAlbumes, venderRepetida } from '../js/albumes.js';
 import { LAMINAS_POR_SOBRE, precioDeSobre, registroAVender, repetidas, sacarSobre } from '../js/core/sobres.js';
 import { crearRegalo } from '../js/core/album.js';
 import { CODIGOS_CATALOGO } from '../js/core/calcomanias.js';
@@ -12,9 +12,18 @@ let reloj = 0;
 const ahora = () => new Date(Date.UTC(2026, 10, 1, 10, 0, 0, reloj++ * 10)).toISOString();
 
 test('precioDeSobre: lo que se gana jugando cinco veces', () => {
-  assert.equal(precioDeSobre({}), 5); // 5 × 10 / 12 = 4,17 → 5
-  assert.equal(precioDeSobre({ tamano: 10, monedasPorAlbum: 10 }), 5);
-  assert.equal(precioDeSobre({ tamano: 24, monedasPorAlbum: 1 }), 1);
+  assert.equal(precioDeSobre({}), 50); // 5 lecciones × 10 monedas
+  assert.equal(precioDeSobre({ monedasPorLeccion: 4 }), 20);
+  assert.equal(precioDeSobre({ monedasPorLeccion: 1 }), 5);
+});
+
+test('pagarLeccion: suma las monedas configuradas por lección y cuenta en el saldo', async () => {
+  const s = crearStoreEnMemoria();
+  const r = await pagarLeccion(s, perfil, { ahora });
+  assert.deepEqual([r.cantidad, r.saldoAntes, r.saldo], [10, 0, 10]);
+  const otra = await pagarLeccion(s, { ...perfil, album: { monedasPorLeccion: 3 } }, { ahora });
+  assert.deepEqual([otra.cantidad, otra.saldoAntes, otra.saldo], [3, 10, 13]);
+  assert.equal((await cargarMonedas(s, perfil)).saldo, 13);
 });
 
 test('sacarSobre: la cantidad pedida, todas de las que están en juego', () => {
@@ -38,17 +47,17 @@ test('comprarSobre: gasta, entrega láminas sueltas y avisa si no alcanza', asyn
   const s = crearStoreEnMemoria();
   const sin = await comprarSobre(s, perfil, { aleatorio: crearAleatorio(1), ahora });
   assert.equal(sin.comprado, false);
-  assert.equal(sin.faltan, 5);
+  assert.equal(sin.faltan, 50);
 
-  await s.guardar('movimientos', crearRegalo({ perfilId: 'p1', cantidad: 12 }));
+  await s.guardar('movimientos', crearRegalo({ perfilId: 'p1', cantidad: 60 }));
   const r = await comprarSobre(s, perfil, { aleatorio: crearAleatorio(1), ahora });
   assert.equal(r.comprado, true);
   assert.equal(r.codigos.length, LAMINAS_POR_SOBRE);
-  assert.equal(r.saldo, 7);
+  assert.equal(r.saldo, 10);
   const registros = await s.listar('calcomanias', { perfilId: 'p1' });
   assert.equal(registros.length, LAMINAS_POR_SOBRE);
   assert.ok(registros.every((x) => x.pegada === false));
-  assert.equal((await cargarMonedas(s, perfil)).saldo, 7);
+  assert.equal((await cargarMonedas(s, perfil)).saldo, 10);
 });
 
 test('venderRepetida: paga una moneda, quita una copia y nunca la última', async () => {
@@ -65,10 +74,10 @@ test('venderRepetida: paga una moneda, quita una copia y nunca la última', asyn
 
 test('reiniciarAlbumes: borra láminas y premios de álbum, deja el resto de las monedas', async () => {
   const s = crearStoreEnMemoria();
-  await s.guardar('movimientos', crearRegalo({ perfilId: 'p1', cantidad: 20 }));
+  await s.guardar('movimientos', crearRegalo({ perfilId: 'p1', cantidad: 200 }));
   for (let i = 0; i < 3; i++) await comprarSobre(s, perfil, { aleatorio: crearAleatorio(i), ahora });
   await reiniciarAlbumes(s, perfil);
   const datos = await cargarMonedas(s, perfil);
   assert.equal(datos.calcomanias.length, 0);
-  assert.equal(datos.saldo, 5, '20 − 3 sobres de 5: el gasto no se devuelve');
+  assert.equal(datos.saldo, 50, '200 − 3 sobres de 50: el gasto no se devuelve');
 });

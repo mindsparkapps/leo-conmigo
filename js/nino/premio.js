@@ -10,6 +10,9 @@ import { vibrar } from '../hardware.js';
 import { liberarUrls } from '../medios.js';
 import { crearCofre } from '../ui/moneda.js';
 import { mapaDePropias, nodoDeCalcomania } from '../ui/calcomania.js';
+import { ganarCalcomania, pagarLeccion } from '../albumes.js';
+import { destinoSaldo, fijarSaldo } from '../ui/saldo.js';
+import { lanzarMonedas } from '../ui/monedas-vuelo.js';
 
 export const titulo = NOMBRE_APP;
 
@@ -24,6 +27,16 @@ let premio = null;
  */
 export function establecerPremio(datos) {
   premio = datos;
+}
+
+/**
+ * Cierra una lección: elige la calcomanía de hoy, paga las monedas de la lección y deja todo listo para la pantalla del
+ * premio. Lo usan el fin de la sesión y el atajo «saltar la lección» de las herramientas de desarrollador.
+ */
+export async function terminarLeccion(store, perfil, ajustes) {
+  const { codigo, album, saldo } = await ganarCalcomania(store, perfil);
+  const pago = await pagarLeccion(store, perfil);
+  establecerPremio({ codigo, ajustes, album, saldo: saldo + pago.cantidad, monedas: pago.cantidad, saldoAntes: pago.saldoAntes });
 }
 
 /** Estrellas que suben y se desvanecen (≤ 1,5 s). Con movimiento reducido el CSS las oculta. */
@@ -43,7 +56,7 @@ export function montar(contenedor, { ir }) {
     ir('/nino'); // abierto directamente (p. ej. al recargar): no hay nada que premiar
     return undefined;
   }
-  const { codigo, ajustes, album = null, saldo = 0 } = premio;
+  const { codigo, ajustes, album = null, saldo = 0, monedas = 0, saldoAntes = 0 } = premio;
   const casa = el('button', { type: 'button', class: 'boton-casa', 'aria-label': 'Volver al inicio', onclick: () => ir('/nino') });
   casa.innerHTML = ICONO_CASA;
 
@@ -67,7 +80,18 @@ export function montar(contenedor, { ir }) {
   }
   if (celebra && ajustes.vibracion) vibrar([40, 60, 40]);
 
+  // Las monedas de la lección salen volando hacia el total de la esquina, que sube con cada una
+  let temporizador = 0;
+  if (monedas > 0) {
+    fijarSaldo(saldoAntes);
+    destinoSaldo(); // muestra el total
+    temporizador = setTimeout(() => {
+      lanzarMonedas({ cantidad: monedas, sonido: ajustes.sonido, movimientoReducido: ajustes.intensidadCelebracion === 'ninguna', activo: () => vivo });
+    }, 900);
+  }
+
   return () => {
+    clearTimeout(temporizador);
     vivo = false;
     detener();
     liberarUrls();

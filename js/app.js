@@ -5,8 +5,10 @@ import { pedirAlmacenamientoPersistente } from './hardware.js';
 import { iniciarNube } from './nube.js';
 
 import { aplicarFondo } from './ui/fondo.js';
+import { iniciarSaldo } from './ui/saldo.js';
 
 aplicarFondo();
+iniciarSaldo(); // el total de monedas, arriba a la derecha en las pantallas del niño
 iniciarPWA();
 iniciarNube(); // sincroniza en segundo plano si hay una cuenta de Google vinculada
 pedirAlmacenamientoPersistente(); // que el navegador no borre las fotos, voces y progreso

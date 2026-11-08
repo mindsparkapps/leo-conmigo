@@ -8,7 +8,9 @@
 //  - El saldo NUNCA se guarda: es la suma de los movimientos. Nunca se ganan ni se pierden monedas por acertar.
 //  - Los álbumes ya completos no cambian si el adulto después cambia el tamaño: el último completo fija un corte.
 
-export const ALBUM_POR_DEFECTO = Object.freeze({ tamano: 12, monedasPorAlbum: 10, codigos: null });
+export const ALBUM_POR_DEFECTO = Object.freeze({ tamano: 12, monedasPorAlbum: 10, monedasPorLeccion: 10, codigos: null });
+export const MONEDAS_LECCION_MIN = 1;
+export const MONEDAS_LECCION_MAX = 50;
 export const TAMANO_MIN = 6;
 export const TAMANO_MAX = 24;
 export const MONEDAS_MIN = 1;
@@ -35,6 +37,7 @@ export function normalizarAlbum(album = {}) {
   return {
     tamano,
     monedasPorAlbum: limitar(entero(base.monedasPorAlbum, ALBUM_POR_DEFECTO.monedasPorAlbum), MONEDAS_MIN, MONEDAS_MAX),
+    monedasPorLeccion: limitar(entero(base.monedasPorLeccion, ALBUM_POR_DEFECTO.monedasPorLeccion), MONEDAS_LECCION_MIN, MONEDAS_LECCION_MAX),
     codigos,
   };
 }
@@ -131,6 +134,11 @@ export function crearCanje({ perfilId, premio, fecha = new Date().toISOString() 
     nota: premio.nombre,
     estado: 'pendiente',
   };
+}
+
+/** El movimiento que paga una lección terminada (las monedas que salen volando hacia el total). */
+export function crearPagoLeccion({ perfilId, cantidad, fecha = new Date().toISOString() }) {
+  return { perfilId, fecha, cantidad, tipo: 'leccion', nota: 'Lección terminada' };
 }
 
 export function crearRegalo({ perfilId, cantidad, nota = '', tipo = 'regalo', fecha = new Date().toISOString() }) {

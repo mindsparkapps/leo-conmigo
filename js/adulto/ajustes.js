@@ -14,6 +14,7 @@ import {
 } from '../core/etapas.js';
 import { hablarTexto, desbloquearAudio } from '../audio.js';
 import { vibrar } from '../hardware.js';
+import { fijarSaltarLeccion, saltarLeccionActivo } from '../dev.js';
 
 export const titulo = 'Ajustes · Leo Conmigo';
 
@@ -299,6 +300,22 @@ async function pintar(raiz, estaVivo) {
     estado.textContent = 'Valores originales puestos. Toca «Guardar» para quedarte con ellos.';
   });
 
+  // Herramientas de desarrollador: valen para este dispositivo, no para el perfil, y se aplican al marcarlas
+  const saltar = el('input', { type: 'checkbox', checked: saltarLeccionActivo() });
+  saltar.addEventListener('change', () => fijarSaltarLeccion(saltar.checked));
+  const panelDev = el(
+    'div',
+    { class: 'panel' },
+    el('h2', {}, 'Herramientas de desarrollador'),
+    el(
+      'label',
+      { class: 'interruptor' },
+      saltar,
+      el('span', {}, 'Saltar la lección: «Jugar» lleva directo a la pantalla de recompensas (con la calcomanía y las monedas de verdad)'),
+    ),
+    el('p', { class: 'ayuda' }, 'Para probar rápido. Viene apagado; no se guarda con el botón de abajo, se aplica al marcarlo.'),
+  );
+
   raiz.replaceChildren(
     cabecera('Ajustes'),
     el('p', { class: 'ayuda' }, `Ajustes de ${perfil.nombre}. Cambian desde la próxima sesión.`),
@@ -307,6 +324,7 @@ async function pintar(raiz, estaVivo) {
     panelAuto,
     panelPantalla,
     panelSonido,
+    panelDev,
     error,
     el('div', { class: 'acciones' }, valores, guardar),
     estado,

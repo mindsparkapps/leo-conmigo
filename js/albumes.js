@@ -2,7 +2,7 @@
 // la tienda del niño y las pantallas del adulto. Sin DOM: se prueba en Node con el almacén en memoria.
 
 import { CODIGOS_CATALOGO, codigosEnJuego, elegirCalcomania } from './core/calcomanias.js';
-import { calcularAlbumes, normalizarAlbum, premiosDeAlbumPorCrear, saldo } from './core/album.js';
+import { calcularAlbumes, crearPagoLeccion, normalizarAlbum, premiosDeAlbumPorCrear, saldo } from './core/album.js';
 import { crearCompraSobre, crearVenta, precioDeSobre, registroAVender, sacarSobre } from './core/sobres.js';
 
 /** Todo lo que hace falta para pintar el álbum, el cofre y la tienda de un niño. */
@@ -31,6 +31,18 @@ export async function acreditarAlbumesPendientes(store, perfil, { calcomanias, m
   const porCrear = premiosDeAlbumPorCrear({ perfilId: perfil.id, calcomanias: cals, movimientos: movs, album: perfil.album });
   if (porCrear.length) await store.guardarVarios('movimientos', porCrear);
   return porCrear;
+}
+
+/**
+ * Paga la lección recién terminada: guarda el movimiento con `monedasPorLeccion` monedas.
+ * @returns {{ cantidad, saldoAntes, saldo }}
+ */
+export async function pagarLeccion(store, perfil, { ahora = () => new Date().toISOString() } = {}) {
+  const filtro = { perfilId: perfil.id };
+  const { monedasPorLeccion } = normalizarAlbum(perfil.album);
+  const antes = saldo(await store.listar('movimientos', filtro));
+  await store.guardar('movimientos', crearPagoLeccion({ perfilId: perfil.id, cantidad: monedasPorLeccion, fecha: ahora() }));
+  return { cantidad: monedasPorLeccion, saldoAntes: antes, saldo: antes + monedasPorLeccion };
 }
 
 /**

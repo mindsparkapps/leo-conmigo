@@ -27,9 +27,10 @@ const suave = (t) => t * t * (3 - 2 * t);
  * @param alCambiar   ({ puedeAtras, puedeAdelante, carasVisibles }) al empezar y cada vez que cambia la página
  * @param hayLamina   (cara, u, v) => 0 | semiLado — si en ese punto hay una lámina pegada, la mitad de su lado
  *                    (fracción del ancho de la página); doble toque = acercarla
+ * @param alAcercar   ({ cara, u, v } | null) — cuando la lámina ya quedó centrada con el zoom, y null al salir del zoom
  * @throws si el navegador no tiene WebGL (quien llama debe mostrar otra cosa)
  */
-export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamina = null } = {}) {
+export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamina = null, alAcercar = () => {} } = {}) {
   if (caras.length % 2 !== 0) throw new Error('El libro necesita un número par de caras');
   const hojas = caras.length / 2;
 
@@ -139,7 +140,17 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
     camara.position.set(panX, panY - (dBase * 0.1) / zoom, dBase / zoom);
     camara.lookAt(panX, panY, 0);
   }
-  const salirDelZoom = () => { zoomObjetivo = 1; panXObjetivo = 0; panYObjetivo = 0; };
+  let acercando = null; // { cara, u, v, avisado }: la lámina que se está acercando
+  const salirDelZoom = () => {
+    zoomObjetivo = 1;
+    panXObjetivo = 0;
+    panYObjetivo = 0;
+    if (acercando) {
+      const habiaAvisado = acercando.avisado;
+      acercando = null;
+      if (habiaAvisado) alAcercar(null);
+    }
+  };
 
   function ajustarTamano() {
     const ancho = Math.max(1, contenedor.clientWidth);
@@ -189,6 +200,12 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
         zoom = zoomObjetivo; panX = panXObjetivo; panY = panYObjetivo;
       } else moviendo = true;
       colocarCamara();
+      // ya quedó centrada: quien llama puede poner encima la imagen original, nítida
+      if (!moviendo && acercando && !acercando.avisado) {
+        dibujar();
+        acercando.avisado = true;
+        alAcercar({ cara: acercando.cara, u: acercando.u, v: acercando.v });
+      }
     }
     if (arrastre) { dibujar(); return; } // mientras se arrastra, el dedo manda
     if (modo === 'pagina' && foco !== focoObjetivo) {
@@ -295,6 +312,7 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
     const altoVista = 2 * dBase * Math.tan((FOV * Math.PI) / 360); // alto visible del plano del libro sin zoom
     const menor = Math.min(altoVista, altoVista * camara.aspect);
     zoomObjetivo = limitar((menor * ZOOM_LLENADO) / (2 * semiLado * ANCHO), 1.5, 10);
+    acercando = { cara: c, u, v, avisado: false };
     pedirCuadro();
   }
 

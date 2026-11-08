@@ -10,7 +10,7 @@ import { mapaDePropias, nodoDeCalcomania } from '../ui/calcomania.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { borrarMedio, guardarMedio, liberarUrls, urlDeMedio } from '../medios.js';
 import { cargarMonedas, reiniciarAlbumes } from '../albumes.js';
-import { MONEDAS_MAX, MONEDAS_MIN, TAMANO_MAX, TAMANO_MIN, crearRegalo, normalizarAlbum } from '../core/album.js';
+import { MONEDAS_LECCION_MAX, MONEDAS_LECCION_MIN, MONEDAS_MAX, MONEDAS_MIN, TAMANO_MAX, TAMANO_MIN, crearRegalo, normalizarAlbum } from '../core/album.js';
 import { CALCOMANIAS, codigoDePropia, rutaCalcomania } from '../core/calcomanias.js';
 
 export const titulo = 'Álbum y monedas · Leo Conmigo';
@@ -38,6 +38,7 @@ export function montar(contenedor) {
     // ----- ajustes del álbum -----
     const config = datos.album;
     const entradaTamano = el('input', { type: 'number', min: TAMANO_MIN, max: TAMANO_MAX, value: config.tamano, inputmode: 'numeric' });
+    const entradaLeccion = el('input', { type: 'number', min: MONEDAS_LECCION_MIN, max: MONEDAS_LECCION_MAX, value: config.monedasPorLeccion, inputmode: 'numeric' });
     const entradaMonedas = el('input', { type: 'number', min: MONEDAS_MIN, max: MONEDAS_MAX, value: config.monedasPorAlbum, inputmode: 'numeric' });
     const enJuego = new Set(config.codigos ?? [...CALCOMANIAS.map((c) => c.codigo), ...[...propias.keys()].map(codigoDePropia)]);
     const mensaje = el('p', { class: 'ayuda', role: 'status' });
@@ -75,9 +76,14 @@ export function montar(contenedor) {
         mensaje.textContent = `Elige al menos ${tamano} calcomanías (ahora hay ${elegidas.length}) o achica el álbum.`;
         return;
       }
+      const porLeccion = Number(entradaLeccion.value);
+      if (!Number.isInteger(porLeccion) || porLeccion < MONEDAS_LECCION_MIN || porLeccion > MONEDAS_LECCION_MAX) {
+        mensaje.textContent = `Las monedas por lección van de ${MONEDAS_LECCION_MIN} a ${MONEDAS_LECCION_MAX}.`;
+        return;
+      }
       const todasMarcadas = elegidas.length === todos.length;
       try {
-        await store.guardar('perfiles', { ...perfil, album: normalizarAlbum({ tamano, monedasPorAlbum: monedas, codigos: todasMarcadas ? null : elegidas }) });
+        await store.guardar('perfiles', { ...perfil, album: normalizarAlbum({ tamano, monedasPorAlbum: monedas, monedasPorLeccion: porLeccion, codigos: todasMarcadas ? null : elegidas }) });
         mensaje.textContent = 'Guardado. Rige desde la próxima calcomanía; los álbumes ya completos no cambian.';
         await pintar();
       } catch (error) {
@@ -163,6 +169,7 @@ export function montar(contenedor) {
         { class: 'panel' },
         el('h2', {}, 'Cómo es el álbum'),
         el('div', { class: 'fila' }, campo('Calcomanías por álbum', entradaTamano, `De ${TAMANO_MIN} a ${TAMANO_MAX}`), campo('Monedas de oro por álbum', entradaMonedas, `De ${MONEDAS_MIN} a ${MONEDAS_MAX}`)),
+        el('div', { class: 'fila' }, campo('Monedas por lección terminada', entradaLeccion, `De ${MONEDAS_LECCION_MIN} a ${MONEDAS_LECCION_MAX}. Un sobre de láminas cuesta 5 lecciones.`)),
         el('h3', {}, 'Calcomanías en juego'),
         el('p', { class: 'ayuda' }, 'Solo salen las marcadas. Tiene que haber al menos tantas como calcomanías por álbum.'),
         el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton secundario chico', onclick: () => marcar(true) }, 'Marcar todas'), el('button', { type: 'button', class: 'boton secundario chico', onclick: () => marcar(false) }, 'Quitar todas')),

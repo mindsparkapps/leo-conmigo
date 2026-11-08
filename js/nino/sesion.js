@@ -16,9 +16,9 @@ import { decirFrase, decirPalabra, desbloquearAudio, detener, hablarTexto } from
 import { vibrar } from '../hardware.js';
 import { crearControlador } from '../core/controlador.js';
 import { aplicarAutoajuste } from '../autoajuste.js';
-import { ganarCalcomania } from '../albumes.js';
+
 import { ACTIVIDADES } from '../actividades/indice.js';
-import { establecerPremio, lluviaDeEstrellas } from './premio.js';
+import { establecerPremio, lluviaDeEstrellas, terminarLeccion } from './premio.js';
 
 export const titulo = NOMBRE_APP;
 
@@ -216,8 +216,7 @@ async function iniciar({ vista, area, ir, sesion }) {
         console.error('No se pudieron revisar los ajustes automáticos', error);
       }
       // La calcomanía de hoy; si completa el álbum, también guarda sus monedas (fase 11)
-      const { codigo, album, saldo } = await ganarCalcomania(store, perfil);
-      establecerPremio({ codigo, ajustes, album, saldo });
+      await terminarLeccion(store, perfil, ajustes);
     } catch (error) {
       console.error('No se pudo cerrar la sesión', error);
       establecerPremio({ codigo: 'estrella', ajustes }); // el niño igual recibe su premio

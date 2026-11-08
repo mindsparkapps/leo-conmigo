@@ -61,6 +61,12 @@ body {
   background-size: cover; background-position: center; background-repeat: no-repeat;
   filter: grayscale(1); mix-blend-mode: multiply;
 }
+/* La lámina acercada: la imagen original encima de su dibujo en el libro (nítida a cualquier zoom). Un toque la cierra. */
+.lamina-zoom {
+  position: absolute; z-index: 3; object-fit: cover; border: 2px solid #fff; border-radius: 4%;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.4); pointer-events: none; animation: lamina-zoom-entra 0.25s ease-out;
+}
+@keyframes lamina-zoom-entra { from { opacity: 0; } to { opacity: 1; } }
 .fondo-opciones { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
 .fondo-opcion { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
 .fondo-muestra {
@@ -859,7 +865,33 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 .cofre { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; max-width: min(100%, 560px); }
 .monedas { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
 .moneda { display: block; width: clamp(28px, 6vmin, 44px); aspect-ratio: 1; }
-.moneda svg { display: block; width: 100%; height: 100%; }
+
+/* Moneda 3D: frente y dorso dorados, y un canto hecho de discos apilados. Inclinada se nota el grosor; con .gira da vueltas. */
+.moneda3d { --m: 100%; --g: 2.5px; display: block; position: relative; width: var(--m); aspect-ratio: 1; perspective: 320px; }
+.moneda3d-giro { position: absolute; inset: 0; transform-style: preserve-3d; transform: rotateY(-32deg) rotateX(8deg); }
+.moneda3d.gira .moneda3d-giro { animation: moneda-gira 1.5s linear infinite; }
+@keyframes moneda-gira { from { transform: rotateX(8deg) rotateY(0deg); } to { transform: rotateX(8deg) rotateY(360deg); } }
+.m3-cara, .m3-canto { position: absolute; inset: 0; border-radius: 50%; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.m3-canto { background: #a8700b; backface-visibility: visible; transform: translateZ(calc(var(--z) * var(--g))); }
+.m3-cara {
+  display: grid; place-items: center; border: 3px solid #c48a12;
+  background: radial-gradient(circle at 35% 30%, #ffe38a 0%, #f2b632 55%, #d99a1c 100%);
+}
+.m3-cara svg { width: 100%; height: 100%; display: block; }
+.m3-frente { transform: translateZ(var(--g)); }
+.m3-dorso { transform: rotateY(180deg) translateZ(var(--g)); }
+.moneda-vuela { position: fixed; top: 0; left: 0; z-index: 60; pointer-events: none; will-change: transform; }
+
+/* El total de monedas, siempre arriba a la derecha en las pantallas del niño */
+#saldo-esquina {
+  position: fixed; top: calc(12px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); z-index: 40;
+  display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 10px; border-radius: 999px;
+  background: rgb(255 255 255 / 0.92); border: 3px solid var(--amarillo); box-shadow: 0 3px 10px rgb(0 0 0 / 0.18);
+  transform-origin: center; pointer-events: none;
+}
+#saldo-esquina[hidden] { display: none; }
+#saldo-esquina .moneda3d { --m: 40px; --g: 2.8px; flex: none; }
+.saldo-numero { font-size: 1.7rem; font-weight: 800; color: var(--texto); line-height: 1; min-width: 1ch; }
 .moneda-vacia { border: 3px dashed var(--borde-fuerte); border-radius: 50%; }
 .moneda-entra { animation: moneda-entra 0.5s ease-out backwards; }
 @keyframes moneda-entra { 0% { transform: translateY(-40px) scale(0.5); opacity: 0; } 70% { transform: translateY(4px) scale(1.1); opacity: 1; } }

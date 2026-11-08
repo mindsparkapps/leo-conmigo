@@ -1,6 +1,5 @@
 // Sobres de láminas y venta de repetidas (tienda del niño). Lógica pura, sin DOM.
-// Un sobre cuesta lo que el niño gana jugando SESIONES_POR_SOBRE veces: cada sesión da una lámina y un álbum
-// lleno paga `monedasPorAlbum`, así que una sesión vale monedasPorAlbum / tamano monedas.
+// Un sobre cuesta lo que el niño gana terminando SESIONES_POR_SOBRE lecciones (cada una paga `monedasPorLeccion`).
 
 import { normalizarAlbum } from './album.js';
 
@@ -8,10 +7,10 @@ export const SESIONES_POR_SOBRE = 5;
 export const LAMINAS_POR_SOBRE = 3;
 export const VALOR_VENTA = 1;
 
-/** Precio de un sobre en monedas (al menos 1). */
+/** Precio de un sobre en monedas: lo que paga terminar SESIONES_POR_SOBRE lecciones. */
 export function precioDeSobre(album) {
-  const { tamano, monedasPorAlbum } = normalizarAlbum(album);
-  return Math.max(1, Math.ceil((SESIONES_POR_SOBRE * monedasPorAlbum) / tamano));
+  const { monedasPorLeccion } = normalizarAlbum(album);
+  return Math.max(1, SESIONES_POR_SOBRE * monedasPorLeccion);
 }
 
 /** Saca `cantidad` láminas al azar entre las que están en juego (pueden repetirse). */

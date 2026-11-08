@@ -7,6 +7,8 @@ import { urlDeMedio } from '../medios.js';
 
 export const ANCHO_CARA = 512;
 export const ALTO_CARA = 683; // proporción 3:4
+// Medidas lógicas: cada cara se dibuja ESCALA veces más grande para que no se pixele al acercar una lámina
+const ESCALA = 2;
 
 const COLUMNAS = 2;
 const FILAS = 3;
@@ -127,15 +129,16 @@ function dibujarLamina(ctx, contenido, { cx, cy, lado, ganada, codigo }) {
     dibujarContenido(ctx, contenido, x + marco, y + marco, interior, redondeoMarco * 0.55);
   } else {
     // gris y con transparencia: el marco y el dibujo se pintan en un lienzo aparte para pasarlos a grises juntos
-    const px = Math.ceil(lado);
+    const px = Math.ceil(lado * ESCALA);
     const aparte = document.createElement('canvas');
     aparte.width = px;
     aparte.height = px;
     const c = aparte.getContext('2d');
+    c.scale(px / lado, px / lado);
     c.fillStyle = '#ffffff';
-    rectRedondeado(c, 0, 0, px, px, redondeoMarco);
+    rectRedondeado(c, 0, 0, lado, lado, redondeoMarco);
     c.fill();
-    dibujarContenido(c, contenido, marco, marco, px - marco * 2, redondeoMarco * 0.55);
+    dibujarContenido(c, contenido, marco, marco, lado - marco * 2, redondeoMarco * 0.55);
     aGrises(aparte);
     ctx.globalAlpha = ALFA_SIN_GANAR;
     ctx.drawImage(aparte, x, y, lado, lado);
@@ -150,9 +153,16 @@ function dibujarLamina(ctx, contenido, { cx, cy, lado, ganada, codigo }) {
 
 function lienzoNuevo() {
   const lienzo = document.createElement('canvas');
-  lienzo.width = ANCHO_CARA;
-  lienzo.height = ALTO_CARA;
+  lienzo.width = ANCHO_CARA * ESCALA;
+  lienzo.height = ALTO_CARA * ESCALA;
   return lienzo;
+}
+
+/** El contexto de una cara recién creada: se dibuja en coordenadas lógicas (ANCHO_CARA × ALTO_CARA). */
+function contexto(lienzo) {
+  const ctx = lienzo.getContext('2d');
+  ctx.scale(ESCALA, ESCALA);
+  return ctx;
 }
 
 function papel(ctx) {
@@ -186,7 +196,7 @@ export const RUTA_PORTADA = 'data/laminas/portada.jpg';
 
 function portada(_libro, imagen) {
   const lienzo = lienzoNuevo();
-  const ctx = lienzo.getContext('2d');
+  const ctx = contexto(lienzo);
   // fondo de tapa y, encima, la imagen a pantalla completa (recortada al centro)
   ctx.fillStyle = '#1f5f82';
   ctx.fillRect(0, 0, ANCHO_CARA, ALTO_CARA);
@@ -209,7 +219,7 @@ function portada(_libro, imagen) {
 /** Reverso de la portada: es el interior de la tapa, del mismo azul que ella. */
 function interior() {
   const lienzo = lienzoNuevo();
-  const ctx = lienzo.getContext('2d');
+  const ctx = contexto(lienzo);
   ctx.fillStyle = '#1f5f82';
   ctx.fillRect(0, 0, ANCHO_CARA, ALTO_CARA);
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
@@ -224,7 +234,7 @@ function interior() {
 
 function carasVacias() {
   const lienzo = lienzoNuevo();
-  papel(lienzo.getContext('2d'));
+  papel(contexto(lienzo));
   return lienzo;
 }
 
@@ -286,7 +296,7 @@ export async function dibujarCaraDePagina({ store, libro, propias = [], indice }
   const propiasPorId = new Map(propias.map((p) => [p.id, p]));
   const pagina = libro.paginas[indice];
   const lienzo = lienzoNuevo();
-  const ctx = lienzo.getContext('2d');
+  const ctx = contexto(lienzo);
   papel(ctx);
   encabezado(ctx, pagina.letra);
   const contenidos = await Promise.all(pagina.items.map((item) => contenidoDe(store, item.codigo, propiasPorId)));

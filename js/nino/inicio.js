@@ -14,6 +14,9 @@ import { hayQuePracticar as hayAlgoQuePracticar } from '../core/controlador.js';
 import { librosParaElNino } from '../core/frases.js';
 import { premiosVisibles } from '../core/album.js';
 import { acreditarAlbumesPendientes, cargarMonedas } from '../albumes.js';
+import { saltarLeccionActivo } from '../dev.js';
+import { terminarLeccion } from './premio.js';
+import { normalizarAjustes } from '../core/modelos.js';
 import { crearCofre } from '../ui/moneda.js';
 
 export const titulo = NOMBRE_APP;
@@ -120,7 +123,24 @@ async function pintar(vista, ir, estaVivo) {
   const menu = el(
     'nav',
     { class: 'menu-inicio', 'aria-label': 'Menú' },
-    botonMenu({ clase: 'menu-jugar', etiqueta: 'Jugar', icono: ICONO_JUGAR, alTocar: irA('/nino/sesion'), desactivado: !hayQuePracticar }),
+    botonMenu({
+      clase: 'menu-jugar',
+      etiqueta: 'Jugar',
+      icono: ICONO_JUGAR,
+      // Herramienta de desarrollador: sin lección, directo al premio (con calcomanía y monedas de verdad)
+      alTocar: saltarLeccionActivo()
+        ? async () => {
+          desbloquearAudio();
+          try {
+            await terminarLeccion(store, perfil, normalizarAjustes(perfil.ajustes));
+            ir('/nino/premio');
+          } catch (error) {
+            console.error('No se pudo saltar la lección', error);
+          }
+        }
+        : irA('/nino/sesion'),
+      desactivado: !hayQuePracticar && !saltarLeccionActivo(),
+    }),
     botonMenu({ clase: 'menu-tienda', etiqueta: 'Tienda', icono: ICONO_TIENDA, alTocar: irA('/nino/tienda') }),
     botonMenu({ clase: 'menu-album', etiqueta: 'Álbum', icono: ICONO_ALBUM, alTocar: irA('/nino/albumes') }),
     hayLibros ? botonMenu({ clase: 'menu-libro', etiqueta: 'Libros', icono: ICONO_LIBRO, alTocar: irA('/nino/libros') }) : null,

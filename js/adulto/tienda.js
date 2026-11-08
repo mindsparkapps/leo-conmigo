@@ -13,7 +13,7 @@ import { PRECIO_MAX, PRECIO_MIN, canjesPendientes, crearRegalo, nuevoPremio } fr
 
 export const titulo = 'Tienda y monedas · Leo Conmigo';
 
-const TIPOS = { album: 'Álbum completo', canje: 'Canje', regalo: 'Regalo', correccion: 'Corrección', sobre: 'Sobre de láminas', venta: 'Venta de repetida' };
+const TIPOS = { album: 'Álbum completo', canje: 'Canje', regalo: 'Regalo', correccion: 'Corrección', leccion: 'Lección terminada', sobre: 'Sobre de láminas', venta: 'Venta de repetida' };
 const ESTADOS = { pendiente: 'por entregar', entregado: 'entregado', anulado: 'anulado' };
 const fechaCorta = (iso) => {
   const f = new Date(iso);

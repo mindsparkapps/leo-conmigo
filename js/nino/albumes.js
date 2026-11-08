@@ -114,16 +114,37 @@ async function pintar(zona, estado) {
 
     // ¿hay una lámina pegada en ese punto de la cara? (doble toque = acercarla)
     const lugaresPag = lugaresDePagina();
-    const hayLamina = (c, u, v) => {
+    const laminaEn = (c, u, v) => {
       const pagina = libro.paginas[c - 2];
-      if (!pagina) return 0;
+      if (!pagina) return null;
       const semiV = (lugaresPag.semiLadoU * ANCHO_CARA) / ALTO_CARA;
-      const hay = pagina.items.some((item, k) => item.pegada && Math.abs(u - lugaresPag[k].u) <= lugaresPag.semiLadoU && Math.abs(v - lugaresPag[k].v) <= semiV);
-      return hay ? lugaresPag.semiLadoU : 0;
+      return pagina.items.find((item, k) => item.pegada && Math.abs(u - lugaresPag[k].u) <= lugaresPag.semiLadoU && Math.abs(v - lugaresPag[k].v) <= semiV) ?? null;
+    };
+    const hayLamina = (c, u, v) => (laminaEn(c, u, v) ? lugaresPag.semiLadoU : 0);
+
+    // Con la lámina centrada y acercada, se pone encima la imagen original (nítida) justo sobre su dibujo en el libro
+    let zoomNodo = null;
+    const quitarZoom = () => {
+      zoomNodo?.remove();
+      zoomNodo = null;
+    };
+    const alAcercar = async (info) => {
+      quitarZoom();
+      if (!info || !controlador) return;
+      const item = laminaEn(info.cara, info.u, info.v);
+      const nodo = item ? await nodoDeCalcomania(store, item.codigo, propiasPorId, { clase: 'lamina-zoom', decorativo: true }) : null;
+      if (!nodo || !estado.vivo || zoomNodo) return;
+      const centro = controlador.proyectar(info.cara, info.u, info.v);
+      const borde = controlador.proyectar(info.cara, info.u + lugaresPag.semiLadoU, info.v);
+      const mitad = Math.abs(borde.x - centro.x);
+      nodo.style.cssText = `left:${centro.x - mitad}px;top:${centro.y - mitad}px;width:${mitad * 2}px;height:${mitad * 2}px`;
+      zoomNodo = nodo;
+      lienzo.append(nodo);
     };
 
     controlador = crearLibro3D(lienzo, caras, {
       hayLamina,
+      alAcercar,
       alCambiar: ({ puedeAtras, puedeAdelante, carasVisibles }) => {
         atras.disabled = !puedeAtras;
         adelante.disabled = !puedeAdelante;
