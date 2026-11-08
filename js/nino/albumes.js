@@ -137,7 +137,7 @@ async function pintar(zona, estado) {
     }
     if (!estado.vivo) return;
     estado.sueltas = crearLaminasSueltas({
-      contenedor: lienzo,
+      contenedor: zona,
       laminas,
       // mientras se arrastra una lámina, la letra de su página late para ayudar a encontrarla
       alArrastrar: (lamina) => {

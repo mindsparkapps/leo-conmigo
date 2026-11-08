@@ -941,9 +941,15 @@ img.calcomania-grande { border-width: 10px; border-radius: 32px; }
 
 /* Láminas ganadas que aún no se pegaron: sueltas sobre el libro. Doble toque: se voltea. Arrastrar: se lleva a su hueco. */
 .libro-lienzo-zona { position: relative; }
-.laminas-sueltas { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+/* Las sueltas esperan en una fila sobre el libro (no encima) con un leve desorden; al arrastrar suben por encima de todo */
+.laminas-sueltas {
+  position: relative; z-index: 5; flex: none; display: flex; justify-content: center; align-items: center;
+  width: 100%; min-height: clamp(52px, min(12vw, 16vh), 104px);
+}
+.laminas-sueltas:empty { display: none; }
 .lamina-suelta {
-  position: absolute; width: clamp(84px, 24vmin, 150px); aspect-ratio: 1; perspective: 700px; pointer-events: auto;
+  position: relative; top: var(--sube, 0px); margin: 0 var(--sepa, 0px); flex: none;
+  width: clamp(48px, min(11.5vw, 15vh), 100px); aspect-ratio: 1; perspective: 700px;
   touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
   transform: translate(var(--dx, 0px), var(--dy, 0px)) rotate(var(--giro-base, 0deg));
 }

@@ -10,12 +10,18 @@ const UMBRAL_ARRASTRE_PX = 8;
 const DOBLE_TOQUE_MS = 450;
 const MAX_VISIBLES = 8; // si hay más, el resto aparece a medida que se pegan las primeras
 
-/** Un ángulo pequeño y estable por código (−9° a 9°), para que parezcan tiradas sobre el libro. */
-function inclinacion(codigo) {
-  let h = 7;
+/** Un número estable por código y por `sal` (distinto para cada rasgo), para un desorden que no cambia al redibujar. */
+function azar(codigo, sal) {
+  let h = 7 + sal * 131;
   for (const c of String(codigo)) h = (h * 33 + c.charCodeAt(0)) % 1009;
-  return (h % 19) - 9;
+  return h;
 }
+/** Desorden de cada lámina en la fila: ángulo (−9° a 9°), altura (−9 a 9 px) y separación (−5 a 5 px). */
+const desorden = (codigo) => ({
+  giro: (azar(codigo, 0) % 19) - 9,
+  sube: (azar(codigo, 1) % 19) - 9,
+  sepa: (azar(codigo, 2) % 11) - 5,
+});
 
 /**
  * @param contenedor  elemento (position: relative) sobre el que flotan las láminas
@@ -26,11 +32,12 @@ function inclinacion(codigo) {
  */
 export function crearLaminasSueltas({ contenedor, laminas, alSoltar, alArrastrar = () => {} }) {
   const capa = el('div', { class: 'laminas-sueltas' });
-  contenedor.append(capa);
+  contenedor.prepend(capa); // una fila encima del libro, no sobre él
   const pendientes = [...laminas];
   const enPantalla = new Set();
 
-  function poner(lamina, posicion) {
+  function poner(lamina) {
+    const d = desorden(lamina.codigo);
     const frente = el('div', { class: 'lamina-cara lamina-frente' }, lamina.nodo);
     const dorso = el(
       'div',
@@ -47,7 +54,7 @@ export function crearLaminasSueltas({ contenedor, laminas, alSoltar, alArrastrar
         class: 'lamina-suelta',
         role: 'img',
         'aria-label': `Lámina ${lamina.letra}-${lamina.numero}. Toca dos veces para darle la vuelta; arrástrala a su lugar.`,
-        style: `left:${posicion.izquierda}%;top:${posicion.arriba}%;--giro-base:${inclinacion(lamina.codigo)}deg`,
+        style: `--giro-base:${d.giro}deg;--sube:${d.sube}px;--sepa:${d.sepa}px`,
       },
       giro,
     );
@@ -121,15 +128,8 @@ export function crearLaminasSueltas({ contenedor, laminas, alSoltar, alArrastrar
     caja.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
-  /** Lugar de reposo de la lámina número `i`: repartidas a lo ancho, en la parte baja del libro, alternando alturas. */
-  const posicionDe = (i) => ({ izquierda: 8 + ((i * 29) % 56), arriba: 58 + ((i * 13) % 5) * 7 });
-
-  let usadas = 0;
   function reponer() {
-    while (enPantalla.size < MAX_VISIBLES && pendientes.length) {
-      poner(pendientes.shift(), posicionDe(usadas));
-      usadas += 1;
-    }
+    while (enPantalla.size < MAX_VISIBLES && pendientes.length) poner(pendientes.shift());
   }
   reponer();
 
