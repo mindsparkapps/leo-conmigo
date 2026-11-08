@@ -41,16 +41,42 @@ function destello(boton) {
   }
 }
 
+/** El efecto de un botón: sonido, «squash and stretch» y destello. */
+export function efectoBoton(boton) {
+  actualizarSonido().finally(sonidoClic);
+  if (matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+  if (boton.animate) boton.animate(FOTOGRAMAS, { duration: 360, easing: 'ease-out' });
+  destello(boton);
+}
+
+// Botones que cambian de pantalla: esperan a que se vea el efecto antes de navegar
+const NAVEGACION = '.menu-boton:not(.candado), .boton-casa, .boton-casa-chico, .boton-jugar, .boton-nav, .boton-libro, a[href^="#/"]';
+const RETARDO_NAVEGACION_MS = 380;
+
 export function iniciarBotones() {
   document.addEventListener(
     'click',
     (e) => {
       const boton = e.target instanceof Element ? e.target.closest(SELECTOR) : null;
       if (!boton || boton.disabled || boton.getAttribute('aria-disabled') === 'true') return;
-      actualizarSonido().finally(sonidoClic);
-      if (matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-      if (boton.animate) boton.animate(FOTOGRAMAS, { duration: 360, easing: 'ease-out' });
-      destello(boton);
+      if (boton.classList.contains('candado')) return; // su efecto sale al completar la pulsación larga
+      if (boton.dataset.sinRetardo) return; // el clic que se repite tras la espera: el efecto ya se vio
+      if (boton.matches(NAVEGACION)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (boton.dataset.esperando) return;
+        boton.dataset.esperando = '1';
+        efectoBoton(boton);
+        setTimeout(() => {
+          delete boton.dataset.esperando;
+          if (!boton.isConnected) return;
+          boton.dataset.sinRetardo = '1';
+          boton.click();
+          delete boton.dataset.sinRetardo;
+        }, RETARDO_NAVEGACION_MS);
+        return;
+      }
+      efectoBoton(boton);
     },
     true,
   );

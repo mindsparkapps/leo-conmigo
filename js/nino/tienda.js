@@ -15,7 +15,8 @@ import { desbloquearAudio, detener, hablarTexto } from '../audio.js';
 import { cargarMonedas, comprarSobre, venderRepetida } from '../albumes.js';
 import { mapaDePropias, nodoDeCalcomania } from '../ui/calcomania.js';
 import { LAMINAS_POR_SOBRE, VALOR_VENTA, precioDeSobre, repetidas } from '../core/sobres.js';
-import { crearCanje, faltan, premiosVisibles, puedeCanjear } from '../core/album.js';
+import { saltarLeccionActivo } from '../dev.js';
+import { crearCanje, crearRegalo, faltan, premiosVisibles, puedeCanjear } from '../core/album.js';
 import { normalizarAjustes } from '../core/modelos.js';
 
 export const titulo = NOMBRE_APP;
@@ -165,6 +166,28 @@ async function iniciar(zona, estaVivo) {
       ...[
         aviso ? el('p', { class: 'mensaje-nino mensaje-premio', role: 'status' }, aviso) : null,
         el('div', { class: 'tienda-grilla' }, sobre),
+        // Herramienta de desarrollador (Ajustes → modo adulto): regala mil monedas
+        saltarLeccionActivo()
+          ? el(
+            'button',
+            {
+              type: 'button',
+              class: 'boton secundario chico',
+              onclick: async () => {
+                if (ocupado) return;
+                ocupado = true;
+                try {
+                  await store.guardar('movimientos', crearRegalo({ perfilId: perfil.id, cantidad: 1000, nota: 'Carga de prueba (desarrollador)' }));
+                  fijarSaldo((await cargarMonedas(store, perfil)).saldo);
+                  await lista();
+                } finally {
+                  ocupado = false;
+                }
+              },
+            },
+            '🛠 +1000 monedas',
+          )
+          : null,
         cartasRepetidas.length ? el('h2', { class: 'tienda-titulo' }, 'Láminas repetidas') : null,
         cartasRepetidas.length ? el('div', { class: 'tienda-grilla' }, cartasRepetidas) : null,
         premios.length ? el('h2', { class: 'tienda-titulo' }, 'Premios') : null,

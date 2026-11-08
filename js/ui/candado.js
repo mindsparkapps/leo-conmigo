@@ -3,6 +3,7 @@
 
 import { generarSuma, esRespuestaCorrecta } from '../core/suma.js';
 import { el } from './dom.js';
+import { efectoBoton } from './botones.js';
 
 const MS_SOSTENER = 3000;
 
@@ -46,7 +47,8 @@ export function crearCandado({ alDesbloquear, etiqueta = null }) {
       temporizador = null;
       boton.classList.remove('sosteniendo');
       quitarIndicador();
-      pedirSuma(alDesbloquear);
+      efectoBoton(boton); // que se vea el «squash» antes de pedir la suma
+      setTimeout(() => pedirSuma(alDesbloquear), 400);
     }, MS_SOSTENER);
   };
 
