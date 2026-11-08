@@ -140,6 +140,7 @@ const PRECACHE = [
   'js/adulto/vocabulario.js',
   'js/adulto/editor-palabra.js',
   'js/core/vocabulario.js',
+  'js/core/borrar-perfil.js',
   'js/core/suma.js',
   'js/core/azar.js',
   'js/core/id.js',

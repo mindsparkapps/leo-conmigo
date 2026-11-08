@@ -7,6 +7,7 @@ import { crearSelectorFoto } from '../ui/selector-foto.js';
 import { obtenerStore, perfilActivo, fijarPerfilActivo } from '../contexto.js';
 import { guardarMedio, borrarMedio, urlDeMedio, liberarUrls } from '../medios.js';
 import { MAX_LARGO_PALABRA } from '../core/vocabulario.js';
+import { borrarPerfil } from '../core/borrar-perfil.js';
 
 export const titulo = 'Perfiles · Leo Conmigo';
 
@@ -59,6 +60,27 @@ async function pintar(raiz, limpiezas, estaVivo) {
                   },
                 }, 'Usar este perfil'),
             el('button', { type: 'button', class: 'boton secundario chico', onclick: vistaEdicion }, 'Editar'),
+            // El perfil activo no se puede borrar: primero se elige otro (así nunca se queda la app sin niño activo)
+            esActivo
+              ? null
+              : el('button', {
+                  type: 'button',
+                  class: 'boton secundario chico',
+                  onclick: async (e) => {
+                    const palabras = (await store.listar('palabras', { perfilId: perfil.id })).length;
+                    const detalle = palabras ? ` (${palabras} palabra${palabras === 1 ? '' : 's'})` : '';
+                    if (!globalThis.confirm(`¿Borrar el perfil «${perfil.nombre}»? Se borran para siempre sus palabras${detalle}, fotos, audios, progreso, monedas y álbum, también en Google Drive y en los demás dispositivos. No se puede deshacer.`)) return;
+                    e.target.disabled = true;
+                    try {
+                      await borrarPerfil(store, perfil.id);
+                      repintar();
+                    } catch (error) {
+                      console.error(error);
+                      globalThis.alert(describirError(error));
+                      e.target.disabled = false;
+                    }
+                  },
+                }, 'Borrar'),
           ),
         ),
       );
