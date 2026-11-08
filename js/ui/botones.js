@@ -50,7 +50,7 @@ export function efectoBoton(boton) {
 }
 
 // Botones que cambian de pantalla: esperan a que se vea el efecto antes de navegar
-const NAVEGACION = '.menu-boton:not(.candado), .boton-casa, .boton-casa-chico, .boton-jugar, .boton-nav, .boton-libro, a[href^="#/"]';
+const NAVEGACION = '.menu-boton:not(.candado), .boton-casa, .boton-casa-chico, .boton-jugar, .boton-nav, .boton-libro, .sobre-acciones .boton-respuesta, a[href^="#/"]';
 const RETARDO_NAVEGACION_MS = 380;
 
 export function iniciarBotones() {
