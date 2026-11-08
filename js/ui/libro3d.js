@@ -12,7 +12,9 @@ const ALTO = 2;
 const SEGMENTOS = 22;
 const SEPARACION = 0.006; // entre hojas apiladas, para que no se peleen en profundidad
 const DURACION_S = 0.9;
-const ARRASTRE_MIN_PX = 40;
+const ARRASTRE_INICIO_PX = 10; // desde aquí un movimiento deja de ser un toque y la hoja empieza a seguir al dedo
+const DOBLE_TOQUE_MS = 350;
+const ZOOM_LAMINA = 2.6;
 const FOV = 30;
 const RETRASO_HOJA_S = 0.07; // entre una hoja y la siguiente cuando se pasan varias de golpe
 
@@ -23,9 +25,10 @@ const suave = (t) => t * t * (3 - 2 * t);
  * @param contenedor  elemento donde se inserta el <canvas> (debe tener tamaño)
  * @param caras       canvases 2D, cantidad par
  * @param alCambiar   ({ puedeAtras, puedeAdelante, carasVisibles }) al empezar y cada vez que cambia la página
+ * @param hayLamina   (cara, u, v) => boolean — si en ese punto de la cara hay una lámina pegada (doble toque = zoom)
  * @throws si el navegador no tiene WebGL (quien llama debe mostrar otra cosa)
  */
-export function crearLibro3D(contenedor, caras, { alCambiar = () => {} } = {}) {
+export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamina = null } = {}) {
   if (caras.length % 2 !== 0) throw new Error('El libro necesita un número par de caras');
   const hojas = caras.length / 2;
 
@@ -123,6 +126,20 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {} } = {}) {
       : (-ANCHO / 2) * limitar(1 - vueltas, 0, 1) + (ANCHO / 2) * limitar(vueltas - (hojas - 1), 0, 1);
   }
 
+  // Cámara: distancia base, y un zoom con desplazamiento para centrar una lámina (doble toque sobre una pegada)
+  let dBase = 5;
+  let zoom = 1;
+  let zoomObjetivo = 1;
+  let panX = 0;
+  let panY = 0;
+  let panXObjetivo = 0;
+  let panYObjetivo = 0;
+  function colocarCamara() {
+    camara.position.set(panX, panY - (dBase * 0.1) / zoom, dBase / zoom);
+    camara.lookAt(panX, panY, 0);
+  }
+  const salirDelZoom = () => { zoomObjetivo = 1; panXObjetivo = 0; panYObjetivo = 0; };
+
   function ajustarTamano() {
     const ancho = Math.max(1, contenedor.clientWidth);
     const alto = Math.max(1, contenedor.clientHeight);
@@ -136,9 +153,8 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {} } = {}) {
     const dAlto = (ALTO * 1.14) / 2 / tan;
     const paginasAnchas = nuevoModo === 'pagina' ? 1 : 2;
     const dAncho = (ANCHO * paginasAnchas * 1.06) / 2 / (tan * camara.aspect);
-    const d = Math.max(dAlto, dAncho);
-    camara.position.set(0, -d * 0.1, d);
-    camara.lookAt(0, 0, 0);
+    dBase = Math.max(dAlto, dAncho);
+    colocarCamara();
     if (nuevoModo !== modo || primeraVez) {
       modo = nuevoModo;
       cara = Math.min(pasadas * 2, caras.length - 1);
@@ -163,6 +179,17 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {} } = {}) {
     const dt = Math.min(0.05, Math.max(0, (ahora - ultimo) / 1000));
     ultimo = ahora;
     let moviendo = false;
+    if (zoom !== zoomObjetivo || panX !== panXObjetivo || panY !== panYObjetivo) {
+      const k = Math.min(1, dt * 7);
+      zoom += (zoomObjetivo - zoom) * k;
+      panX += (panXObjetivo - panX) * k;
+      panY += (panYObjetivo - panY) * k;
+      if (Math.abs(zoomObjetivo - zoom) < 0.003 && Math.abs(panXObjetivo - panX) < 0.003 && Math.abs(panYObjetivo - panY) < 0.003) {
+        zoom = zoomObjetivo; panX = panXObjetivo; panY = panYObjetivo;
+      } else moviendo = true;
+      colocarCamara();
+    }
+    if (arrastre) { dibujar(); return; } // mientras se arrastra, el dedo manda
     if (modo === 'pagina' && foco !== focoObjetivo) {
       foco += (focoObjetivo - foco) * Math.min(1, dt * 7);
       if (Math.abs(focoObjetivo - foco) < 0.002) foco = focoObjetivo;
@@ -196,6 +223,8 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {} } = {}) {
   }
 
   function aplicarEstado(sinAnimar = false) {
+    salirDelZoom();
+    if (sinAnimar) { zoom = 1; panX = 0; panY = 0; colocarCamara(); }
     pasadas = modo === 'pagina' ? Math.ceil(cara / 2) : pasadas;
     focoObjetivo = cara % 2 === 0 ? ANCHO / 2 : -ANCHO / 2;
     // las hojas que cambian giran una tras otra (la más cercana primero) para que un salto de varias páginas se vea como pasar hojas
@@ -237,18 +266,117 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {} } = {}) {
     aplicarEstado();
   }
 
-  // Tocar la mitad derecha o arrastrar hacia la izquierda pasa la hoja; la mitad izquierda o hacia la derecha, vuelve
-  let xInicial = null;
-  lienzo.addEventListener('pointerdown', (e) => { xInicial = e.clientX; });
-  lienzo.addEventListener('pointerup', (e) => {
-    if (xInicial === null) return;
-    const dx = e.clientX - xInicial;
-    xInicial = null;
-    if (Math.abs(dx) >= ARRASTRE_MIN_PX) { pasar(dx < 0 ? 1 : -1); return; }
+  const quieto = () => cuadro === 0 && espera.every((e) => e <= 0) && zoom === 1 && zoomObjetivo === 1;
+
+  // La cara y el punto (u, v) del libro que hay bajo un punto de la pantalla; null si no es una página.
+  function lugarEn(clientX, clientY) {
+    const r = lienzo.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -(((clientY - r.top) / r.height) * 2 - 1));
+    camara.updateMatrixWorld();
+    const rayo = new THREE.Raycaster();
+    rayo.setFromCamera(ndc, camara);
+    const p = new THREE.Vector3();
+    if (!rayo.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.01), p)) return null;
+    const xl = p.x - libro.position.x;
+    let c;
+    if (modo === 'pagina') c = cara;
+    else c = xl >= 0 ? (pasadas < hojas ? 2 * pasadas : null) : (pasadas > 0 ? 2 * pasadas - 1 : null);
+    if (c === null || (c % 2 === 0) !== (xl >= 0)) return null;
+    const u = (xl - (c % 2 === 0 ? 0 : -ANCHO)) / ANCHO;
+    const v = (ALTO / 2 - p.y) / ALTO;
+    return u < 0 || u > 1 || v < 0 || v > 1 ? null : { cara: c, u, v };
+  }
+
+  function enfocar(c, u, v) {
+    panXObjetivo = (c % 2 === 0 ? 0 : -ANCHO) + u * ANCHO + libro.position.x;
+    panYObjetivo = ALTO / 2 - v * ALTO;
+    zoomObjetivo = ZOOM_LAMINA;
+    pedirCuadro();
+  }
+
+  // Arrastrar: la hoja (y la cámara, en modo 'pagina') siguen al dedo; al soltar, si pasó de cierto punto, termina
+  // de pasar; si no, vuelve. Un toque: la mitad derecha pasa la hoja y la izquierda la devuelve. Doble toque sobre una
+  // lámina pegada: la centra con zoom (otro toque la suelta).
+  let toque = null; // { x, y, movido }
+  let arrastre = null; // { dir, j, t, focoBase, focoDestino }
+  let ultimoToque = { t: -Infinity };
+  let pendiente = 0;
+
+  function empezarArrastre(dir) {
+    let j = -1;
+    if (modo === 'doble') j = dir > 0 ? pasadas : pasadas - 1;
+    else if (dir > 0 && cara % 2 === 0) j = cara / 2;
+    else if (dir < 0 && cara % 2 === 1) j = (cara - 1) / 2;
+    if (j >= 0) espera[j] = 0;
+    arrastre = { dir, j, t: 0, focoBase: foco, focoDestino: (cara + dir) % 2 === 0 ? ANCHO / 2 : -ANCHO / 2 };
+  }
+  function moverArrastre(t) {
+    arrastre.t = t;
+    if (arrastre.j >= 0) {
+      progreso[arrastre.j] = arrastre.dir > 0 ? t : 1 - t;
+      colocarHoja(arrastre.j);
+    }
+    if (modo === 'pagina') foco = arrastre.focoBase + (arrastre.focoDestino - arrastre.focoBase) * t;
+    colocarLibro();
+    dibujar();
+  }
+
+  function pasarPorToque(clientX) {
     const caja = lienzo.getBoundingClientRect();
-    pasar(e.clientX - caja.left > caja.width / 2 ? 1 : -1);
+    pasar(clientX - caja.left > caja.width / 2 ? 1 : -1);
+  }
+
+  lienzo.addEventListener('pointerdown', (e) => {
+    lienzo.setPointerCapture?.(e.pointerId);
+    toque = { x: e.clientX, y: e.clientY, movido: false };
   });
-  lienzo.addEventListener('pointercancel', () => { xInicial = null; });
+  lienzo.addEventListener('pointermove', (e) => {
+    if (!toque) return;
+    const dx = e.clientX - toque.x;
+    const dy = e.clientY - toque.y;
+    if (!arrastre && !toque.movido && Math.hypot(dx, dy) > ARRASTRE_INICIO_PX) {
+      toque.movido = true;
+      const dir = dx < 0 ? 1 : -1;
+      const puede = dir > 0 ? puedeAdelante() : puedeAtras();
+      if (Math.abs(dx) > Math.abs(dy) && puede && zoomObjetivo === 1 && quieto()) empezarArrastre(dir);
+    }
+    if (arrastre) {
+      const hacia = arrastre.dir > 0 ? -dx : dx;
+      moverArrastre(limitar(hacia / (lienzo.clientWidth * 0.45), 0, 1));
+    }
+  });
+  const soltar = (e, cancelado) => {
+    const estado = toque;
+    toque = null;
+    if (!estado) return;
+    if (arrastre) {
+      const { dir, t } = arrastre;
+      arrastre = null;
+      if (!cancelado && t > 0.3) pasar(dir);
+      else aplicarEstado();
+      return;
+    }
+    if (cancelado || estado.movido) return;
+    if (zoomObjetivo > 1) { salirDelZoom(); pedirCuadro(); return; }
+    const sitio = hayLamina ? lugarEn(e.clientX, e.clientY) : null;
+    if (sitio && hayLamina(sitio.cara, sitio.u, sitio.v)) {
+      const ahora = performance.now();
+      if (ahora - ultimoToque.t < DOBLE_TOQUE_MS) {
+        clearTimeout(pendiente);
+        ultimoToque.t = -Infinity;
+        enfocar(sitio.cara, sitio.u, sitio.v);
+      } else {
+        ultimoToque.t = ahora;
+        clearTimeout(pendiente);
+        const x = e.clientX;
+        pendiente = setTimeout(() => pasarPorToque(x), DOBLE_TOQUE_MS); // espera por si es un doble toque
+      }
+      return;
+    }
+    pasarPorToque(e.clientX);
+  };
+  lienzo.addEventListener('pointerup', (e) => soltar(e, false));
+  lienzo.addEventListener('pointercancel', (e) => soltar(e, true));
   lienzo.addEventListener('contextmenu', (e) => e.preventDefault());
 
   const observador = typeof ResizeObserver === 'function' ? new ResizeObserver(ajustarTamano) : null;
@@ -264,7 +392,7 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {} } = {}) {
     irACara,
     carasVisibles,
     /** true cuando ninguna hoja se está moviendo (solo entonces valen las posiciones de `proyectar`). */
-    quieto: () => cuadro === 0 && espera.every((e) => e <= 0),
+    quieto,
     /** Cambia el dibujo de una cara (p. ej. al pegar una lámina). */
     actualizarCara(indice, canvas) {
       const t = texturas[indice];

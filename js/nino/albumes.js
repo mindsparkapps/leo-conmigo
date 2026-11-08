@@ -14,7 +14,7 @@ import { cargarMonedas } from '../albumes.js';
 import {
   armarLibro, codigosDelLibro, lugarDeLamina, registrosAlPegar, separarCalcomanias,
 } from '../core/libro-album.js';
-import { caraDePagina, dibujarCaraDePagina, dibujarCaras, dibujarPortadaDeLibro, lugaresDePagina } from '../ui/laminas.js';
+import { ANCHO_CARA, ALTO_CARA, caraDePagina, dibujarCaraDePagina, dibujarCaras, dibujarPortadaDeLibro, lugaresDePagina } from '../ui/laminas.js';
 import { mapaDePropias, nodoDeCalcomania } from '../ui/calcomania.js';
 import { crearLaminasSueltas } from '../ui/laminas-sueltas.js';
 
@@ -72,6 +72,7 @@ async function pintar(zona, estado) {
   };
   let { libro, sueltas } = calcular();
 
+  let mostrarResumen = () => {}; // «por pegar» y barra de avance de abajo
   // Pegar una lámina: la guarda, y redibuja su página y la portada (el conteo)
   async function pegar(codigo, controlador) {
     const cambios = registrosAlPegar(calcomanias, codigo);
@@ -79,7 +80,8 @@ async function pintar(zona, estado) {
     const guardados = await store.guardarVarios('calcomanias', cambios);
     const porId = new Map(guardados.map((g) => [g.id, g]));
     calcomanias = calcomanias.map((c) => porId.get(c.id) ?? c);
-    ({ libro } = calcular());
+    ({ libro, sueltas } = calcular());
+    mostrarResumen();
     if (!controlador) return;
     const lugar = lugarDeLamina(libro, codigo);
     controlador.actualizarCara(caraDePagina(lugar.pagina), await dibujarCaraDePagina({ store, libro, propias, indice: lugar.pagina }));
@@ -110,7 +112,17 @@ async function pintar(zona, estado) {
       letras.forEach((b, i) => b.classList.toggle('actual', visibles.includes(caraDePagina(i))));
     };
 
+    // ¿hay una lámina pegada en ese punto de la cara? (doble toque = acercarla)
+    const lugaresPag = lugaresDePagina();
+    const hayLamina = (c, u, v) => {
+      const pagina = libro.paginas[c - 2];
+      if (!pagina) return false;
+      const semiV = (lugaresPag.semiLadoU * ANCHO_CARA) / ALTO_CARA;
+      return pagina.items.some((item, k) => item.pegada && Math.abs(u - lugaresPag[k].u) <= lugaresPag.semiLadoU && Math.abs(v - lugaresPag[k].v) <= semiV);
+    };
+
     controlador = crearLibro3D(lienzo, caras, {
+      hayLamina,
       alCambiar: ({ puedeAtras, puedeAdelante, carasVisibles }) => {
         atras.disabled = !puedeAtras;
         adelante.disabled = !puedeAdelante;
@@ -121,10 +133,27 @@ async function pintar(zona, estado) {
     atras.disabled = !controlador.puedeAtras();
     adelante.disabled = !controlador.puedeAdelante();
     marcarLetras(controlador.carasVisibles());
+    // A los lados de las flechas: cuántas láminas quedan por pegar y el avance del álbum
+    const porPegar = el('span', { class: 'libro-por-pegar' });
+    const relleno = el('span', { class: 'libro-avance-relleno' });
+    const avance = el('span', { class: 'libro-avance', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100' }, relleno);
+    const textoAvance = el('span', { class: 'libro-avance-texto' });
+    mostrarResumen = () => {
+      const pct = libro.total ? Math.round((libro.pegadas / libro.total) * 100) : 0;
+      porPegar.textContent = `Por pegar: ${sueltas.length}`;
+      porPegar.setAttribute('aria-label', `Quedan ${sueltas.length} láminas por pegar`);
+      relleno.style.width = `${pct}%`;
+      textoAvance.textContent = `${pct} %`;
+      avance.setAttribute('aria-valuenow', String(pct));
+      avance.setAttribute('aria-label', `Álbum completado al ${pct} por ciento`);
+    };
+    mostrarResumen();
     zona.append(
       el('div', { class: 'libro-controles' },
         el('div', { class: 'libro-letras', role: 'group', 'aria-label': 'Páginas' }, letras),
-        el('div', { class: 'libro-flechas' }, atras, adelante)),
+        el('div', { class: 'libro-flechas' },
+          el('div', { class: 'libro-lado libro-lado-izq' }, atras, porPegar),
+          el('div', { class: 'libro-lado libro-lado-der' }, adelante, avance, textoAvance))),
     );
 
     // Las láminas sueltas encima del libro

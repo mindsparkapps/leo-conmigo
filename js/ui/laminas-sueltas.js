@@ -8,7 +8,6 @@ import { el } from './dom.js';
 
 const UMBRAL_ARRASTRE_PX = 8;
 const DOBLE_TOQUE_MS = 450;
-const MAX_VISIBLES = 8; // si hay más, el resto aparece a medida que se pegan las primeras
 
 /** Un número estable por código y por `sal` (distinto para cada rasgo), para un desorden que no cambia al redibujar. */
 function azar(codigo, sal) {
@@ -115,7 +114,7 @@ export function crearLaminasSueltas({ contenedor, laminas, alSoltar, alArrastrar
         setTimeout(() => {
           caja.remove();
           enPantalla.delete(lamina.codigo);
-          reponer();
+          acomodar();
         }, 450);
       } else {
         caja.classList.add('volviendo'); // vuelve a su sitio
@@ -128,13 +127,30 @@ export function crearLaminasSueltas({ contenedor, laminas, alSoltar, alArrastrar
     caja.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
+  /** Si no caben en una línea, las láminas se montan unas sobre otras (las últimas encima). */
+  function acomodar() {
+    const cajas = [...capa.children];
+    const ancho = cajas[0]?.offsetWidth ?? 0;
+    const disponible = capa.clientWidth;
+    let solape = 0;
+    if (cajas.length > 1 && ancho && cajas.length * (ancho + 10) > disponible) {
+      solape = -Math.ceil((cajas.length * (ancho + 10) - disponible) / (cajas.length - 1));
+    }
+    capa.style.setProperty('--solape', `${solape}px`);
+  }
   function reponer() {
-    while (enPantalla.size < MAX_VISIBLES && pendientes.length) poner(pendientes.shift());
+    while (pendientes.length) poner(pendientes.shift());
+    acomodar();
   }
   reponer();
+  const observador = typeof ResizeObserver === 'function' ? new ResizeObserver(acomodar) : null;
+  observador?.observe(capa);
 
   return {
-    destruir: () => capa.remove(),
+    destruir: () => {
+      observador?.disconnect();
+      capa.remove();
+    },
     cantidad: () => enPantalla.size + pendientes.length,
   };
 }
