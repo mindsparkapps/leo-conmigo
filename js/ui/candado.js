@@ -14,14 +14,18 @@ const ICONO = `
   <path class="candado-icono-linea" d="M18.5 23v-4.5a5.5 5.5 0 0 1 11 0V23"/>
 </svg>`;
 
-/** Devuelve el botón del candado. `alDesbloquear` se llama al resolver bien la suma. */
-export function crearCandado({ alDesbloquear }) {
+/**
+ * Devuelve el botón del candado. `alDesbloquear` se llama al resolver bien la suma.
+ * Con `etiqueta` es un botón grande del menú principal (icono + texto) en vez del candado de la esquina.
+ */
+export function crearCandado({ alDesbloquear, etiqueta = null }) {
   const boton = el('button', {
     type: 'button',
-    class: 'candado',
+    class: etiqueta ? 'candado candado-menu menu-boton' : 'candado',
     'aria-label': 'Zona de adultos. Mantén presionado 3 segundos.',
   });
   boton.innerHTML = ICONO;
+  if (etiqueta) boton.append(el('span', { class: 'menu-etiqueta', 'aria-hidden': 'true' }, etiqueta));
 
   let temporizador = null;
   // En el celular el dedo tapa el candado: mientras se sostiene, el avance se ve también abajo, al centro

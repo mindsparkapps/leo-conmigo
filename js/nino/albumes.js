@@ -1,4 +1,5 @@
-// «Mis álbumes»: los álbumes que el niño ya completó. Solo se mira (sin textos, sin nada que tocar salvo volver).
+// «Mi álbum»: sus calcomanías. Primero el álbum que está llenando y después los que ya completó.
+// Solo se mira (sin textos, sin nada que tocar salvo volver).
 
 import { el } from '../ui/dom.js';
 import { crearCandado } from '../ui/candado.js';
@@ -44,11 +45,16 @@ async function pintar(zona, estaVivo) {
   if (!perfil || !estaVivo()) return;
   const datos = await cargarMonedas(store, perfil);
   const propias = mapaDePropias(datos.propias);
-  const bloques = [];
+  // El álbum actual primero: tantos lugares como calcomanías lleva; los vacíos son lugares que aún no ganó
+  const ganadas = (await Promise.all(datos.actual.codigos.map((c) => nodoDeCalcomania(store, c, propias)))).filter(Boolean);
+  const lugares = [...ganadas];
+  while (lugares.length < datos.album.tamano) lugares.push(el('span', { class: 'calcomania-hueco', 'aria-hidden': 'true' }));
+  const bloques = [el('div', { class: 'album', 'aria-label': 'Mi álbum' }, lugares)];
+  // Después, los que ya completó (el más nuevo arriba)
   for (const album of [...datos.completos].reverse()) {
     const nodos = (await Promise.all(album.codigos.map((c) => nodoDeCalcomania(store, c, propias)))).filter(Boolean);
     bloques.push(el('div', { class: 'album album-pasado', 'aria-label': `Álbum ${album.numero}` }, nodos));
   }
   if (!estaVivo()) return;
-  zona.replaceChildren(...(bloques.length ? bloques : [el('p', { class: 'mensaje-nino' }, 'Todavía no completaste ningún álbum.')]));
+  zona.replaceChildren(...bloques);
 }

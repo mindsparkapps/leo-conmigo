@@ -860,6 +860,34 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 .premio-album, .premio-calcomania { display: flex; flex-direction: column; align-items: center; gap: 24px; width: 100%; }
 .album-completo { width: min(100%, 560px); }
 .album-pasado { width: min(100%, 560px); padding: 12px; border-radius: var(--radio); background: var(--tarjeta); border: 2px solid var(--borde); }
+/* ===== Pantalla principal: botones grandes del menú ===== */
+.menu-inicio { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; width: min(100%, 460px); }
+.menu-boton {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  min-height: clamp(110px, 22vmin, 170px); padding: 12px; border: 3px solid transparent; border-radius: var(--radio);
+  color: #fff; font: inherit; font-size: clamp(1.2rem, 4vmin, 1.7rem); font-weight: 700; cursor: pointer; touch-action: manipulation;
+}
+.menu-boton svg { display: block; width: clamp(48px, 11vmin, 84px); height: auto; aspect-ratio: 1; }
+.menu-boton:disabled { opacity: 0.45; cursor: default; }
+.menu-jugar { grid-column: 1 / -1; background: var(--verde); }
+.menu-tienda { background: #8a5a00; }
+.menu-album { background: var(--azul); }
+.menu-libro { background: var(--azul-oscuro); }
+/* Config: es el candado de adultos (mantener 3 s), con aspecto de tarjeta para que se vea el avance */
+.candado.candado-menu {
+  position: static; width: auto; height: auto; border-radius: var(--radio); opacity: 1;
+  border-color: var(--borde-fuerte); background: var(--tarjeta); color: var(--texto);
+  grid-column: 1 / -1; flex-direction: row; min-height: 72px;
+}
+.candado-menu svg { width: 44px; }
+/* Esta regla va después de la base: en celular acostado caben los botones en una sola fila */
+@media (orientation: landscape) and (min-width: 700px) {
+  .menu-inicio { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); width: min(100%, 900px); }
+  .menu-jugar, .candado.candado-menu { grid-column: auto; }
+  .candado.candado-menu { flex-direction: column; min-height: clamp(110px, 22vmin, 170px); }
+  .candado-menu svg { width: clamp(48px, 11vmin, 84px); }
+}
+
 .albumes-nino, .tienda-nino { justify-content: flex-start; padding-top: 112px; overflow-y: auto; }
 .albumes-zona, .tienda-zona { display: flex; flex-direction: column; align-items: center; gap: 24px; width: 100%; }
 
