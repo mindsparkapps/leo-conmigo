@@ -977,6 +977,22 @@ img.calcomania-grande { border-width: 10px; border-radius: 32px; }
 .premio-precio { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
 .tienda-nino > .tienda-zona > .miniatura-grande { width: clamp(150px, 32vmin, 260px); height: clamp(150px, 32vmin, 260px); }
 .mensaje-premio { color: var(--verde); font-weight: 700; }
+.tienda-titulo { margin: 8px 0 0; font-size: 1.6rem; }
+.sobre-dibujo {
+  position: relative; display: grid; place-items: center; width: clamp(110px, 24vmin, 170px); aspect-ratio: 4 / 3;
+  border-radius: 14px; background: linear-gradient(135deg, #f6b73c, #e0752b); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+.sobre-dibujo::before {
+  content: ''; position: absolute; inset: 0; border-radius: 14px;
+  background: linear-gradient(to bottom right, transparent 49%, rgba(255, 255, 255, 0.35) 50%, transparent 52%), linear-gradient(to bottom left, transparent 49%, rgba(255, 255, 255, 0.35) 50%, transparent 52%);
+}
+.sobre-cantidad { position: relative; font-size: 2rem; font-weight: 800; color: #fff; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4); }
+.repetida-carta { position: relative; }
+.repetida-carta img.calcomania { width: clamp(80px, 16vmin, 120px); }
+.repetida-sobran { position: absolute; top: 8px; right: 10px; font-weight: 800; font-size: 1.3rem; }
+.sobre-abierto { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; }
+.sobre-abierto img.calcomania-grande { width: clamp(110px, 22vmin, 190px); }
+a.boton-respuesta { text-decoration: none; font-size: 2.4rem; }
 .boton-respuesta {
   display: grid; place-items: center; width: clamp(96px, 22vmin, 150px); aspect-ratio: 1; padding: 0; border: 0;
   border-radius: 50%; color: #fff; cursor: pointer; touch-action: manipulation;

@@ -3,6 +3,7 @@
 
 import { CODIGOS_CATALOGO, codigosEnJuego, elegirCalcomania } from './core/calcomanias.js';
 import { calcularAlbumes, normalizarAlbum, premiosDeAlbumPorCrear, saldo } from './core/album.js';
+import { crearCompraSobre, crearVenta, precioDeSobre, registroAVender, sacarSobre } from './core/sobres.js';
 
 /** Todo lo que hace falta para pintar el álbum, el cofre y la tienda de un niño. */
 export async function cargarMonedas(store, perfil) {
@@ -30,6 +31,62 @@ export async function acreditarAlbumesPendientes(store, perfil, { calcomanias, m
   const porCrear = premiosDeAlbumPorCrear({ perfilId: perfil.id, calcomanias: cals, movimientos: movs, album: perfil.album });
   if (porCrear.length) await store.guardarVarios('movimientos', porCrear);
   return porCrear;
+}
+
+/**
+ * Compra un sobre: gasta las monedas y guarda sus láminas sueltas (pueden repetirse).
+ * @returns {{ comprado: false, faltan, precio } | { comprado: true, codigos, precio, saldo, album }}
+ */
+export async function comprarSobre(store, perfil, { aleatorio = Math.random, ahora = () => new Date().toISOString() } = {}) {
+  const filtro = { perfilId: perfil.id };
+  const config = normalizarAlbum(perfil.album);
+  const precio = precioDeSobre(config);
+  const [calcomanias, propias, movimientos] = await Promise.all([
+    store.listar('calcomanias', filtro),
+    store.listar('calcomaniasPropias', filtro),
+    store.listar('movimientos', filtro),
+  ]);
+  const actual = saldo(movimientos);
+  if (actual < precio) return { comprado: false, faltan: precio - actual, precio };
+
+  const enJuego = codigosEnJuego(config, propias);
+  const codigos = sacarSobre(enJuego.length ? enJuego : CODIGOS_CATALOGO, aleatorio);
+  const base = Date.parse(ahora());
+  const nuevas = await store.guardarVarios(
+    'calcomanias',
+    codigos.map((codigo, i) => ({ perfilId: perfil.id, codigo, fecha: new Date(base + i).toISOString(), pegada: false })),
+  );
+  const compra = await store.guardar('movimientos', crearCompraSobre({ perfilId: perfil.id, precio, codigos, fecha: new Date(base).toISOString() }));
+  const todas = [...calcomanias, ...(Array.isArray(nuevas) ? nuevas : [])];
+  const porCrear = await acreditarAlbumesPendientes(store, perfil, { calcomanias: todas, movimientos: [...movimientos, compra] });
+  const completado = porCrear.at(-1) ?? null;
+  return {
+    comprado: true,
+    codigos,
+    precio,
+    saldo: saldo([...movimientos, compra, ...porCrear]),
+    album: completado ? { numero: completado.albumNumero, codigos: completado.codigos, monedas: completado.cantidad } : null,
+  };
+}
+
+/** Vende una copia de más de una lámina (nunca la última): quita el registro y paga la moneda. */
+export async function venderRepetida(store, perfil, codigo, { ahora = () => new Date().toISOString() } = {}) {
+  const filtro = { perfilId: perfil.id };
+  const calcomanias = await store.listar('calcomanias', filtro);
+  const registro = registroAVender(calcomanias, codigo);
+  if (!registro) return { vendida: false };
+  await store.borrar('calcomanias', registro.id);
+  const venta = await store.guardar('movimientos', crearVenta({ perfilId: perfil.id, codigo, fecha: ahora() }));
+  const movimientos = await store.listar('movimientos', filtro);
+  return { vendida: true, valor: venta.cantidad, saldo: saldo(movimientos) };
+}
+
+/** Deja los álbumes en blanco: borra las láminas y los premios de álbum. Los gastos y regalos de monedas se quedan. */
+export async function reiniciarAlbumes(store, perfil) {
+  const filtro = { perfilId: perfil.id };
+  const [calcomanias, movimientos] = await Promise.all([store.listar('calcomanias', filtro), store.listar('movimientos', filtro)]);
+  for (const c of calcomanias) await store.borrar('calcomanias', c.id);
+  for (const m of movimientos.filter((x) => x.tipo === 'album')) await store.borrar('movimientos', m.id);
 }
 
 /**

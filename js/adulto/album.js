@@ -9,8 +9,8 @@ import { crearCofre } from '../ui/moneda.js';
 import { mapaDePropias, nodoDeCalcomania } from '../ui/calcomania.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { borrarMedio, guardarMedio, liberarUrls, urlDeMedio } from '../medios.js';
-import { cargarMonedas } from '../albumes.js';
-import { MONEDAS_MAX, MONEDAS_MIN, TAMANO_MAX, TAMANO_MIN, normalizarAlbum } from '../core/album.js';
+import { cargarMonedas, reiniciarAlbumes } from '../albumes.js';
+import { MONEDAS_MAX, MONEDAS_MIN, TAMANO_MAX, TAMANO_MIN, crearRegalo, normalizarAlbum } from '../core/album.js';
 import { CALCOMANIAS, codigoDePropia, rutaCalcomania } from '../core/calcomanias.js';
 
 export const titulo = 'Álbum y monedas · Leo Conmigo';
@@ -85,6 +85,26 @@ export function montar(contenedor) {
       }
     }
 
+    // ----- pruebas y reinicio -----
+    const mensajePrueba = el('p', { class: 'ayuda', role: 'status' });
+    async function cargarPrueba() {
+      try {
+        await store.guardar('movimientos', crearRegalo({ perfilId: perfil.id, cantidad: 9999, nota: 'Carga de prueba' }));
+        await pintar();
+      } catch (error) {
+        mensajePrueba.textContent = describirError(error);
+      }
+    }
+    async function reiniciar() {
+      if (!window.confirm('¿Reiniciar los álbumes? Se borran todas las láminas del niño y no se puede deshacer.')) return;
+      try {
+        await reiniciarAlbumes(store, perfil);
+        await pintar();
+      } catch (error) {
+        mensajePrueba.textContent = describirError(error);
+      }
+    }
+
     // ----- calcomanías propias -----
     const entradaNombre = el('input', { type: 'text', maxlength: 30, autocomplete: 'off' });
     selector?.liberar();
@@ -149,6 +169,19 @@ export function montar(contenedor) {
         cuadricula,
         mensaje,
         el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton', onclick: guardarAjustes }, 'Guardar')),
+      ),
+      el(
+        'div',
+        { class: 'panel' },
+        el('h2', {}, 'Pruebas y reinicio'),
+        el('p', { class: 'ayuda' }, 'Cargar monedas suma un regalo de 9999 al saldo. Reiniciar borra todas las láminas y los premios de álbum del niño (no devuelve las monedas gastadas en sobres ni los regalos).'),
+        mensajePrueba,
+        el(
+          'div',
+          { class: 'acciones' },
+          el('button', { type: 'button', class: 'boton secundario', onclick: cargarPrueba }, 'Cargar 9999 monedas'),
+          el('button', { type: 'button', class: 'boton secundario', onclick: reiniciar }, 'Reiniciar álbumes'),
+        ),
       ),
       el(
         'div',

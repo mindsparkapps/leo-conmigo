@@ -10,7 +10,9 @@ import { NOMBRE_APP } from '../config.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { liberarUrls, urlDeMedio } from '../medios.js';
 import { desbloquearAudio, detener, hablarTexto } from '../audio.js';
-import { cargarMonedas } from '../albumes.js';
+import { cargarMonedas, comprarSobre, venderRepetida } from '../albumes.js';
+import { mapaDePropias, nodoDeCalcomania } from '../ui/calcomania.js';
+import { LAMINAS_POR_SOBRE, VALOR_VENTA, precioDeSobre, repetidas } from '../core/sobres.js';
 import { crearCanje, faltan, premiosVisibles, puedeCanjear } from '../core/album.js';
 import { normalizarAjustes } from '../core/modelos.js';
 
@@ -101,14 +103,100 @@ async function iniciar(zona, estaVivo) {
       }),
     );
     if (!estaVivo()) return;
+    const precioSobre = precioDeSobre(datos.album);
+    const alcanzaSobre = datos.saldo >= precioSobre;
+    const sobre = el(
+      'button',
+      {
+        type: 'button',
+        class: alcanzaSobre ? 'premio-carta sobre-carta' : 'premio-carta sobre-carta premio-lejos',
+        'aria-label': `Sobre de láminas, ${textoMonedas(precioSobre)}`,
+        onclick: () => {
+          if (ocupado || !toqueValido()) return;
+          if (alcanzaSobre) comprar();
+          else decir(`Sobre de láminas. Te faltan ${textoMonedas(precioSobre - datos.saldo)}`, { siempre: true });
+        },
+      },
+      el('span', { class: 'sobre-dibujo', 'aria-hidden': 'true' }, el('span', { class: 'sobre-cantidad' }, `×${LAMINAS_POR_SOBRE}`)),
+      el('span', { class: 'premio-nombre' }, 'Sobre de láminas'),
+      el('span', { class: 'premio-precio' }, el('span', { class: 'cofre-numero', 'aria-hidden': 'true' }, String(precioSobre)), crearMonedas({ total: precioSobre, llenas: datos.saldo })),
+    );
+    const propiasPorId = mapaDePropias(datos.propias);
+    const sobrantes = repetidas(datos.calcomanias);
+    const cartasRepetidas = (
+      await Promise.all(
+        sobrantes.map(async ({ codigo, sobran }) => {
+          const dibujo = await nodoDeCalcomania(store, codigo, propiasPorId, { clase: 'calcomania', decorativo: true });
+          if (!dibujo) return null;
+          return el(
+            'button',
+            {
+              type: 'button',
+              class: 'premio-carta repetida-carta',
+              'aria-label': `Vender una lámina repetida por ${textoMonedas(VALOR_VENTA)}. Te sobran ${sobran}`,
+              onclick: async () => {
+                if (ocupado || !toqueValido()) return;
+                ocupado = true;
+                try {
+                  const r = await venderRepetida(store, perfil, codigo);
+                  if (r.vendida) {
+                    aviso = `¡Vendida! Ganaste ${textoMonedas(r.valor)}.`;
+                    decir(`Ganaste ${textoMonedas(r.valor)}`);
+                  }
+                  await lista();
+                } finally {
+                  ocupado = false;
+                }
+              },
+            },
+            dibujo,
+            el('span', { class: 'repetida-sobran' }, `×${sobran}`),
+            el('span', { class: 'premio-precio' }, el('span', { class: 'cofre-numero', 'aria-hidden': 'true' }, `+${VALOR_VENTA}`), crearMonedas({ total: VALOR_VENTA, llenas: VALOR_VENTA })),
+          );
+        }),
+      )
+    ).filter(Boolean);
+    if (!estaVivo()) return;
     zona.replaceChildren(
       ...[
         aviso ? el('p', { class: 'mensaje-nino mensaje-premio', role: 'status' }, aviso) : null,
         crearCofre({ saldo: datos.saldo }),
+        el('div', { class: 'tienda-grilla' }, sobre),
+        cartasRepetidas.length ? el('h2', { class: 'tienda-titulo' }, 'Láminas repetidas') : null,
+        cartasRepetidas.length ? el('div', { class: 'tienda-grilla' }, cartasRepetidas) : null,
+        premios.length ? el('h2', { class: 'tienda-titulo' }, 'Premios') : null,
         premios.length ? el('div', { class: 'tienda-grilla' }, cartas) : el('p', { class: 'mensaje-nino' }, 'Todavía no hay premios.'),
       ].filter(Boolean),
     );
     aviso = null;
+  }
+
+  async function comprar() {
+    ocupado = true;
+    try {
+      const r = await comprarSobre(store, perfil);
+      if (!estaVivo()) return;
+      if (!r.comprado) {
+        aviso = `Te faltan ${textoMonedas(r.faltan)}.`;
+        await lista();
+        return;
+      }
+      const propiasPorId = mapaDePropias(await store.listar('calcomaniasPropias', { perfilId: perfil.id }));
+      const dibujos = (await Promise.all(r.codigos.map((c) => nodoDeCalcomania(store, c, propiasPorId, { clase: 'calcomania-grande', decorativo: true })))).filter(Boolean);
+      if (!estaVivo()) return;
+      const seguir = el('button', { type: 'button', class: 'boton-respuesta boton-si', 'aria-label': 'Seguir en la tienda', onclick: () => { if (!ocupado && toqueValido()) lista(); } });
+      seguir.innerHTML = ICONO_SI;
+      const album = el('a', { class: 'boton-respuesta boton-no', href: '#/nino/albumes', 'aria-label': 'Ir a pegar las láminas al álbum' }, '📖');
+      ultimoToque = performance.now();
+      zona.replaceChildren(
+        el('p', { class: 'mensaje-nino mensaje-premio', role: 'status' }, '¡Tus láminas nuevas! Pégalas en el álbum.'),
+        el('div', { class: 'sobre-abierto' }, dibujos),
+        el('div', { class: 'acciones-inicio' }, album, seguir),
+      );
+      decir('¡Tus láminas nuevas! Pégalas en el álbum');
+    } finally {
+      ocupado = false;
+    }
   }
 
   async function confirmar(premio) {

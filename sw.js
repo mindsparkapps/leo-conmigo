@@ -63,6 +63,7 @@ const PRECACHE = [
   'data/calcomanias/pastel.svg',
   'js/albumes.js',
   'js/core/album.js',
+  'js/core/sobres.js',
   'js/ui/moneda.js',
   'js/ui/puntero.js',
   'js/ui/laminas.js',
