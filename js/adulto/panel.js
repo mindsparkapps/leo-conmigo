@@ -1,8 +1,8 @@
 // Panel del modo adulto: el niño activo, accesos a perfiles y vocabulario, estado de la app y créditos.
 
 import { el } from '../ui/dom.js';
-import { TEXTO_VERSION } from '../config.js';
-import { observar, instalar, aplicarActualizacion } from '../pwa.js';
+import { TEXTO_VERSION, VERSION, COMMIT } from '../config.js';
+import { observar, instalar, aplicarActualizacion, versionPublicada, forzarActualizacion } from '../pwa.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { crearMiniatura } from '../ui/miniatura.js';
 import { describirError } from '../ui/adulto.js';
@@ -186,6 +186,26 @@ function avisoActualizacion() {
   );
 }
 
+/** Botón que busca la versión publicada y fuerza la carga de la última (el número de arriba puede ser de la copia vieja). */
+function botonActualizar() {
+  const mensaje = el('span', { class: 'ayuda', role: 'status' });
+  const boton = el('button', { type: 'button', class: 'boton secundario' }, 'Actualizar a la última versión');
+  boton.addEventListener('click', async () => {
+    boton.disabled = true;
+    mensaje.textContent = 'Buscando la versión publicada…';
+    const publicada = await versionPublicada();
+    if (!publicada) {
+      mensaje.textContent = 'No se pudo consultar la versión publicada. Revisa la conexión e inténtalo de nuevo.';
+      boton.disabled = false;
+      return;
+    }
+    const igual = publicada.version === VERSION && publicada.commit === COMMIT;
+    mensaje.textContent = `Publicada: v${publicada.version} · ${publicada.commit}. ${igual ? 'Ya tienes esa; se recarga limpia…' : 'Actualizando…'}`;
+    await forzarActualizacion();
+  });
+  return el('p', {}, boton, ' ', mensaje);
+}
+
 function panelEstado(estado, protegido) {
   const fila = (nombre, valor) => el('li', {}, el('span', {}, nombre), el('strong', {}, valor));
   const textoProtegido = protegido === null ? 'No disponible' : protegido ? 'Sí' : 'No';
@@ -202,6 +222,8 @@ function panelEstado(estado, protegido) {
       fila('Datos protegidos contra borrado', textoProtegido),
     ),
   ];
+
+  nodos.push(botonActualizar());
 
   if (estado.puedeInstalar) {
     nodos.push(

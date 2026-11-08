@@ -107,8 +107,26 @@ export function hablarTexto(texto, opciones = {}) {
   return hablarTextoInterno(texto, opciones);
 }
 
-async function reproducirBlobInterno(blob, { velocidad = 1 } = {}) {
+/**
+ * Si el blob no declara un tipo de audio (p. ej. «application/octet-stream» al bajarlo de Drive), mira sus primeros
+ * bytes y le pone el tipo real; si no lo reconoce, lo deja como está.
+ */
+export async function conTipoDeAudio(blob) {
+  if (!blob || String(blob.type).startsWith('audio/')) return blob;
+  const b = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
+  const texto = (desde, n) => String.fromCharCode(...b.slice(desde, desde + n));
+  let tipo = null;
+  if (b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) tipo = 'audio/webm';
+  else if (texto(0, 4) === 'OggS') tipo = 'audio/ogg';
+  else if (texto(4, 4) === 'ftyp') tipo = 'audio/mp4';
+  else if (texto(0, 4) === 'RIFF' && texto(8, 4) === 'WAVE') tipo = 'audio/wav';
+  else if (texto(0, 3) === 'ID3' || (b[0] === 0xff && (b[1] & 0xe0) === 0xe0)) tipo = 'audio/mpeg';
+  return tipo ? new Blob([blob], { type: tipo }) : blob;
+}
+
+async function reproducirBlobInterno(original, { velocidad = 1 } = {}) {
   pararSonido();
+  const blob = await conTipoDeAudio(original);
   const url = URL.createObjectURL(blob);
   const audio = new Audio(url);
   audio.playbackRate = velocidad;

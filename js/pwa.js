@@ -91,6 +91,42 @@ export function aplicarActualizacion() {
   esperando.postMessage({ tipo: 'SALTAR_ESPERA' });
 }
 
+/**
+ * Pregunta al servidor (sin caché) qué versión hay publicada: { version, commit } o null si no se pudo.
+ * El número que muestra la app sale del código que ya está cargado, que puede ser viejo.
+ */
+export async function versionPublicada() {
+  try {
+    const respuesta = await fetch(new URL('js/config.js', document.baseURI).href, { cache: 'no-store' });
+    if (!respuesta.ok) return null;
+    const texto = await respuesta.text();
+    const version = /VERSION\s*=\s*'([^']+)'/.exec(texto)?.[1];
+    const commit = /COMMIT\s*=\s*'([^']+)'/.exec(texto)?.[1];
+    return version ? { version, commit: commit ?? '' } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fuerza la última versión: borra las cachés de esta app (no los datos), quita su service worker y recarga.
+ * Solo toca `leo-conmigo-*`; las cachés de otras apps del mismo sitio se dejan.
+ */
+export async function forzarActualizacion() {
+  if ('caches' in globalThis) {
+    for (const nombre of await caches.keys()) {
+      if (nombre.startsWith('leo-conmigo-')) await caches.delete(nombre);
+    }
+  }
+  if ('serviceWorker' in navigator) {
+    const registros = await navigator.serviceWorker.getRegistrations();
+    for (const r of registros) {
+      if (r.scope === new URL('./', document.baseURI).href) await r.unregister();
+    }
+  }
+  location.reload();
+}
+
 /** Lanza el diálogo nativo de instalación (si el navegador lo permite). */
 export async function instalar() {
   if (!eventoInstalacion) return null;
