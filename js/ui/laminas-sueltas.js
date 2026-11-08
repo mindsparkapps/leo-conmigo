@@ -75,6 +75,7 @@ export function crearLaminasSueltas({ contenedor, laminas, alSoltar, alArrastrar
       const dy = e.clientY - inicio.y;
       if (!inicio.arrastrando && Math.hypot(dx, dy) > UMBRAL_ARRASTRE_PX) {
         inicio.arrastrando = true;
+        caja.classList.remove('volteada'); // al llevarla, vuelve a mostrar la foto
         caja.classList.add('arrastrando'); // sube por encima de las demás (z-index en el CSS)
         alArrastrar(lamina);
       }

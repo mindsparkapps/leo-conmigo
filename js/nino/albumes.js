@@ -116,9 +116,10 @@ async function pintar(zona, estado) {
     const lugaresPag = lugaresDePagina();
     const hayLamina = (c, u, v) => {
       const pagina = libro.paginas[c - 2];
-      if (!pagina) return false;
+      if (!pagina) return 0;
       const semiV = (lugaresPag.semiLadoU * ANCHO_CARA) / ALTO_CARA;
-      return pagina.items.some((item, k) => item.pegada && Math.abs(u - lugaresPag[k].u) <= lugaresPag.semiLadoU && Math.abs(v - lugaresPag[k].v) <= semiV);
+      const hay = pagina.items.some((item, k) => item.pegada && Math.abs(u - lugaresPag[k].u) <= lugaresPag.semiLadoU && Math.abs(v - lugaresPag[k].v) <= semiV);
+      return hay ? lugaresPag.semiLadoU : 0;
     };
 
     controlador = crearLibro3D(lienzo, caras, {
@@ -152,7 +153,7 @@ async function pintar(zona, estado) {
       el('div', { class: 'libro-controles' },
         el('div', { class: 'libro-letras', role: 'group', 'aria-label': 'Páginas' }, letras),
         el('div', { class: 'libro-flechas' },
-          el('div', { class: 'libro-lado libro-lado-izq' }, atras, porPegar),
+          el('div', { class: 'libro-lado libro-lado-izq' }, porPegar, atras),
           el('div', { class: 'libro-lado libro-lado-der' }, adelante, avance, textoAvance))),
     );
 

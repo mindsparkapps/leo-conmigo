@@ -14,7 +14,7 @@ const SEPARACION = 0.006; // entre hojas apiladas, para que no se peleen en prof
 const DURACION_S = 0.9;
 const ARRASTRE_INICIO_PX = 10; // desde aquí un movimiento deja de ser un toque y la hoja empieza a seguir al dedo
 const DOBLE_TOQUE_MS = 350;
-const ZOOM_LAMINA = 2.6;
+const ZOOM_LLENADO = 0.94; // parte de la pantalla que ocupa la lámina al acercarla
 const FOV = 30;
 const RETRASO_HOJA_S = 0.07; // entre una hoja y la siguiente cuando se pasan varias de golpe
 
@@ -25,7 +25,8 @@ const suave = (t) => t * t * (3 - 2 * t);
  * @param contenedor  elemento donde se inserta el <canvas> (debe tener tamaño)
  * @param caras       canvases 2D, cantidad par
  * @param alCambiar   ({ puedeAtras, puedeAdelante, carasVisibles }) al empezar y cada vez que cambia la página
- * @param hayLamina   (cara, u, v) => boolean — si en ese punto de la cara hay una lámina pegada (doble toque = zoom)
+ * @param hayLamina   (cara, u, v) => 0 | semiLado — si en ese punto hay una lámina pegada, la mitad de su lado
+ *                    (fracción del ancho de la página); doble toque = acercarla
  * @throws si el navegador no tiene WebGL (quien llama debe mostrar otra cosa)
  */
 export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamina = null } = {}) {
@@ -63,10 +64,10 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
   // tapa propia: ahí queda el reverso de la portada (la cara 1), que gira junto con la hoja. Antes había una tapa
   // fija a cada lado y la de la izquierda aparecía de golpe al abrir y desaparecía de golpe al cerrar.
   const materialTapa = new THREE.MeshBasicMaterial({ color: 0x1f5f82 });
-  const geometriaTapa = new THREE.PlaneGeometry(ANCHO * 1.04, ALTO * 1.03);
+  const geometriaTapa = new THREE.PlaneGeometry(ANCHO, ALTO); // del mismo tamaño que la portada
   liberables.push(materialTapa, geometriaTapa);
   const contratapa = new THREE.Mesh(geometriaTapa, materialTapa);
-  contratapa.position.set(ANCHO / 2 + 0.01, 0, -0.02);
+  contratapa.position.set(ANCHO / 2, 0, -0.02);
   libro.add(contratapa);
 
   // Hojas: la geometría se recalcula vértice por vértice para poder curvarlas al pasar
@@ -287,10 +288,13 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
     return u < 0 || u > 1 || v < 0 || v > 1 ? null : { cara: c, u, v };
   }
 
-  function enfocar(c, u, v) {
+  // `semiLado`: mitad del lado de la lámina, en fracción del ancho de la página. El zoom la deja ocupando casi toda la pantalla.
+  function enfocar(c, u, v, semiLado = 0.15) {
     panXObjetivo = (c % 2 === 0 ? 0 : -ANCHO) + u * ANCHO + libro.position.x;
     panYObjetivo = ALTO / 2 - v * ALTO;
-    zoomObjetivo = ZOOM_LAMINA;
+    const altoVista = 2 * dBase * Math.tan((FOV * Math.PI) / 360); // alto visible del plano del libro sin zoom
+    const menor = Math.min(altoVista, altoVista * camara.aspect);
+    zoomObjetivo = limitar((menor * ZOOM_LLENADO) / (2 * semiLado * ANCHO), 1.5, 10);
     pedirCuadro();
   }
 
@@ -359,12 +363,13 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
     if (cancelado || estado.movido) return;
     if (zoomObjetivo > 1) { salirDelZoom(); pedirCuadro(); return; }
     const sitio = hayLamina ? lugarEn(e.clientX, e.clientY) : null;
-    if (sitio && hayLamina(sitio.cara, sitio.u, sitio.v)) {
+    const semiLado = sitio ? hayLamina(sitio.cara, sitio.u, sitio.v) : 0;
+    if (semiLado) {
       const ahora = performance.now();
       if (ahora - ultimoToque.t < DOBLE_TOQUE_MS) {
         clearTimeout(pendiente);
         ultimoToque.t = -Infinity;
-        enfocar(sitio.cara, sitio.u, sitio.v);
+        enfocar(sitio.cara, sitio.u, sitio.v, semiLado);
       } else {
         ultimoToque.t = ahora;
         clearTimeout(pendiente);

@@ -905,9 +905,9 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 
 /* Las láminas (fotos) se ven como en el libro: marco blanco de esquinas redondeadas y la imagen recortada al cuadrado */
 img.calcomania, img.calcomania-grande {
-  object-fit: cover; border: 6px solid #fff; border-radius: 22px; background: #fff; box-shadow: 0 4px 14px rgb(0 0 0 / 0.22);
+  object-fit: cover; border: 2px solid #fff; border-radius: 16px; background: #fff; box-shadow: 0 4px 14px rgb(0 0 0 / 0.22);
 }
-img.calcomania-grande { border-width: 10px; border-radius: 32px; }
+img.calcomania-grande { border-width: 3px; border-radius: 24px; }
 
 /* La casa de la sesión va en la esquina: se deja lugar para que no tape el modelo ni las opciones */
 .sesion-nino { padding-top: 92px; }
@@ -967,9 +967,10 @@ img.calcomania-grande { border-width: 10px; border-radius: 32px; }
 .lamina-suelta.pegada { transition: transform 0.4s ease-in, opacity 0.4s; transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(0.25); opacity: 0; }
 .lamina-giro { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform 0.5s; }
 .lamina-suelta.volteada .lamina-giro { transform: rotateY(180deg); }
+.lamina-suelta.volteada { z-index: 4; } /* la que está volteada queda por encima de las demás */
 .lamina-cara {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  border: 6px solid #fff; border-radius: 22px; background: #fff; overflow: hidden;
+  border: 2px solid #fff; border-radius: 16px; background: #fff; overflow: hidden;
   backface-visibility: hidden; -webkit-backface-visibility: hidden;
   box-shadow: 0 6px 10px rgb(0 0 0 / 0.35); /* la sombra va en las caras: un filter en el padre aplana el giro 3D */
 }

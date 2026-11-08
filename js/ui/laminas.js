@@ -102,8 +102,8 @@ function aGrises(lienzo) {
  * @param ganada  true: a color con sombra · false: gris y translúcida
  */
 function dibujarLamina(ctx, contenido, { cx, cy, lado, ganada, codigo }) {
-  const marco = lado * 0.07;
-  const redondeoMarco = lado * 0.16;
+  const marco = lado * 0.02; // borde blanco fino
+  const redondeoMarco = lado * 0.12;
   const interior = lado - marco * 2;
   ctx.save();
   ctx.translate(cx, cy);
@@ -184,7 +184,7 @@ function estrella(ctx, cx, cy, radio, relleno) {
 /** Imagen de la portada del álbum (data/laminas/portada.jpg = GTA6_032). */
 export const RUTA_PORTADA = 'data/laminas/portada.jpg';
 
-function portada({ pegadas, total }, imagen) {
+function portada(_libro, imagen) {
   const lienzo = lienzoNuevo();
   const ctx = lienzo.getContext('2d');
   // fondo de tapa y, encima, la imagen a pantalla completa (recortada al centro)
@@ -198,25 +198,11 @@ function portada({ pegadas, total }, imagen) {
   } else {
     estrella(ctx, ANCHO_CARA / 2, 270, 130, '#f2b632');
   }
-  // franja oscura abajo para que se lea el título sobre cualquier imagen
-  const franja = ctx.createLinearGradient(0, ALTO_CARA * 0.62, 0, ALTO_CARA);
-  franja.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  franja.addColorStop(1, 'rgba(0, 0, 0, 0.72)');
-  ctx.fillStyle = franja;
-  ctx.fillRect(0, ALTO_CARA * 0.62, ANCHO_CARA, ALTO_CARA * 0.38);
+  // sin título: solo la imagen y un marco fino (el avance se ve abajo, junto a las flechas)
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
   ctx.lineWidth = 8;
   rectRedondeado(ctx, 20, 20, ANCHO_CARA - 40, ALTO_CARA - 40, 34);
   ctx.stroke();
-  ctx.fillStyle = '#ffffff';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-  ctx.shadowBlur = 10;
-  ctx.font = `700 64px ${FUENTE}`;
-  ctx.fillText('Mi álbum', ANCHO_CARA / 2, 560);
-  ctx.font = `700 40px ${FUENTE}`;
-  ctx.fillText(`${pegadas} de ${total}`, ANCHO_CARA / 2, 622);
   return lienzo;
 }
 
