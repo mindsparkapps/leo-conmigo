@@ -55,6 +55,20 @@ body {
   touch-action: manipulation;
 }
 
+/* Textura del fondo (js/ui/fondo.js): siempre en blanco y negro, mezclada con el color de --fondo */
+#fondo-textura {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background-size: cover; background-position: center; background-repeat: no-repeat;
+  filter: grayscale(1); mix-blend-mode: multiply;
+}
+.fondo-opciones { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
+.fondo-opcion { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
+.fondo-muestra {
+  width: 100%; aspect-ratio: 1; border: 3px solid var(--borde-fuerte); border-radius: 12px; background: #fff center / cover;
+  filter: grayscale(1);
+}
+.fondo-opcion input:checked + .fondo-muestra { border-color: var(--azul); outline: 3px solid var(--azul); }
+
 #app {
   min-height: 100vh;
   min-height: 100dvh;
@@ -118,7 +132,6 @@ body {
   gap: 24px;
   padding: 24px;
   text-align: center;
-  background: var(--fondo);
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;

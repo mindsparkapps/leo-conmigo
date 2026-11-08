@@ -4,6 +4,9 @@ import { adultoHabilitado } from './acceso.js';
 import { pedirAlmacenamientoPersistente } from './hardware.js';
 import { iniciarNube } from './nube.js';
 
+import { aplicarFondo } from './ui/fondo.js';
+
+aplicarFondo();
 iniciarPWA();
 iniciarNube(); // sincroniza en segundo plano si hay una cuenta de Google vinculada
 pedirAlmacenamientoPersistente(); // que el navegador no borre las fotos, voces y progreso
@@ -37,6 +40,7 @@ crearRouter({
     adulto('/adulto/analisis', './adulto/analisis.js'),
     adulto('/adulto/ajustes', './adulto/ajustes.js'),
     adulto('/adulto/album', './adulto/album.js'),
+    adulto('/adulto/fondo', './adulto/fondo.js'),
     adulto('/adulto/tienda', './adulto/tienda.js'),
     adulto('/adulto/respaldo', './adulto/respaldo.js'),
     adulto('/adulto/cuenta', './adulto/cuenta.js'),
