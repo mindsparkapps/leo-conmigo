@@ -75,6 +75,8 @@ const PRECACHE = [
   'data/fondos/agua.avif',
   'js/ui/moneda.js',
   'js/ui/sobre.js',
+  'js/ui/sonidos.js',
+  'js/ui/botones.js',
   'js/ui/puntero.js',
   'js/ui/laminas.js',
   'js/ui/laminas-sueltas.js',

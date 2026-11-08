@@ -5,24 +5,38 @@
 
 import { el } from './dom.js';
 import { RUTA_PORTADA } from './laminas.js';
+import { sonidoCorte, sonidoLamina } from './sonidos.js';
 
 const CORTE = 13; // % de alto donde está el corte
 const ARRASTRE_MINIMO = 0.88; // fracción del ancho que hay que recorrer para abrirlo
-const PUNTOS = 24;
+const PUNTOS = 40;
+const RELACION = 5 / 3; // alto / ancho del sobre
 
-/** Borde dentado del corte: dos polígonos (tira y cuerpo) que encajan. */
-function poligonos() {
+/**
+ * Línea de corte casi recta, con una leve curvatura y una pendiente al azar (cada sobre se corta distinto) y un
+ * temblor mínimo de papel. Devuelve los dos polígonos (tira y cuerpo) que encajan y los puntos de la línea.
+ */
+function poligonos(aleatorio = Math.random) {
+  const pendiente = (aleatorio() * 2 - 1) * 2.4; // % de alto que sube o baja de un extremo al otro
+  const curva = (aleatorio() * 2 - 1) * 1.3;
   const borde = [];
-  for (let i = 0; i <= PUNTOS; i++) borde.push([(i / PUNTOS) * 100, CORTE + (i % 2 ? 1.1 : -1.1)]);
+  for (let i = 0; i <= PUNTOS; i++) {
+    const x = (i / PUNTOS) * 100;
+    const u = (x - 50) / 50; // −1 … 1
+    const y = CORTE + (pendiente * u) / 2 + curva * (1 - u * u) + (aleatorio() - 0.5) * 0.18;
+    borde.push([x, y]);
+  }
   const texto = (puntos) => `polygon(${puntos.map(([x, y]) => `${x.toFixed(2)}% ${y.toFixed(2)}%`).join(', ')})`;
   return {
     tira: texto([[0, 0], [100, 0], ...borde.slice().reverse()]),
     cuerpo: texto([...borde, [100, 100], [0, 100]]),
+    borde,
+    angulo: (Math.atan((pendiente / 100) * RELACION) * 180) / Math.PI,
   };
 }
 
 function caras(abierto = false) {
-  const { tira, cuerpo } = poligonos();
+  const { tira, cuerpo, borde, angulo } = poligonos();
   const fondo = `url("${new URL(RUTA_PORTADA, document.baseURI).href}")`; // en la hoja de estilos la ruta sería relativa a css/
   const hacerCara = (clase, recorte) => {
     const cara = el('span', { class: `sobre-cara ${clase}`, 'aria-hidden': 'true' }, el('span', { class: 'sobre-brillo' }), el('span', { class: 'sobre-sello' }));
@@ -31,7 +45,7 @@ function caras(abierto = false) {
     cara.style.webkitClipPath = recorte;
     return cara;
   };
-  return { tira: hacerCara('sobre-tira', tira), cuerpo: hacerCara('sobre-cuerpo', cuerpo), abierto };
+  return { tira: hacerCara('sobre-tira', tira), cuerpo: hacerCara('sobre-cuerpo', cuerpo), borde, angulo, abierto };
 }
 
 /** El sobre de la tienda: pequeño, brillante, con la cantidad de láminas. */
@@ -49,7 +63,7 @@ export function crearSobreChico(cantidad) {
  * @returns {() => void} quita la escena
  */
 export function presentarSobre(zona, dibujos, { mensaje, acciones = [], alAbrir = () => {} } = {}) {
-  const { tira, cuerpo } = caras();
+  const { tira, cuerpo, borde, angulo } = caras();
   const laminas = el(
     'span',
     { class: 'sobre-laminas', 'aria-hidden': 'true' },
@@ -60,7 +74,10 @@ export function presentarSobre(zona, dibujos, { mensaje, acciones = [], alAbrir 
     }),
   );
   const tijera = el('span', { class: 'sobre-tijera', 'aria-hidden': 'true' }, '✂');
-  const linea = el('span', { class: 'sobre-linea', 'aria-hidden': 'true' }, tijera);
+  const trazo = el('span', { class: 'sobre-trazo', 'aria-hidden': 'true' });
+  trazo.innerHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false"><polyline points="${borde.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')}" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="7 5" vector-effect="non-scaling-stroke"/></svg>`;
+  const linea = el('span', { class: 'sobre-linea', 'aria-hidden': 'true' }, trazo, tijera);
+  linea.style.setProperty('--angulo', `${angulo.toFixed(2)}deg`);
   const sobre = el(
     'div',
     { class: 'sobre-pack sobre-grande', role: 'button', tabindex: '0', 'aria-label': 'Abrir el sobre: arrastra por arriba o toca' },
@@ -75,6 +92,7 @@ export function presentarSobre(zona, dibujos, { mensaje, acciones = [], alAbrir 
   zona.append(escena);
 
   let abierto = false;
+  let rasgado = false; // el sonido del corte ya empezó con el arrastre
   const progreso = (p) => {
     sobre.style.setProperty('--p', p.toFixed(3));
   };
@@ -84,9 +102,15 @@ export function presentarSobre(zona, dibujos, { mensaje, acciones = [], alAbrir 
     abierto = true;
     progreso(1);
     sobre.classList.add('cortado');
+    if (!rasgado) sonidoCorte();
     alAbrir();
     const hijas = [...laminas.children];
-    hijas.forEach((h, i) => setTimeout(() => h.classList.add('sale'), 450 + i * 260));
+    hijas.forEach((h, i) =>
+      setTimeout(() => {
+        h.classList.add('sale');
+        sonidoLamina(i);
+      }, 450 + i * 260),
+    );
     const total = 450 + hijas.length * 260 + 700;
     setTimeout(() => {
       sobre.classList.add('vacio');
@@ -114,6 +138,10 @@ export function presentarSobre(zona, dibujos, { mensaje, acciones = [], alAbrir 
     const ancho = sobre.getBoundingClientRect().width || 1;
     const dx = Math.abs(e.clientX - inicio.x);
     if (dx > 8) movido = true;
+    if (movido && !rasgado) {
+      rasgado = true;
+      sonidoCorte();
+    }
     const p = Math.min(1, dx / (ancho * ARRASTRE_MINIMO));
     progreso(p);
     if (p >= 1) abrir();
@@ -122,7 +150,10 @@ export function presentarSobre(zona, dibujos, { mensaje, acciones = [], alAbrir 
     if (!inicio || (e && e.pointerId !== inicio.id)) return;
     inicio = null;
     sobre.classList.remove('cortando');
-    if (!abierto && movido) progreso(0); // no llegó: la tira vuelve a su lugar
+    if (!abierto && movido) {
+      progreso(0); // no llegó: la tira vuelve a su lugar
+      rasgado = false;
+    }
   };
   sobre.addEventListener('pointerup', soltar);
   sobre.addEventListener('pointercancel', soltar);

@@ -6,8 +6,10 @@ import { iniciarNube } from './nube.js';
 
 import { aplicarFondo } from './ui/fondo.js';
 import { iniciarSaldo } from './ui/saldo.js';
+import { iniciarBotones } from './ui/botones.js';
 
 aplicarFondo();
+iniciarBotones(); // squash and stretch, destello y sonido en todos los botones
 iniciarSaldo(); // el total de monedas, arriba a la derecha en las pantallas del niño
 iniciarPWA();
 iniciarNube(); // sincroniza en segundo plano si hay una cuenta de Google vinculada
