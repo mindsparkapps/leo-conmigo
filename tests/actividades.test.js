@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ACTIVIDADES } from '../js/actividades/indice.js';
-import { armarEnsayo, mezclarCartas, esSegundoDedo } from '../js/actividades/comun.js';
+import { armarEnsayo, mezclarCartas, esSegundoDedo, registrarPuntero, olvidarPunteros } from '../js/actividades/comun.js';
 import { crearAleatorio } from '../js/core/azar.js';
 import { palabra } from './ayudas.js';
 
@@ -103,7 +103,12 @@ test('mezclarCartas: la correcta nunca cae 3 veces seguidas en el mismo lugar', 
 });
 
 test('esSegundoDedo: solo se ignoran los punteros reales que no son el primario', () => {
-  assert.equal(esSegundoDedo({ pointerType: 'touch', isPrimary: false }), true, 'segundo dedo');
+  olvidarPunteros();
+  assert.equal(esSegundoDedo({ pointerType: 'touch', isPrimary: false }), false, 'el clic de un solo dedo vale aunque Chrome diga isPrimary=false');
+  registrarPuntero({ pointerType: 'touch', isPrimary: false }, 1000);
+  assert.equal(esSegundoDedo({ pointerType: 'touch' }, 1100), true, 'segundo dedo reciente');
+  assert.equal(esSegundoDedo({ pointerType: 'touch' }, 5000), false, 'pasada la ventana vale');
+  olvidarPunteros();
   assert.equal(esSegundoDedo({ pointerType: 'touch', isPrimary: true }), false, 'primer dedo');
   assert.equal(esSegundoDedo({ pointerType: 'mouse', isPrimary: true }), false);
   assert.equal(esSegundoDedo({ pointerType: 'mouse', isPrimary: false }), false, 'el clic del ratón siempre vale');

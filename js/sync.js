@@ -53,7 +53,9 @@ export function crearSincronizador({ store, drive, ahora = () => new Date(), alP
     n = 0;
     for (const { medio, archivoId } of plan.bajar) {
       alProgreso(`Bajando imágenes y audios (${++n} de ${plan.bajar.length})…`);
-      descargados.set(medio.id, await drive.leerBlob(archivoId));
+      const bajado = await drive.leerBlob(archivoId);
+      // Drive puede devolver «application/octet-stream»: se le devuelve su tipo real para que el PC lo reproduzca
+      descargados.set(medio.id, medio.mime && bajado.type !== medio.mime ? new Blob([bajado], { type: medio.mime }) : bajado);
     }
 
     // ---- escribir lo nuevo aquí (sin tocar updatedAt ni la cola) ----
