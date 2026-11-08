@@ -4,7 +4,9 @@
 
 import { el } from '../ui/dom.js';
 import { crearMiniatura } from '../ui/miniatura.js';
-import { crearCofre, crearMonedas } from '../ui/moneda.js';
+import { crearPrecio } from '../ui/moneda.js';
+import { fijarSaldo } from '../ui/saldo.js';
+import { crearSobreChico, presentarSobre } from '../ui/sobre.js';
 import { deshabilitarAdulto } from '../acceso.js';
 import { NOMBRE_APP } from '../config.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
@@ -72,6 +74,7 @@ async function iniciar(zona, estaVivo) {
   };
   let aviso = null;
   let ocupado = false;
+  let quitarEscena = null;
 
   const imagenDe = async (premio, grande = true) =>
     crearMiniatura({ url: await urlDeMedio(store, premio.medioImagenId), emoji: premio.emoji, texto: premio.nombre }, { grande });
@@ -97,7 +100,7 @@ async function iniciar(zona, estaVivo) {
           },
           await imagenDe(premio),
           el('span', { class: 'premio-nombre' }, premio.nombre),
-          el('span', { class: 'premio-precio' }, crearMonedas({ total: premio.precio, llenas: datos.saldo }), el('span', { class: 'cofre-numero', 'aria-hidden': 'true' }, String(premio.precio))),
+          crearPrecio(premio.precio),
         );
         return boton;
       }),
@@ -117,9 +120,9 @@ async function iniciar(zona, estaVivo) {
           else decir(`Sobre de láminas. Te faltan ${textoMonedas(precioSobre - datos.saldo)}`, { siempre: true });
         },
       },
-      el('span', { class: 'sobre-dibujo', 'aria-hidden': 'true' }, el('span', { class: 'sobre-cantidad' }, `×${LAMINAS_POR_SOBRE}`)),
+      crearSobreChico(LAMINAS_POR_SOBRE),
       el('span', { class: 'premio-nombre' }, 'Sobre de láminas'),
-      el('span', { class: 'premio-precio' }, el('span', { class: 'cofre-numero', 'aria-hidden': 'true' }, String(precioSobre)), crearMonedas({ total: precioSobre, llenas: datos.saldo })),
+      crearPrecio(precioSobre),
     );
     const propiasPorId = mapaDePropias(datos.propias);
     const sobrantes = repetidas(datos.calcomanias);
@@ -140,6 +143,7 @@ async function iniciar(zona, estaVivo) {
                 try {
                   const r = await venderRepetida(store, perfil, codigo);
                   if (r.vendida) {
+                    fijarSaldo(r.saldo);
                     aviso = `¡Vendida! Ganaste ${textoMonedas(r.valor)}.`;
                     decir(`Ganaste ${textoMonedas(r.valor)}`);
                   }
@@ -151,7 +155,7 @@ async function iniciar(zona, estaVivo) {
             },
             dibujo,
             el('span', { class: 'repetida-sobran' }, `×${sobran}`),
-            el('span', { class: 'premio-precio' }, el('span', { class: 'cofre-numero', 'aria-hidden': 'true' }, `+${VALOR_VENTA}`), crearMonedas({ total: VALOR_VENTA, llenas: VALOR_VENTA })),
+            crearPrecio(VALOR_VENTA, { prefijo: '+' }),
           );
         }),
       )
@@ -160,7 +164,6 @@ async function iniciar(zona, estaVivo) {
     zona.replaceChildren(
       ...[
         aviso ? el('p', { class: 'mensaje-nino mensaje-premio', role: 'status' }, aviso) : null,
-        crearCofre({ saldo: datos.saldo }),
         el('div', { class: 'tienda-grilla' }, sobre),
         cartasRepetidas.length ? el('h2', { class: 'tienda-titulo' }, 'Láminas repetidas') : null,
         cartasRepetidas.length ? el('div', { class: 'tienda-grilla' }, cartasRepetidas) : null,
@@ -181,19 +184,20 @@ async function iniciar(zona, estaVivo) {
         await lista();
         return;
       }
+      fijarSaldo(r.saldo); // el total de la esquina baja al comprar
       const propiasPorId = mapaDePropias(await store.listar('calcomaniasPropias', { perfilId: perfil.id }));
       const dibujos = (await Promise.all(r.codigos.map((c) => nodoDeCalcomania(store, c, propiasPorId, { clase: 'calcomania-grande', decorativo: true })))).filter(Boolean);
       if (!estaVivo()) return;
-      const seguir = el('button', { type: 'button', class: 'boton-respuesta boton-si', 'aria-label': 'Seguir en la tienda', onclick: () => { if (!ocupado && toqueValido()) lista(); } });
+      const seguir = el('button', { type: 'button', class: 'boton-respuesta boton-si', 'aria-label': 'Seguir en la tienda', onclick: () => { if (!ocupado && toqueValido()) { quitarEscena?.(); quitarEscena = null; lista(); } } });
       seguir.innerHTML = ICONO_SI;
       const album = el('a', { class: 'boton-respuesta boton-no', href: '#/nino/albumes', 'aria-label': 'Ir a pegar las láminas al álbum' }, '📖');
       ultimoToque = performance.now();
-      zona.replaceChildren(
-        el('p', { class: 'mensaje-nino mensaje-premio', role: 'status' }, '¡Tus láminas nuevas! Pégalas en el álbum.'),
-        el('div', { class: 'sobre-abierto' }, dibujos),
-        el('div', { class: 'acciones-inicio' }, album, seguir),
-      );
-      decir('¡Tus láminas nuevas! Pégalas en el álbum');
+      quitarEscena = presentarSobre(zona.closest('.vista-nino') ?? zona, dibujos, {
+        mensaje: 'Arrastra el dedo por arriba del sobre para abrirlo.',
+        acciones: [album, seguir],
+        alAbrir: () => decir('¡Tus láminas nuevas! Pégalas en el álbum'),
+      });
+      decir('Arrastra el dedo por arriba del sobre para abrirlo');
     } finally {
       ocupado = false;
     }
@@ -234,7 +238,7 @@ async function iniciar(zona, estaVivo) {
     zona.replaceChildren(
       imagen,
       el('p', { class: 'premio-nombre premio-nombre-grande' }, premio.nombre),
-      el('span', { class: 'premio-precio' }, crearMonedas({ total: premio.precio }), el('span', { class: 'cofre-numero', 'aria-hidden': 'true' }, String(premio.precio))),
+      crearPrecio(premio.precio),
       el('div', { class: 'acciones-inicio' }, no, si),
     );
     decir(`${premio.nombre}. ¿Lo quieres?`, { siempre: true });

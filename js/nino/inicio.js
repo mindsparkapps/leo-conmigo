@@ -17,7 +17,6 @@ import { acreditarAlbumesPendientes, cargarMonedas } from '../albumes.js';
 import { saltarLeccionActivo } from '../dev.js';
 import { terminarLeccion } from './premio.js';
 import { normalizarAjustes } from '../core/modelos.js';
-import { crearCofre } from '../ui/moneda.js';
 
 export const titulo = NOMBRE_APP;
 
@@ -152,7 +151,6 @@ async function pintar(vista, ir, estaVivo) {
     ...[
       crearMiniatura({ url: foto, texto: perfil.nombre }, { grande: true }),
       el('h1', { class: 'titulo-nino' }, perfil.nombre),
-      monedas.saldo > 0 || hayTienda ? el('div', { class: 'fila-cofre' }, crearCofre({ saldo: monedas.saldo })) : null,
       hayQuePracticar ? null : el('p', { class: 'mensaje-nino' }, 'Un adulto debe agregar palabras con imagen.'),
       menu,
     ].filter(Boolean), // un nodo null se escribiría como el texto «null»

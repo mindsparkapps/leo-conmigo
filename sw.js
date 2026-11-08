@@ -74,6 +74,7 @@ const PRECACHE = [
   'data/fondos/cielo.jpg',
   'data/fondos/agua.avif',
   'js/ui/moneda.js',
+  'js/ui/sobre.js',
   'js/ui/puntero.js',
   'js/ui/laminas.js',
   'js/ui/laminas-sueltas.js',

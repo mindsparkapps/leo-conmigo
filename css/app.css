@@ -848,7 +848,6 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 }
 
 /* ===== Fase 11: álbum que se renueva, monedas de oro y tienda ===== */
-.fila-cofre { display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; }
 .boton-albumes {
   display: grid; place-items: center; width: 88px; height: 88px; padding: 0; border: 0; border-radius: 50%;
   background: var(--azul); color: #fff; font-size: 2.4rem; cursor: pointer; touch-action: manipulation;
@@ -1039,15 +1038,61 @@ img.calcomania-grande { border-width: 3px; border-radius: 24px; }
 .tienda-nino > .tienda-zona > .miniatura-grande { width: clamp(150px, 32vmin, 260px); height: clamp(150px, 32vmin, 260px); }
 .mensaje-premio { color: var(--verde); font-weight: 700; }
 .tienda-titulo { margin: 8px 0 0; font-size: 1.6rem; }
-.sobre-dibujo {
-  position: relative; display: grid; place-items: center; width: clamp(110px, 24vmin, 170px); aspect-ratio: 4 / 3;
-  border-radius: 14px; background: linear-gradient(135deg, #f6b73c, #e0752b); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+/* ===== Sobre de láminas: metálico, con la portada del álbum ===== */
+.sobre-pack { --w: clamp(90px, 18vmin, 130px); position: relative; display: block; width: var(--w); aspect-ratio: 3 / 5; flex: none; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35)); }
+.sobre-grande { --w: clamp(150px, 36vmin, 280px); touch-action: none; cursor: grab; outline: none; animation: aparecer 0.6s ease-out; }
+.sobre-grande:focus-visible { filter: drop-shadow(0 0 8px var(--amarillo)); }
+.sobre-cara {
+  position: absolute; inset: 0; overflow: hidden;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.4), rgba(0, 0, 0, 0.12) 38%, rgba(255, 255, 255, 0.3) 58%, rgba(0, 0, 0, 0.3)),
+    var(--portada) center / cover #5b6b86;
 }
-.sobre-dibujo::before {
-  content: ''; position: absolute; inset: 0; border-radius: 14px;
-  background: linear-gradient(to bottom right, transparent 49%, rgba(255, 255, 255, 0.35) 50%, transparent 52%), linear-gradient(to bottom left, transparent 49%, rgba(255, 255, 255, 0.35) 50%, transparent 52%);
+.sobre-tira { z-index: 3; transform-origin: 100% 13%; transform: rotate(calc(var(--p, 0) * -7deg)) translateY(calc(var(--p, 0) * -1.5%)); transition: transform 0.25s ease-out, opacity 0.5s ease-out; }
+.sobre-cuerpo { z-index: 2; transition: transform 0.8s ease-in, opacity 0.8s ease-in; }
+.sobre-grande.cortando .sobre-tira { transition: none; }
+.sobre-brillo {
+  position: absolute; inset: 0; mix-blend-mode: overlay; opacity: 0.9;
+  background: linear-gradient(115deg, transparent 28%, rgba(255, 255, 255, 0.8) 44%, rgba(150, 220, 255, 0.55) 51%, rgba(255, 150, 230, 0.5) 58%, transparent 72%) 0 0 / 280% 100%;
+  animation: sobre-brilla 3.4s ease-in-out infinite;
 }
-.sobre-cantidad { position: relative; font-size: 2rem; font-weight: 800; color: #fff; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4); }
+@keyframes sobre-brilla { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.sobre-sello {
+  position: absolute; left: 0; right: 0; height: 7%;
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.55) 0 2px, rgba(0, 0, 0, 0.3) 2px 4px), linear-gradient(#cfd6e0, #8e98a8);
+  background-blend-mode: multiply;
+}
+.sobre-tira .sobre-sello { top: 0; }
+.sobre-cuerpo .sobre-sello { bottom: 0; }
+.sobre-chico .sobre-brillo { animation-duration: 4.5s; }
+.sobre-cantidad { position: absolute; z-index: 4; left: 50%; bottom: 14%; transform: translateX(-50%); padding: 2px 10px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); font-size: 1.4rem; font-weight: 800; color: #fff; }
+.sobre-linea { position: absolute; z-index: 5; left: 0; right: 0; top: 13%; height: 0; border-top: 3px dashed rgba(255, 255, 255, 0.95); filter: drop-shadow(0 0 2px #000); pointer-events: none; }
+.sobre-tijera { position: absolute; top: -17px; left: 0; font-size: 2rem; line-height: 1; color: #fff; text-shadow: 0 0 3px #000; animation: sobre-tijera 2.2s ease-in-out infinite; }
+@keyframes sobre-tijera { 0% { left: 0; } 80%, 100% { left: calc(100% - 1.4ch); } }
+.sobre-grande.cortado .sobre-linea { display: none; }
+.sobre-grande.cortado .sobre-tira { transform: translate(55%, -180%) rotate(32deg); opacity: 0; transition: transform 0.7s ease-in, opacity 0.7s ease-in; }
+.sobre-grande.vacio .sobre-cuerpo { transform: translateY(60vh); opacity: 0; }
+.sobre-laminas { position: absolute; z-index: 1; left: 11%; right: 11%; top: 17%; }
+.sobre-lamina {
+  position: absolute; top: 0; left: 0; width: 100%; z-index: calc(var(--i) + 1); border-radius: 10px; background: #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35); transition: transform 0.75s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.sobre-lamina > * { display: block; width: 100%; height: auto; border-radius: 10px; }
+.sobre-lamina > .calcomania-grande { width: 100%; aspect-ratio: 1; }
+.sobre-lamina.sale { transform: translateY(calc(var(--w) * -1.05)); }
+.sobre-lamina.abanico {
+  transform: translate(calc((var(--i) - 1) * min(var(--w) * 0.62, 30vw)), calc(var(--w) * -0.1)) rotate(calc((var(--i) - 1) * 7deg)) scale(1.1);
+}
+.sobre-escena {
+  position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+  padding: 90px 16px 24px; overflow: hidden; background: radial-gradient(circle at 50% 45%, #28375f, #0a0e1e);
+}
+.sobre-escena .sobre-mensaje { margin: 0; color: #fff; text-align: center; }
+.sobre-centro { display: grid; place-items: center; min-height: calc(clamp(150px, 36vmin, 280px) * 1.7); }
+.sobre-acciones { position: absolute; left: 0; right: 0; bottom: 14px; display: flex; gap: 24px; justify-content: center; }
+.sobre-acciones .boton-respuesta { width: clamp(80px, 18vmin, 120px); }
+.sobre-acciones.aparece { animation: aparecer 0.5s ease-out; }
+.sobre-acciones[hidden] { display: none; }
 .repetida-carta { position: relative; }
 .repetida-carta img.calcomania { width: clamp(80px, 16vmin, 120px); }
 .repetida-sobran { position: absolute; top: 8px; right: 10px; font-weight: 800; font-size: 1.3rem; }

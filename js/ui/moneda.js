@@ -63,6 +63,16 @@ export function crearMonedas({ total, llenas = total, max = 20, nuevas = 0 }) {
   return el('span', { class: 'monedas', 'aria-hidden': 'true' }, monedas);
 }
 
+/** Un precio: una sola moneda girando y el número (con `prefijo`, p. ej. «+»). */
+export function crearPrecio(cantidad, { prefijo = '' } = {}) {
+  return el(
+    'span',
+    { class: 'premio-precio', 'aria-hidden': 'true' },
+    crearMoneda3D({ gira: true, tamano: 36 }),
+    el('span', { class: 'cofre-numero' }, `${prefijo}${cantidad}`),
+  );
+}
+
 /** El cofre: sus monedas y el número del saldo. */
 export function crearCofre({ saldo, nuevas = 0 }) {
   return el(
