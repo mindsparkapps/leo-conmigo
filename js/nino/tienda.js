@@ -3,10 +3,9 @@
 // Solo toques simples (sin mantener ni arrastrar), con 400 ms de bloqueo entre toques.
 
 import { el } from '../ui/dom.js';
-import { crearCandado } from '../ui/candado.js';
 import { crearMiniatura } from '../ui/miniatura.js';
 import { crearCofre, crearMonedas } from '../ui/moneda.js';
-import { habilitarAdulto, deshabilitarAdulto } from '../acceso.js';
+import { deshabilitarAdulto } from '../acceso.js';
 import { NOMBRE_APP } from '../config.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { liberarUrls, urlDeMedio } from '../medios.js';
@@ -30,22 +29,16 @@ const textoMonedas = (n) => `${n} ${n === 1 ? 'moneda' : 'monedas'}`;
 
 export function montar(contenedor, { ir }) {
   deshabilitarAdulto();
-  const candado = crearCandado({
-    alDesbloquear: () => {
-      habilitarAdulto();
-      ir('/adulto');
-    },
-  });
   const casa = el('button', { type: 'button', class: 'boton-casa boton-casa-chico', 'aria-label': 'Volver al inicio', onclick: () => ir('/nino') });
   casa.innerHTML = ICONO_CASA;
   const zona = el('div', { class: 'tienda-zona' });
-  const vista = el('section', { class: 'vista-nino tienda-nino' }, zona, casa, candado);
+  const vista = el('section', { class: 'vista-nino tienda-nino' }, zona, casa);
   contenedor.append(vista);
 
   let vivo = true;
   iniciar(zona, () => vivo).catch((error) => {
     console.error(error);
-    zona.replaceChildren(el('p', { class: 'mensaje-nino' }, 'Algo no funcionó. Un adulto puede tocar el candado.'));
+    zona.replaceChildren(el('p', { class: 'mensaje-nino' }, 'Algo no funcionó. Toca la casa para volver.'));
   });
   return () => {
     vivo = false;

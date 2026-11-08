@@ -1,6 +1,7 @@
 // Botón del altavoz: toca para volver a escuchar la palabra.
 
 import { el } from './dom.js';
+import { esSegundoDedo } from './puntero.js';
 
 const ICONO = `
 <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
@@ -16,7 +17,7 @@ export function crearBotonAudio({ grande = false, alToque }) {
   });
   boton.innerHTML = ICONO;
   boton.addEventListener('click', (e) => {
-    if (e.pointerType === 'touch' && e.isPrimary === false) return; // ignora el segundo dedo (el ratón y el teclado siempre valen)
+    if (esSegundoDedo(e)) return; // igual que las cartas: el ratón y el teclado siempre valen
     alToque();
   });
   return boton;

@@ -7,9 +7,8 @@
 //  - Sin cronómetro ni límite de tiempo. Sin textos: la consigna se dice en voz alta (la primera vez de cada actividad).
 
 import { el } from '../ui/dom.js';
-import { crearCandado } from '../ui/candado.js';
 import { ajustarTextos } from '../ui/ajustar-texto.js';
-import { habilitarAdulto, deshabilitarAdulto } from '../acceso.js';
+import { deshabilitarAdulto } from '../acceso.js';
 import { NOMBRE_APP } from '../config.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { liberarUrls, urlDeMedio } from '../medios.js';
@@ -32,12 +31,6 @@ export function montar(contenedor, { ir }) {
   deshabilitarAdulto();
 
   const area = el('div', { class: 'area-ensayo' });
-  const candado = crearCandado({
-    alDesbloquear: () => {
-      habilitarAdulto();
-      ir('/adulto');
-    },
-  });
   // Salida del niño: vuelve al inicio; lo avanzado se guarda como sesión interrumpida (ver sesion.limpiar)
   const casa = el('button', {
     type: 'button',
@@ -46,7 +39,7 @@ export function montar(contenedor, { ir }) {
     onclick: () => { detener(); ir('/nino'); },
   });
   casa.innerHTML = ICONO_CASA;
-  const vista = el('section', { class: 'vista-nino sesion-nino' }, area, casa, candado);
+  const vista = el('section', { class: 'vista-nino sesion-nino' }, area, casa);
   vista.addEventListener('contextmenu', (e) => e.preventDefault()); // sin menú de pulsación larga
   contenedor.append(vista);
 
@@ -56,7 +49,7 @@ export function montar(contenedor, { ir }) {
 
   iniciar({ vista, area, ir, sesion }).catch((error) => {
     console.error(error);
-    area.replaceChildren(el('p', { class: 'mensaje-nino' }, 'Algo no funcionó. Un adulto puede tocar el candado.'));
+    area.replaceChildren(el('p', { class: 'mensaje-nino' }, 'Algo no funcionó. Toca la casa para volver.'));
   });
 
   return () => {
@@ -232,7 +225,7 @@ async function iniciar({ vista, area, ir, sesion }) {
     if (sesion.vivo) ir('/nino/premio');
   }
 
-  // Si el adulto interrumpe a mitad (candado), se guarda lo que se alcanzó a hacer
+  // Si se sale a mitad (botón de la casa), se guarda lo que se alcanzó a hacer
   sesion.limpiar = () => {
     clearTimeout(temporizador);
     quitarAjuste();

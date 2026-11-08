@@ -2,8 +2,7 @@
 // Si la calcomanía completa el álbum: el álbum entero, el cofre con sus monedas nuevas y un álbum vacío al volver.
 
 import { el } from '../ui/dom.js';
-import { crearCandado } from '../ui/candado.js';
-import { habilitarAdulto, deshabilitarAdulto } from '../acceso.js';
+import { deshabilitarAdulto } from '../acceso.js';
 import { NOMBRE_APP } from '../config.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { desbloquearAudio, detener, hablarTexto } from '../audio.js';
@@ -45,12 +44,6 @@ export function montar(contenedor, { ir }) {
     return undefined;
   }
   const { codigo, ajustes, album = null, saldo = 0 } = premio;
-  const candado = crearCandado({
-    alDesbloquear: () => {
-      habilitarAdulto();
-      ir('/adulto');
-    },
-  });
   const casa = el('button', { type: 'button', class: 'boton-casa', 'aria-label': 'Volver al inicio', onclick: () => ir('/nino') });
   casa.innerHTML = ICONO_CASA;
 
@@ -60,7 +53,6 @@ export function montar(contenedor, { ir }) {
     { class: 'vista-nino premio-nino', 'aria-label': album ? 'Completaste tu álbum' : 'Calcomanía nueva' },
     centro,
     casa,
-    candado,
   );
   contenedor.append(vista);
 

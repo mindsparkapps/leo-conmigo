@@ -3,10 +3,9 @@
 // cada palabra; al tocar una palabra se dice sola. No se evalúa nada: no hay aciertos ni errores.
 
 import { el } from '../ui/dom.js';
-import { crearCandado } from '../ui/candado.js';
 import { crearCarta } from '../ui/carta.js';
 import { crearBotonAudio } from '../ui/boton-audio.js';
-import { habilitarAdulto, deshabilitarAdulto } from '../acceso.js';
+import { deshabilitarAdulto } from '../acceso.js';
 import { NOMBRE_APP } from '../config.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { liberarUrls, urlDeMedio } from '../medios.js';
@@ -50,8 +49,7 @@ function boton(clase, etiqueta, icono, alToque) {
 
 export function montar(contenedor, { ruta, ir }) {
   deshabilitarAdulto();
-  const candado = crearCandado({ alDesbloquear: () => { habilitarAdulto(); ir('/adulto'); } });
-  const vista = el('section', { class: 'vista-nino libros-nino' }, candado);
+  const vista = el('section', { class: 'vista-nino libros-nino' });
   vista.addEventListener('contextmenu', (e) => e.preventDefault());
   contenedor.append(vista);
 
@@ -59,7 +57,7 @@ export function montar(contenedor, { ruta, ir }) {
   const idLibro = ruta.startsWith(RUTA_LIBRO) ? decodeURIComponent(ruta.slice(RUTA_LIBRO.length)) : null;
   pintar({ vista, ir, estado, idLibro }).catch((error) => {
     console.error(error);
-    vista.prepend(el('p', { class: 'mensaje-nino' }, 'Algo no funcionó. Un adulto puede tocar el candado.'));
+    vista.prepend(el('p', { class: 'mensaje-nino' }, 'Algo no funcionó. Toca la casa para volver.'));
   });
 
   return () => {
