@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { ELOGIOS, elegirElogio } from '../js/core/elogios.js';
-import { CALCOMANIAS, elegirCalcomania, rutaCalcomania } from '../js/core/calcomanias.js';
+import { CALCOMANIAS, CALCOMANIAS_ANTIGUAS, elegirCalcomania, rutaCalcomania } from '../js/core/calcomanias.js';
 import { crearAleatorio } from '../js/core/azar.js';
 
 // ---------- elogios ----------
@@ -25,10 +25,21 @@ test('elogios: cortos, en español y sin repetir el anterior', () => {
 
 // ---------- calcomanías ----------
 
-test('calcomanías: 30 distintas, cada una con su dibujo SVG', () => {
-  assert.equal(CALCOMANIAS.length, 30);
-  assert.equal(new Set(CALCOMANIAS.map((c) => c.codigo)).size, 30);
+test('láminas: 75 distintas, cada una con su imagen, y la portada del álbum', () => {
+  assert.equal(CALCOMANIAS.length, 75);
+  assert.equal(new Set(CALCOMANIAS.map((c) => c.codigo)).size, 75);
   for (const { codigo, nombre } of CALCOMANIAS) {
+    assert.ok(nombre.length > 0);
+    assert.match(rutaCalcomania(codigo), /^data\/laminas\/gta\d{3}\.jpg$/);
+    assert.ok(existsSync(new URL(`../${rutaCalcomania(codigo)}`, import.meta.url)), `falta ${rutaCalcomania(codigo)}`);
+  }
+  assert.ok(existsSync(new URL('../data/laminas/portada.jpg', import.meta.url)), 'falta la portada');
+});
+
+test('calcomanías antiguas: 30 distintas, cada una con su dibujo SVG', () => {
+  assert.equal(CALCOMANIAS_ANTIGUAS.length, 30);
+  assert.equal(new Set(CALCOMANIAS_ANTIGUAS.map((c) => c.codigo)).size, 30);
+  for (const { codigo, nombre } of CALCOMANIAS_ANTIGUAS) {
     assert.ok(nombre.length > 0);
     const ruta = new URL(`../${rutaCalcomania(codigo)}`, import.meta.url);
     assert.ok(existsSync(ruta), `falta ${rutaCalcomania(codigo)}`);
@@ -61,4 +72,5 @@ test('calcomanías: primero las que no tiene; recién con todo lo que está en j
 
 test('calcomanías: la ruta es la del dibujo', () => {
   assert.equal(rutaCalcomania('estrella'), 'data/calcomanias/estrella.svg');
+  assert.equal(rutaCalcomania('gta001'), 'data/laminas/gta001.jpg');
 });

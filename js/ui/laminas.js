@@ -24,14 +24,22 @@ function rectRedondeado(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function cargarImagen(url) {
+function cargarUnaVez(url) {
   return new Promise((resolve) => {
-    if (!url) { resolve(null); return; }
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
     img.src = url;
   });
+}
+
+/** Carga una imagen; si falla (conexión cortada, red inestable) lo intenta una vez más antes de rendirse. */
+async function cargarImagen(url) {
+  if (!url) return null;
+  const primera = await cargarUnaVez(url);
+  if (primera) return primera;
+  await new Promise((r) => setTimeout(r, 200));
+  return cargarUnaVez(url);
 }
 
 /** Un ángulo pequeño y estable por código (−2.5° a 2.5°) para que las láminas no queden militarmente rectas. */
@@ -43,7 +51,11 @@ function inclinacion(codigo) {
 
 /** Lo que se dibuja dentro de la lámina: { imagen } o { emoji } o { letra }. null si ya no existe. */
 async function contenidoDe(store, codigo, propiasPorId) {
-  if (!esPropia(codigo)) return { imagen: await cargarImagen(rutaCalcomania(codigo)) };
+  // las láminas de fotos (jpg) llenan el marco recortadas; los dibujos SVG antiguos se muestran enteros
+  if (!esPropia(codigo)) {
+    const ruta = rutaCalcomania(codigo);
+    return { imagen: await cargarImagen(ruta), foto: ruta.endsWith('.jpg') };
+  }
   const propia = propiasPorId.get(idDePropia(codigo));
   if (!propia) return null;
   const imagen = propia.medioImagenId ? await cargarImagen(await urlDeMedio(store, propia.medioImagenId)) : null;
@@ -169,36 +181,57 @@ function estrella(ctx, cx, cy, radio, relleno) {
   ctx.fill();
 }
 
-function portada({ conseguidas, total }) {
+/** Imagen de la portada del álbum (data/laminas/portada.jpg = GTA6_032). */
+export const RUTA_PORTADA = 'data/laminas/portada.jpg';
+
+function portada({ conseguidas, total }, imagen) {
   const lienzo = lienzoNuevo();
   const ctx = lienzo.getContext('2d');
-  const degradado = ctx.createLinearGradient(0, 0, ANCHO_CARA, ALTO_CARA);
-  degradado.addColorStop(0, '#2f86ad');
-  degradado.addColorStop(1, '#1f5f82');
-  ctx.fillStyle = degradado;
+  // fondo de tapa y, encima, la imagen a pantalla completa (recortada al centro)
+  ctx.fillStyle = '#1f5f82';
   ctx.fillRect(0, 0, ANCHO_CARA, ALTO_CARA);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
-  ctx.lineWidth = 6;
-  rectRedondeado(ctx, 28, 28, ANCHO_CARA - 56, ALTO_CARA - 56, 36);
+  if (imagen) {
+    const k = Math.max(ANCHO_CARA / imagen.naturalWidth, ALTO_CARA / imagen.naturalHeight);
+    const w = imagen.naturalWidth * k;
+    const h = imagen.naturalHeight * k;
+    ctx.drawImage(imagen, (ANCHO_CARA - w) / 2, (ALTO_CARA - h) / 2, w, h);
+  } else {
+    estrella(ctx, ANCHO_CARA / 2, 270, 130, '#f2b632');
+  }
+  // franja oscura abajo para que se lea el título sobre cualquier imagen
+  const franja = ctx.createLinearGradient(0, ALTO_CARA * 0.62, 0, ALTO_CARA);
+  franja.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  franja.addColorStop(1, 'rgba(0, 0, 0, 0.72)');
+  ctx.fillStyle = franja;
+  ctx.fillRect(0, ALTO_CARA * 0.62, ANCHO_CARA, ALTO_CARA * 0.38);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.lineWidth = 8;
+  rectRedondeado(ctx, 20, 20, ANCHO_CARA - 40, ALTO_CARA - 40, 34);
   ctx.stroke();
-  estrella(ctx, ANCHO_CARA / 2, 270, 130, '#f2b632');
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+  ctx.shadowBlur = 10;
   ctx.font = `700 64px ${FUENTE}`;
-  ctx.fillText('Mi álbum', ANCHO_CARA / 2, 470);
+  ctx.fillText('Mi álbum', ANCHO_CARA / 2, 560);
   ctx.font = `700 40px ${FUENTE}`;
-  ctx.fillText(`${conseguidas} de ${total}`, ANCHO_CARA / 2, 550);
+  ctx.fillText(`${conseguidas} de ${total}`, ANCHO_CARA / 2, 622);
   return lienzo;
 }
 
+/** Reverso de la portada: es el interior de la tapa, del mismo azul que ella. */
 function interior() {
   const lienzo = lienzoNuevo();
   const ctx = lienzo.getContext('2d');
-  ctx.fillStyle = '#d8ebf5';
+  ctx.fillStyle = '#1f5f82';
   ctx.fillRect(0, 0, ANCHO_CARA, ALTO_CARA);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+  ctx.lineWidth = 6;
+  rectRedondeado(ctx, 28, 28, ANCHO_CARA - 56, ALTO_CARA - 56, 30);
+  ctx.stroke();
   for (const [x, y, r] of [[120, 160, 34], [380, 260, 26], [210, 430, 30], [400, 520, 38], [110, 570, 22]]) {
-    estrella(ctx, x, y, r, 'rgba(255, 255, 255, 0.7)');
+    estrella(ctx, x, y, r, 'rgba(255, 255, 255, 0.16)');
   }
   return lienzo;
 }
@@ -217,7 +250,7 @@ function carasVacias() {
  */
 export async function dibujarCaras({ store, libro, propias = [] }) {
   const propiasPorId = new Map(propias.map((p) => [p.id, p]));
-  const caras = [portada(libro), interior()];
+  const caras = [portada(libro, await cargarImagen(RUTA_PORTADA)), interior()];
   const margenX = 44;
   const margenSup = 56;
   const margenInf = 44;

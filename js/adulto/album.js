@@ -11,7 +11,7 @@ import { obtenerStore, perfilActivo } from '../contexto.js';
 import { borrarMedio, guardarMedio, liberarUrls, urlDeMedio } from '../medios.js';
 import { cargarMonedas } from '../albumes.js';
 import { MONEDAS_MAX, MONEDAS_MIN, TAMANO_MAX, TAMANO_MIN, normalizarAlbum } from '../core/album.js';
-import { CALCOMANIAS, codigoDePropia } from '../core/calcomanias.js';
+import { CALCOMANIAS, codigoDePropia, rutaCalcomania } from '../core/calcomanias.js';
 
 export const titulo = 'Álbum y monedas · Leo Conmigo';
 
@@ -43,7 +43,7 @@ export function montar(contenedor) {
     const mensaje = el('p', { class: 'ayuda', role: 'status' });
 
     const todos = [
-      ...CALCOMANIAS.map((c) => ({ codigo: c.codigo, nombre: c.nombre, url: `data/calcomanias/${c.codigo}.svg` })),
+      ...CALCOMANIAS.map((c) => ({ codigo: c.codigo, nombre: c.nombre, url: rutaCalcomania(c.codigo) })),
       ...[...propias.values()].map((p) => ({ codigo: codigoDePropia(p.id), nombre: p.nombre, url: miniaturasPropias.get(p.id), emoji: p.emoji })),
     ];
     const casillas = new Map();

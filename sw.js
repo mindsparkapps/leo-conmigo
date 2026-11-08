@@ -1,17 +1,17 @@
 'use strict';
 
 // Service worker de Leo Conmigo.
-// - La versión llega en la URL de registro (sw.js?v=X) desde js/config.js.
-// - Precachea el shell y responde desde caché actualizando en segundo plano.
+// - La versiÃ³n llega en la URL de registro (sw.js?v=X) desde js/config.js.
+// - Precachea el shell y responde desde cachÃ© actualizando en segundo plano.
 // - Solo intercepta peticiones del mismo origen: googleapis.com, accounts.google.com,
 //   api.arasaac.org, etc. pasan directo a la red y NUNCA se cachean.
-// - La versión nueva queda "en espera": solo se activa cuando el adulto lo acepta.
+// - La versiÃ³n nueva queda "en espera": solo se activa cuando el adulto lo acepta.
 
 const VERSION = new URL(self.location.href).searchParams.get('v') || 'dev';
 const CACHE = `leo-conmigo-${VERSION}`;
 const INDEX = new URL('index.html', self.registration.scope).href;
 
-// Mantener esta lista al día cuando se agreguen archivos (el resto se cachea al usarse).
+// Mantener esta lista al dÃ­a cuando se agreguen archivos (el resto se cachea al usarse).
 const PRECACHE = [
   './',
   'index.html',
@@ -69,6 +69,82 @@ const PRECACHE = [
   'js/ui/libro3d.js',
   'js/core/libro-album.js',
   'vendor/three.module.min.js',
+  'data/laminas/gta001.jpg',
+  'data/laminas/gta002.jpg',
+  'data/laminas/gta003.jpg',
+  'data/laminas/gta004.jpg',
+  'data/laminas/gta005.jpg',
+  'data/laminas/gta006.jpg',
+  'data/laminas/gta009.jpg',
+  'data/laminas/gta010.jpg',
+  'data/laminas/gta011.jpg',
+  'data/laminas/gta014.jpg',
+  'data/laminas/gta015.jpg',
+  'data/laminas/gta016.jpg',
+  'data/laminas/gta017.jpg',
+  'data/laminas/gta019.jpg',
+  'data/laminas/gta021.jpg',
+  'data/laminas/gta022.jpg',
+  'data/laminas/gta023.jpg',
+  'data/laminas/gta024.jpg',
+  'data/laminas/gta025.jpg',
+  'data/laminas/gta026.jpg',
+  'data/laminas/gta027.jpg',
+  'data/laminas/gta028.jpg',
+  'data/laminas/gta029.jpg',
+  'data/laminas/gta030.jpg',
+  'data/laminas/gta031.jpg',
+  'data/laminas/gta033.jpg',
+  'data/laminas/gta034.jpg',
+  'data/laminas/gta035.jpg',
+  'data/laminas/gta036.jpg',
+  'data/laminas/gta038.jpg',
+  'data/laminas/gta039.jpg',
+  'data/laminas/gta040.jpg',
+  'data/laminas/gta041.jpg',
+  'data/laminas/gta043.jpg',
+  'data/laminas/gta044.jpg',
+  'data/laminas/gta046.jpg',
+  'data/laminas/gta047.jpg',
+  'data/laminas/gta048.jpg',
+  'data/laminas/gta049.jpg',
+  'data/laminas/gta050.jpg',
+  'data/laminas/gta051.jpg',
+  'data/laminas/gta052.jpg',
+  'data/laminas/gta054.jpg',
+  'data/laminas/gta056.jpg',
+  'data/laminas/gta057.jpg',
+  'data/laminas/gta058.jpg',
+  'data/laminas/gta059.jpg',
+  'data/laminas/gta061.jpg',
+  'data/laminas/gta063.jpg',
+  'data/laminas/gta064.jpg',
+  'data/laminas/gta066.jpg',
+  'data/laminas/gta067.jpg',
+  'data/laminas/gta068.jpg',
+  'data/laminas/gta071.jpg',
+  'data/laminas/gta072.jpg',
+  'data/laminas/gta074.jpg',
+  'data/laminas/gta076.jpg',
+  'data/laminas/gta077.jpg',
+  'data/laminas/gta078.jpg',
+  'data/laminas/gta079.jpg',
+  'data/laminas/gta080.jpg',
+  'data/laminas/gta082.jpg',
+  'data/laminas/gta083.jpg',
+  'data/laminas/gta085.jpg',
+  'data/laminas/gta087.jpg',
+  'data/laminas/gta089.jpg',
+  'data/laminas/gta091.jpg',
+  'data/laminas/gta092.jpg',
+  'data/laminas/gta093.jpg',
+  'data/laminas/gta094.jpg',
+  'data/laminas/gta095.jpg',
+  'data/laminas/gta096.jpg',
+  'data/laminas/gta097.jpg',
+  'data/laminas/gta099.jpg',
+  'data/laminas/gta100.jpg',
+  'data/laminas/portada.jpg',
   'js/ui/calcomania.js',
   'js/ui/selector-imagen.js',
   'js/nino/tienda.js',
@@ -162,7 +238,7 @@ const PRECACHE = [
 self.addEventListener('install', (evento) => {
   evento.waitUntil(
     caches.open(CACHE).then((cache) =>
-      // cache:'reload' evita que la caché HTTP del servidor deje archivos viejos en el precaché
+      // cache:'reload' evita que la cachÃ© HTTP del servidor deje archivos viejos en el precachÃ©
       cache.addAll(PRECACHE.map((url) => new Request(url, { cache: 'reload' }))),
     ),
   );
@@ -191,7 +267,7 @@ self.addEventListener('fetch', (evento) => {
   if (peticion.method !== 'GET') return;
 
   const url = new URL(peticion.url);
-  if (url.origin !== self.location.origin) return; // otros orígenes: directo a la red
+  if (url.origin !== self.location.origin) return; // otros orÃ­genes: directo a la red
   if (url.pathname.includes('/tests/')) return; // las pruebas siempre se leen frescas de la red
 
   if (peticion.mode === 'navigate') {
@@ -216,7 +292,7 @@ async function cacheYActualizar(peticion, evento, clave) {
     .catch(() => null);
 
   if (guardado) {
-    evento.waitUntil(red); // actualiza la caché sin hacer esperar a la página
+    evento.waitUntil(red); // actualiza la cachÃ© sin hacer esperar a la pÃ¡gina
     return guardado;
   }
   const respuesta = await red;

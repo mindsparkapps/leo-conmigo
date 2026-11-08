@@ -890,6 +890,12 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
   .candado-menu svg { width: clamp(48px, 11vmin, 84px); }
 }
 
+/* Las láminas (fotos) se ven como en el libro: marco blanco de esquinas redondeadas y la imagen recortada al cuadrado */
+img.calcomania, img.calcomania-grande {
+  object-fit: cover; border: 6px solid #fff; border-radius: 22px; background: #fff; box-shadow: 0 4px 14px rgb(0 0 0 / 0.22);
+}
+img.calcomania-grande { border-width: 10px; border-radius: 32px; }
+
 /* La casa de la sesión va en la esquina: se deja lugar para que no tape el modelo ni las opciones */
 .sesion-nino { padding-top: 92px; }
 @media (orientation: landscape) and (max-height: 520px) {

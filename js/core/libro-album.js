@@ -1,7 +1,7 @@
 // Contenido del libro del álbum (lógica pura, sin DOM): qué calcomanías lleva y en qué página va cada una.
 // Las que el niño aún no ganó se muestran en gris y translúcidas; las ganadas, a color.
 
-import { CODIGOS_CATALOGO, codigoDePropia, codigosEnJuego } from './calcomanias.js';
+import { CODIGOS_CATALOGO, CODIGOS_EXISTENTES, codigoDePropia, codigosEnJuego } from './calcomanias.js';
 
 /** Calcomanías por página del libro (2 columnas × 3 filas). */
 export const POR_PAGINA = 6;
@@ -14,9 +14,9 @@ export const POR_PAGINA = 6;
  * @param ganadas  códigos que el niño ya ganó alguna vez (en cualquier álbum)
  */
 export function codigosDelLibro({ album, propias = [], ganadas = [] }) {
-  const existentes = new Set([...CODIGOS_CATALOGO, ...propias.map((p) => codigoDePropia(p.id))]);
+  const existentes = new Set([...CODIGOS_EXISTENTES, ...propias.map((p) => codigoDePropia(p.id))]);
   const enJuego = codigosEnJuego(album, propias);
-  const base = enJuego.length ? enJuego : [...existentes];
+  const base = enJuego.length ? enJuego : [...CODIGOS_CATALOGO, ...propias.map((p) => codigoDePropia(p.id))];
   const resto = [...new Set(ganadas)].filter((c) => existentes.has(c) && !base.includes(c));
   return [...base, ...resto];
 }

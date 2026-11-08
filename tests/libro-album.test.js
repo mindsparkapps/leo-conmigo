@@ -23,13 +23,13 @@ test('si el adulto limita las calcomanías, el libro solo lleva esas y las ya ga
 
 test('armarLibro reparte en páginas de 6 y marca las ganadas', () => {
   const codigos = CODIGOS_CATALOGO.slice(0, 8);
-  const { paginas, total, conseguidas } = armarLibro({ codigos, ganadas: ['sol', 'estrella', 'inexistente'] });
+  const { paginas, total, conseguidas } = armarLibro({ codigos, ganadas: [codigos[0], codigos[1], 'inexistente'] });
   assert.equal(POR_PAGINA, 6);
   assert.deepEqual(paginas.map((p) => p.length), [6, 2]);
   assert.equal(total, 8);
   assert.equal(conseguidas, 2);
-  assert.equal(paginas[0].find((i) => i.codigo === 'estrella').ganada, true);
-  assert.equal(paginas[0].find((i) => i.codigo === 'corazon').ganada, false);
+  assert.equal(paginas[0].find((i) => i.codigo === codigos[0]).ganada, true);
+  assert.equal(paginas[0].find((i) => i.codigo === codigos[2]).ganada, false);
 });
 
 test('armarLibro ignora códigos repetidos y acepta un libro vacío', () => {

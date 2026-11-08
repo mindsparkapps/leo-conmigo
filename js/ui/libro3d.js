@@ -55,16 +55,15 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {} } = {}) {
     return t;
   };
 
-  // Tapas: una detrás de cada lado, un poco más grandes que las hojas
+  // Contratapa: una sola tapa detrás de las hojas de la derecha, siempre presente. El lado izquierdo NO lleva
+  // tapa propia: ahí queda el reverso de la portada (la cara 1), que gira junto con la hoja. Antes había una tapa
+  // fija a cada lado y la de la izquierda aparecía de golpe al abrir y desaparecía de golpe al cerrar.
   const materialTapa = new THREE.MeshBasicMaterial({ color: 0x1f5f82 });
-  const geometriaTapa = new THREE.PlaneGeometry(ANCHO * 1.06, ALTO * 1.05);
+  const geometriaTapa = new THREE.PlaneGeometry(ANCHO * 1.04, ALTO * 1.03);
   liberables.push(materialTapa, geometriaTapa);
-  const tapas = [-1, 1].map((lado) => {
-    const tapa = new THREE.Mesh(geometriaTapa, materialTapa);
-    tapa.position.set(lado * (ANCHO / 2 + 0.01), 0, -0.02);
-    libro.add(tapa);
-    return tapa;
-  });
+  const contratapa = new THREE.Mesh(geometriaTapa, materialTapa);
+  contratapa.position.set(ANCHO / 2 + 0.01, 0, -0.02);
+  libro.add(contratapa);
 
   // Hojas: la geometría se recalcula vértice por vértice para poder curvarlas al pasar
   const progreso = new Array(hojas).fill(0); // 0 = a la derecha, 1 = a la izquierda
@@ -112,13 +111,11 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {} } = {}) {
 
   // Con el libro cerrado se ve solo la portada, centrada; al abrirlo pasa al centro, y al cerrarlo atrás, a la izquierda
   function colocarLibro() {
-    const vueltas = progreso.reduce((a, b) => a + limitar(b, 0, 1), 0);
+    // con el mismo suavizado que el giro de cada hoja, para que el libro y la portada se muevan a la vez
+    const vueltas = progreso.reduce((a, b) => a + suave(limitar(b, 0, 1)), 0);
     libro.position.x = modo === 'pagina'
       ? -foco
       : (-ANCHO / 2) * limitar(1 - vueltas, 0, 1) + (ANCHO / 2) * limitar(vueltas - (hojas - 1), 0, 1);
-    // cerrado, solo se ve una tapa: la de la izquierda aparece cuando se abre y la de la derecha desaparece al cerrarlo del todo
-    tapas[0].visible = vueltas > 0.001;
-    tapas[1].visible = vueltas < hojas - 0.001;
   }
 
   function ajustarTamano() {

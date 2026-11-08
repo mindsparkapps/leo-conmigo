@@ -24,9 +24,9 @@ test('respaldo y sincronización incluyen los almacenes de monedas', async () =>
   for (const nombre of Object.keys(ALMACENES)) assert.ok(ALMACENES_SYNC.includes(nombre), `falta en sync: ${nombre}`);
 });
 
-test('catálogo: 30 calcomanías sin repetir código', () => {
-  assert.equal(CALCOMANIAS.length, 30);
-  assert.equal(new Set(CODIGOS_CATALOGO).size, 30);
+test('catálogo: 75 láminas sin repetir código', () => {
+  assert.equal(CALCOMANIAS.length, 75);
+  assert.equal(new Set(CODIGOS_CATALOGO).size, 75);
 });
 
 test('normalizarAlbum: valores por defecto y límites', () => {
@@ -226,10 +226,10 @@ test('elegirCalcomania: nunca repite dentro del álbum y solo usa lo que está e
 });
 
 test('codigosEnJuego: catálogo completo, elegidos, y propias que existen', () => {
-  assert.equal(codigosEnJuego(normalizarAlbum()).length, 30);
+  assert.equal(codigosEnJuego(normalizarAlbum()).length, 75);
   assert.deepEqual(codigosEnJuego({ codigos: ['sol', 'luna'] }), ['sol', 'luna']);
   const propias = [{ id: 'x1' }];
-  assert.equal(codigosEnJuego(normalizarAlbum(), propias).length, 31);
+  assert.equal(codigosEnJuego(normalizarAlbum(), propias).length, 76);
   assert.deepEqual(codigosEnJuego({ codigos: ['sol', 'propia:x1', 'propia:borrada', 'inventada'] }, propias), ['sol', 'propia:x1']);
 });
 
