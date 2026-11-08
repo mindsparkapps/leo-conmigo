@@ -25,6 +25,8 @@ export const titulo = NOMBRE_APP;
 
 const PAUSA_CELEBRACION_MS = { normal: 1400, suave: 700, ninguna: 500 };
 const BLOQUEO_MODELO_MS = 400;
+const ICONO_CASA = `
+<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path d="M32 8L6 32h8v22h14V40h8v14h14V32h8z" fill="currentColor"/></svg>`;
 
 export function montar(contenedor, { ir }) {
   deshabilitarAdulto();
@@ -36,7 +38,15 @@ export function montar(contenedor, { ir }) {
       ir('/adulto');
     },
   });
-  const vista = el('section', { class: 'vista-nino sesion-nino' }, area, candado);
+  // Salida del niño: vuelve al inicio; lo avanzado se guarda como sesión interrumpida (ver sesion.limpiar)
+  const casa = el('button', {
+    type: 'button',
+    class: 'boton-casa boton-casa-chico',
+    'aria-label': 'Salir',
+    onclick: () => { detener(); ir('/nino'); },
+  });
+  casa.innerHTML = ICONO_CASA;
+  const vista = el('section', { class: 'vista-nino sesion-nino' }, area, casa, candado);
   vista.addEventListener('contextmenu', (e) => e.preventDefault()); // sin menú de pulsación larga
   contenedor.append(vista);
 
