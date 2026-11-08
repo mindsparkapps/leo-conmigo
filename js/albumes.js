@@ -51,7 +51,8 @@ export async function ganarCalcomania(store, perfil, { aleatorio = Math.random, 
   const { codigo, esNueva } = elegirCalcomania(actual.codigos, aleatorio, enJuego.length ? enJuego : CODIGOS_CATALOGO);
 
   const fecha = ahora();
-  const nueva = await store.guardar('calcomanias', { perfilId: perfil.id, codigo, fecha });
+  // `pegada: false`: la lámina aparece suelta sobre el libro y el niño la pega en su lugar (nino/albumes.js)
+  const nueva = await store.guardar('calcomanias', { perfilId: perfil.id, codigo, fecha, pegada: false });
   const porCrear = await acreditarAlbumesPendientes(store, perfil, { calcomanias: [...calcomanias, nueva], movimientos });
   const completado = porCrear.find((m) => m.fechaFin === fecha) ?? null;
   return {

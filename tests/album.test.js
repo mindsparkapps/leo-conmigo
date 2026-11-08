@@ -212,7 +212,7 @@ test('monedasADibujar: tope de 20', () => {
 
 test('elegirCalcomania: nunca repite dentro del álbum y solo usa lo que está en juego', () => {
   const azar = crearAleatorio(5);
-  const enJuego = ['sol', 'luna', 'flor', 'pez', 'casa', 'barco', 'arbol'];
+  const enJuego = CODIGOS_CATALOGO.slice(0, 7);
   const enAlbum = [];
   for (let i = 0; i < enJuego.length; i++) {
     const { codigo, esNueva } = elegirCalcomania(enAlbum, azar, enJuego);
@@ -227,10 +227,12 @@ test('elegirCalcomania: nunca repite dentro del álbum y solo usa lo que está e
 
 test('codigosEnJuego: catálogo completo, elegidos, y propias que existen', () => {
   assert.equal(codigosEnJuego(normalizarAlbum()).length, 75);
-  assert.deepEqual(codigosEnJuego({ codigos: ['sol', 'luna'] }), ['sol', 'luna']);
+  const [uno, dos] = CODIGOS_CATALOGO;
+  assert.deepEqual(codigosEnJuego({ codigos: [uno, dos] }), [uno, dos]);
+  assert.deepEqual(codigosEnJuego({ codigos: ['sol', 'luna'] }), []); // los dibujos antiguos ya no existen
   const propias = [{ id: 'x1' }];
   assert.equal(codigosEnJuego(normalizarAlbum(), propias).length, 76);
-  assert.deepEqual(codigosEnJuego({ codigos: ['sol', 'propia:x1', 'propia:borrada', 'inventada'] }, propias), ['sol', 'propia:x1']);
+  assert.deepEqual(codigosEnJuego({ codigos: [uno, 'propia:x1', 'propia:borrada', 'inventada'] }, propias), [uno, 'propia:x1']);
 });
 
 test('calcomanías propias: el código se arma y se deshace', () => {

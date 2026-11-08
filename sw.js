@@ -1,17 +1,17 @@
 'use strict';
 
 // Service worker de Leo Conmigo.
-// - La versiÃ³n llega en la URL de registro (sw.js?v=X) desde js/config.js.
-// - Precachea el shell y responde desde cachÃ© actualizando en segundo plano.
+// - La versión llega en la URL de registro (sw.js?v=X) desde js/config.js.
+// - Precachea el shell y responde desde caché actualizando en segundo plano.
 // - Solo intercepta peticiones del mismo origen: googleapis.com, accounts.google.com,
 //   api.arasaac.org, etc. pasan directo a la red y NUNCA se cachean.
-// - La versiÃ³n nueva queda "en espera": solo se activa cuando el adulto lo acepta.
+// - La versión nueva queda "en espera": solo se activa cuando el adulto lo acepta.
 
 const VERSION = new URL(self.location.href).searchParams.get('v') || 'dev';
 const CACHE = `leo-conmigo-${VERSION}`;
 const INDEX = new URL('index.html', self.registration.scope).href;
 
-// Mantener esta lista al dÃ­a cuando se agreguen archivos (el resto se cachea al usarse).
+// Mantener esta lista al día cuando se agreguen archivos (el resto se cachea al usarse).
 const PRECACHE = [
   './',
   'index.html',
@@ -66,6 +66,7 @@ const PRECACHE = [
   'js/ui/moneda.js',
   'js/ui/puntero.js',
   'js/ui/laminas.js',
+  'js/ui/laminas-sueltas.js',
   'js/ui/libro3d.js',
   'js/core/libro-album.js',
   'vendor/three.module.min.js',
@@ -238,7 +239,7 @@ const PRECACHE = [
 self.addEventListener('install', (evento) => {
   evento.waitUntil(
     caches.open(CACHE).then((cache) =>
-      // cache:'reload' evita que la cachÃ© HTTP del servidor deje archivos viejos en el precachÃ©
+      // cache:'reload' evita que la caché HTTP del servidor deje archivos viejos en el precaché
       cache.addAll(PRECACHE.map((url) => new Request(url, { cache: 'reload' }))),
     ),
   );
@@ -267,7 +268,7 @@ self.addEventListener('fetch', (evento) => {
   if (peticion.method !== 'GET') return;
 
   const url = new URL(peticion.url);
-  if (url.origin !== self.location.origin) return; // otros orÃ­genes: directo a la red
+  if (url.origin !== self.location.origin) return; // otros orígenes: directo a la red
   if (url.pathname.includes('/tests/')) return; // las pruebas siempre se leen frescas de la red
 
   if (peticion.mode === 'navigate') {
@@ -292,7 +293,7 @@ async function cacheYActualizar(peticion, evento, clave) {
     .catch(() => null);
 
   if (guardado) {
-    evento.waitUntil(red); // actualiza la cachÃ© sin hacer esperar a la pÃ¡gina
+    evento.waitUntil(red); // actualiza la caché sin hacer esperar a la página
     return guardado;
   }
   const respuesta = await red;

@@ -14,6 +14,7 @@ const SEPARACION = 0.006; // entre hojas apiladas, para que no se peleen en prof
 const DURACION_S = 0.9;
 const ARRASTRE_MIN_PX = 40;
 const FOV = 30;
+const RETRASO_HOJA_S = 0.07; // entre una hoja y la siguiente cuando se pasan varias de golpe
 
 const limitar = (n, min, max) => Math.min(max, Math.max(min, n));
 const suave = (t) => t * t * (3 - 2 * t);
@@ -21,7 +22,7 @@ const suave = (t) => t * t * (3 - 2 * t);
 /**
  * @param contenedor  elemento donde se inserta el <canvas> (debe tener tamaño)
  * @param caras       canvases 2D, cantidad par
- * @param alCambiar   ({ puedeAtras, puedeAdelante }) al empezar y cada vez que cambia la página
+ * @param alCambiar   ({ puedeAtras, puedeAdelante, carasVisibles }) al empezar y cada vez que cambia la página
  * @throws si el navegador no tiene WebGL (quien llama debe mostrar otra cosa)
  */
 export function crearLibro3D(contenedor, caras, { alCambiar = () => {} } = {}) {
@@ -68,13 +69,17 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {} } = {}) {
   // Hojas: la geometría se recalcula vértice por vértice para poder curvarlas al pasar
   const progreso = new Array(hojas).fill(0); // 0 = a la derecha, 1 = a la izquierda
   const objetivo = new Array(hojas).fill(0);
+  const espera = new Array(hojas).fill(0); // segundos que falta para que la hoja empiece a girar (al saltar varias páginas)
+  const texturas = []; // una por cara, para poder cambiar su dibujo (al pegar una lámina)
   const hojasMallas = [];
   for (let j = 0; j < hojas; j++) {
     const geometria = new THREE.PlaneGeometry(ANCHO, ALTO, SEGMENTOS, 1);
     geometria.translate(ANCHO / 2, 0, 0); // el borde izquierdo (x = 0) es el lomo
     const xBase = Float32Array.from(geometria.attributes.position.array.filter((_, i) => i % 3 === 0));
-    const frente = new THREE.Mesh(geometria, new THREE.MeshBasicMaterial({ map: textura(caras[2 * j], false), side: THREE.FrontSide }));
-    const reverso = new THREE.Mesh(geometria, new THREE.MeshBasicMaterial({ map: textura(caras[2 * j + 1], true), side: THREE.BackSide }));
+    texturas[2 * j] = textura(caras[2 * j], false);
+    texturas[2 * j + 1] = textura(caras[2 * j + 1], true);
+    const frente = new THREE.Mesh(geometria, new THREE.MeshBasicMaterial({ map: texturas[2 * j], side: THREE.FrontSide }));
+    const reverso = new THREE.Mesh(geometria, new THREE.MeshBasicMaterial({ map: texturas[2 * j + 1], side: THREE.BackSide }));
     frente.frustumCulled = reverso.frustumCulled = false;
     libro.add(frente, reverso);
     liberables.push(geometria, frente.material, reverso.material);
@@ -165,6 +170,7 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {} } = {}) {
     }
     for (let j = 0; j < hojas; j++) {
       if (progreso[j] === objetivo[j]) continue;
+      if (espera[j] > 0) { espera[j] -= dt; moviendo = true; continue; }
       const paso = (dt / DURACION_S) * Math.sign(objetivo[j] - progreso[j]);
       progreso[j] += paso;
       const llego = (paso > 0 && progreso[j] >= objetivo[j]) || (paso < 0 && progreso[j] <= objetivo[j]);
@@ -181,16 +187,43 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {} } = {}) {
   const puedeAtras = () => (modo === 'pagina' ? cara > 0 : pasadas > 0);
   const puedeAdelante = () => (modo === 'pagina' ? cara < caras.length - 1 : pasadas < hojas);
 
+  /** Las caras que se ven ahora (una en modo 'pagina'; una o dos en modo 'doble'). */
+  function carasVisibles() {
+    if (modo === 'pagina') return [cara];
+    if (pasadas === 0) return [0];
+    if (pasadas === hojas) return [2 * hojas - 1];
+    return [2 * pasadas - 1, 2 * pasadas];
+  }
+
   function aplicarEstado(sinAnimar = false) {
     pasadas = modo === 'pagina' ? Math.ceil(cara / 2) : pasadas;
     focoObjetivo = cara % 2 === 0 ? ANCHO / 2 : -ANCHO / 2;
+    // las hojas que cambian giran una tras otra (la más cercana primero) para que un salto de varias páginas se vea como pasar hojas
+    const cambian = [];
     for (let j = 0; j < hojas; j++) {
-      objetivo[j] = j < pasadas ? 1 : 0;
-      if (sinAnimar) { progreso[j] = objetivo[j]; colocarHoja(j); }
+      const nuevo = j < pasadas ? 1 : 0;
+      if (nuevo !== objetivo[j]) cambian.push(j);
+      objetivo[j] = nuevo;
+      if (sinAnimar) { progreso[j] = nuevo; espera[j] = 0; colocarHoja(j); }
+    }
+    if (!sinAnimar) {
+      const adelante = cambian.length > 0 && objetivo[cambian[0]] === 1;
+      (adelante ? cambian : [...cambian].reverse()).forEach((j, orden) => { espera[j] = Math.min(orden * RETRASO_HOJA_S, 0.6); });
     }
     if (sinAnimar) { foco = focoObjetivo; colocarLibro(); dibujar(); }
     else pedirCuadro();
-    alCambiar({ puedeAtras: puedeAtras(), puedeAdelante: puedeAdelante() });
+    alCambiar({ puedeAtras: puedeAtras(), puedeAdelante: puedeAdelante(), carasVisibles: carasVisibles() });
+  }
+
+  /** Va a una cara (en modo 'doble', a la doble página que la contiene). */
+  function irACara(destino) {
+    const f = limitar(Math.round(destino), 0, caras.length - 1);
+    if (modo === 'pagina') cara = f;
+    else {
+      pasadas = Math.ceil(f / 2);
+      cara = pasadas * 2;
+    }
+    aplicarEstado();
   }
 
   function pasar(direccion) {
@@ -228,6 +261,30 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {} } = {}) {
     puedeAtras,
     puedeAdelante,
     pasar,
+    irACara,
+    carasVisibles,
+    /** true cuando ninguna hoja se está moviendo (solo entonces valen las posiciones de `proyectar`). */
+    quieto: () => cuadro === 0 && espera.every((e) => e <= 0),
+    /** Cambia el dibujo de una cara (p. ej. al pegar una lámina). */
+    actualizarCara(indice, canvas) {
+      const t = texturas[indice];
+      if (!t) return;
+      t.image = canvas;
+      t.needsUpdate = true;
+      dibujar();
+    },
+    /**
+     * Dónde queda en la pantalla el punto (u, v) de una cara que se está viendo (u hacia la derecha y v hacia abajo,
+     * de 0 a 1, tal como se dibujó). Devuelve píxeles relativos al canvas del libro.
+     */
+    proyectar(indice, u, v) {
+      const derecha = indice % 2 === 0;
+      const x = (derecha ? 0 : -ANCHO) + u * ANCHO;
+      const punto = new THREE.Vector3(x + libro.position.x, ALTO / 2 - v * ALTO, 0.01);
+      camara.updateMatrixWorld();
+      punto.project(camara);
+      return { x: ((punto.x + 1) / 2) * contenedor.clientWidth, y: ((1 - punto.y) / 2) * contenedor.clientHeight };
+    },
     destruir() {
       cancelAnimationFrame(cuadro);
       cuadro = 0;

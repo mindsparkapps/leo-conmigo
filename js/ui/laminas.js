@@ -184,7 +184,7 @@ function estrella(ctx, cx, cy, radio, relleno) {
 /** Imagen de la portada del álbum (data/laminas/portada.jpg = GTA6_032). */
 export const RUTA_PORTADA = 'data/laminas/portada.jpg';
 
-function portada({ conseguidas, total }, imagen) {
+function portada({ pegadas, total }, imagen) {
   const lienzo = lienzoNuevo();
   const ctx = lienzo.getContext('2d');
   // fondo de tapa y, encima, la imagen a pantalla completa (recortada al centro)
@@ -216,7 +216,7 @@ function portada({ conseguidas, total }, imagen) {
   ctx.font = `700 64px ${FUENTE}`;
   ctx.fillText('Mi álbum', ANCHO_CARA / 2, 560);
   ctx.font = `700 40px ${FUENTE}`;
-  ctx.fillText(`${conseguidas} de ${total}`, ANCHO_CARA / 2, 622);
+  ctx.fillText(`${pegadas} de ${total}`, ANCHO_CARA / 2, 622);
   return lienzo;
 }
 
@@ -242,6 +242,84 @@ function carasVacias() {
   return lienzo;
 }
 
+// ---- Distribución de una página: letra arriba y 2 columnas × 3 filas de láminas ----
+const MARGEN_X = 44;
+const MARGEN_SUP = 92; // deja lugar a la letra de la página
+const MARGEN_INF = 40;
+const CELDA_W = (ANCHO_CARA - MARGEN_X * 2) / COLUMNAS;
+const CELDA_H = (ALTO_CARA - MARGEN_SUP - MARGEN_INF) / FILAS;
+const LADO = Math.min(CELDA_W, CELDA_H) * 0.86;
+
+/**
+ * Dónde cae cada lugar de una página, en proporciones de la cara (u hacia la derecha, v hacia abajo, de 0 a 1).
+ * Sirve para saber en qué parte de la pantalla está un lugar (soltar una lámina sobre él).
+ * @returns {{ u: number, v: number }[]} los 6 lugares y, en `semiLadoU`, la mitad del lado de una lámina
+ */
+export function lugaresDePagina() {
+  const lugares = Array.from({ length: COLUMNAS * FILAS }, (_, i) => ({
+    u: (MARGEN_X + CELDA_W * ((i % COLUMNAS) + 0.5)) / ANCHO_CARA,
+    v: (MARGEN_SUP + CELDA_H * (Math.floor(i / COLUMNAS) + 0.5)) / ALTO_CARA,
+  }));
+  lugares.semiLadoU = LADO / 2 / ANCHO_CARA;
+  return lugares;
+}
+
+/** La letra de la página, en un círculo arriba al centro. */
+function encabezado(ctx, letra) {
+  ctx.fillStyle = '#287599';
+  ctx.beginPath();
+  ctx.arc(ANCHO_CARA / 2, 46, 30, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `700 ${letra.length > 1 ? 30 : 38}px ${FUENTE}`;
+  ctx.fillText(letra, ANCHO_CARA / 2, 48);
+}
+
+/** «A-7» sobre el hueco de una lámina que aún no está pegada. */
+function etiqueta(ctx, texto, cx, cy) {
+  ctx.save();
+  ctx.font = `700 44px ${FUENTE}`;
+  const ancho = ctx.measureText(texto).width + 36;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
+  rectRedondeado(ctx, cx - ancho / 2, cy - 30, ancho, 60, 30);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(40, 117, 153, 0.55)';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.fillStyle = '#1f5f82';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(texto, cx, cy + 2);
+  ctx.restore();
+}
+
+/** Dibuja una página de láminas (letra, láminas pegadas a color y huecos grises con su «A-7»). */
+export async function dibujarCaraDePagina({ store, libro, propias = [], indice }) {
+  const propiasPorId = new Map(propias.map((p) => [p.id, p]));
+  const pagina = libro.paginas[indice];
+  const lienzo = lienzoNuevo();
+  const ctx = lienzo.getContext('2d');
+  papel(ctx);
+  encabezado(ctx, pagina.letra);
+  const contenidos = await Promise.all(pagina.items.map((item) => contenidoDe(store, item.codigo, propiasPorId)));
+  pagina.items.forEach((item, i) => {
+    const contenido = contenidos[i];
+    if (contenido === null) return;
+    const cx = MARGEN_X + CELDA_W * ((i % COLUMNAS) + 0.5);
+    const cy = MARGEN_SUP + CELDA_H * (Math.floor(i / COLUMNAS) + 0.5);
+    dibujarLamina(ctx, contenido, { cx, cy, lado: LADO, ganada: item.pegada, codigo: item.codigo });
+    if (!item.pegada) etiqueta(ctx, `${item.letra}-${item.numero}`, cx, cy);
+  });
+  return lienzo;
+}
+
+/** La portada con «pegadas de total» al día. */
+export async function dibujarPortadaDeLibro(libro) {
+  return portada(libro, await cargarImagen(RUTA_PORTADA));
+}
+
 /**
  * Dibuja todas las caras del libro, en orden: portada, interior de la portada, una por página y, si hace falta,
  * una cara en blanco para que el total sea par (cada hoja tiene dos caras).
@@ -249,35 +327,11 @@ function carasVacias() {
  * @param propias  calcomanías propias vigentes
  */
 export async function dibujarCaras({ store, libro, propias = [] }) {
-  const propiasPorId = new Map(propias.map((p) => [p.id, p]));
-  const caras = [portada(libro, await cargarImagen(RUTA_PORTADA)), interior()];
-  const margenX = 44;
-  const margenSup = 56;
-  const margenInf = 44;
-  const celdaW = (ANCHO_CARA - margenX * 2) / COLUMNAS;
-  const celdaH = (ALTO_CARA - margenSup - margenInf) / FILAS;
-  const lado = Math.min(celdaW, celdaH) * 0.86;
-
-  for (const pagina of libro.paginas) {
-    const lienzo = lienzoNuevo();
-    const ctx = lienzo.getContext('2d');
-    papel(ctx);
-    const contenidos = await Promise.all(pagina.map((item) => contenidoDe(store, item.codigo, propiasPorId)));
-    pagina.forEach((item, i) => {
-      const contenido = contenidos[i];
-      if (contenido === null) return;
-      const col = i % COLUMNAS;
-      const fila = Math.floor(i / COLUMNAS);
-      dibujarLamina(ctx, contenido, {
-        cx: margenX + celdaW * (col + 0.5),
-        cy: margenSup + celdaH * (fila + 0.5),
-        lado,
-        ganada: item.ganada,
-        codigo: item.codigo,
-      });
-    });
-    caras.push(lienzo);
-  }
+  const caras = [await dibujarPortadaDeLibro(libro), interior()];
+  for (let i = 0; i < libro.paginas.length; i++) caras.push(await dibujarCaraDePagina({ store, libro, propias, indice: i }));
   if (caras.length % 2 !== 0) caras.push(carasVacias());
   return caras;
 }
+
+/** La cara del libro donde está la página de láminas número `indice` (0 = A). */
+export const caraDePagina = (indice) => 2 + indice;

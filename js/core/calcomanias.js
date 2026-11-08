@@ -1,7 +1,7 @@
 // Calcomanías del álbum: una al terminar cada sesión (PLAN.md §5 y ampliación 2, fase 11).
 // El catálogo por defecto son las láminas de data/laminas/gtaNNN.jpg (miniaturas de las imágenes que eligió el
-// adulto; la portada del álbum es data/laminas/portada.jpg). Los 30 dibujos SVG de data/calcomanias/ ya no salen
-// por defecto, pero siguen existiendo: un niño que ganó una antes la conserva en su libro.
+// adulto; la portada del álbum es data/laminas/portada.jpg). Los 30 dibujos SVG de data/calcomanias/ ya no forman
+// parte del juego ni del libro (quedan solo como archivos y para sus pruebas).
 // El adulto también puede crear calcomanías propias (código `propia:<id>`, con foto, pictograma o emoji:
 // almacén `calcomaniasPropias`).
 
@@ -60,8 +60,6 @@ export const idDePropia = (codigo) => String(codigo).slice(PREFIJO_PROPIA.length
 /** Códigos del catálogo de la app que salen por defecto (las láminas). */
 export const CODIGOS_CATALOGO = Object.freeze(CALCOMANIAS.map((c) => c.codigo));
 
-/** Todos los códigos de la app que existen (láminas y dibujos antiguos): sirve para descartar los que ya no existen. */
-export const CODIGOS_EXISTENTES = Object.freeze([...CODIGOS_CATALOGO, ...CALCOMANIAS_ANTIGUAS.map((c) => c.codigo)]);
 
 /**
  * Los códigos que pueden salir hoy: los que el adulto dejó en juego (`album.codigos`, o todo el catálogo si
@@ -70,7 +68,8 @@ export const CODIGOS_EXISTENTES = Object.freeze([...CODIGOS_CATALOGO, ...CALCOMA
  * @param propias  calcomanías propias vigentes ({ id })
  */
 export function codigosEnJuego(album, propias = []) {
-  const existentes = new Set([...CODIGOS_EXISTENTES, ...propias.map((p) => codigoDePropia(p.id))]);
+  // los dibujos antiguos ya no existen para el juego ni para el libro
+  const existentes = new Set([...CODIGOS_CATALOGO, ...propias.map((p) => codigoDePropia(p.id))]);
   const lista = album?.codigos ?? [...CODIGOS_CATALOGO, ...propias.map((p) => codigoDePropia(p.id))];
   return [...new Set(lista)].filter((c) => existentes.has(c));
 }

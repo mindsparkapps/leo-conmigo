@@ -47,7 +47,7 @@ test('ganarCalcomania: el segundo álbum es otro y paga otra vez', async () => {
 
 test('ganarCalcomania: solo salen las calcomanías que el adulto dejó en juego', async () => {
   const s = crearStoreEnMemoria();
-  const elegidas = ['sol', 'luna', 'flor', 'pez', 'casa', 'barco'];
+  const elegidas = CODIGOS_CATALOGO.slice(0, 6);
   const perfil = perfilDe({ tamano: 6, codigos: elegidas });
   const azar = crearAleatorio(4);
   for (let i = 0; i < 6; i++) {
@@ -60,10 +60,19 @@ test('ganarCalcomania: solo salen las calcomanías que el adulto dejó en juego'
 test('ganarCalcomania: entra una calcomanía propia del adulto', async () => {
   const s = crearStoreEnMemoria();
   await s.guardar('calcomaniasPropias', { id: 'mi-gato', perfilId: 'p1', nombre: 'Mi gato', emoji: '🐱' });
-  const perfil = perfilDe({ tamano: 6, codigos: ['sol', 'luna', 'flor', 'pez', 'casa', 'propia:mi-gato'] });
+  const perfil = perfilDe({ tamano: 6, codigos: [...CODIGOS_CATALOGO.slice(0, 5), 'propia:mi-gato'] });
   const codigos = [];
   for (let i = 0; i < 6; i++) codigos.push((await ganarCalcomania(s, perfil, { aleatorio: crearAleatorio(i + 1), ahora })).codigo);
   assert.ok(codigos.includes('propia:mi-gato'), 'la propia sale dentro del álbum');
+});
+
+test('ganarCalcomania: la lámina nueva queda suelta (pegada: false) hasta que el niño la pega', async () => {
+  const s = crearStoreEnMemoria();
+  const r = await ganarCalcomania(s, perfilDe({}), { aleatorio: crearAleatorio(2), ahora });
+  const registros = await s.listar('calcomanias', { perfilId: 'p1' });
+  assert.equal(registros.length, 1);
+  assert.equal(registros[0].codigo, r.codigo);
+  assert.equal(registros[0].pegada, false);
 });
 
 test('acreditarAlbumesPendientes: el niño que ya tenía el álbum lleno recibe sus monedas una sola vez', async () => {
