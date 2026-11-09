@@ -150,5 +150,21 @@
   {"texto":"naranja","silabas":["na","ran","ja"],"categoria":"comida","tipo":"sustantivo","emoji":"🍊","arasaacBusqueda":"naranja","voz":"data/voces/naranja.mp3"},
   {"texto":"durazno","silabas":["du","raz","no"],"categoria":"comida","tipo":"sustantivo","emoji":"🍑","arasaacBusqueda":"durazno","voz":"data/voces/durazno.mp3"},
   {"texto":"sandía","silabas":["san","dí","a"],"categoria":"comida","tipo":"sustantivo","emoji":"🍉","arasaacBusqueda":"sandía","voz":"data/voces/sandia.mp3"},
-  {"texto":"frutilla","silabas":["fru","ti","lla"],"categoria":"comida","tipo":"sustantivo","emoji":"🍓","arasaacBusqueda":"frutilla","voz":"data/voces/frutilla.mp3"}
+  {"texto":"frutilla","silabas":["fru","ti","lla"],"categoria":"comida","tipo":"sustantivo","emoji":"🍓","arasaacBusqueda":"frutilla","voz":"data/voces/frutilla.mp3"},
+  {"texto":"palta","silabas":["pal","ta"],"categoria":"comida","tipo":"sustantivo","emoji":"🥑","arasaacBusqueda":"palta","voz":"data/voces/palta.mp3"},
+  {"texto":"limón","silabas":["li","món"],"categoria":"comida","tipo":"sustantivo","emoji":"🍋","arasaacBusqueda":"limón","voz":"data/voces/limon.mp3"},
+  {"texto":"pizza","silabas":["piz","za"],"categoria":"comida","tipo":"sustantivo","emoji":"🍕","arasaacBusqueda":"pizza","voz":"data/voces/pizza.mp3"},
+  {"texto":"sal","silabas":["sal"],"categoria":"comida","tipo":"sustantivo","emoji":"🧂","arasaacBusqueda":"sal","voz":"data/voces/sal.mp3"},
+  {"texto":"azúcar","silabas":["a","zú","car"],"categoria":"comida","tipo":"sustantivo","emoji":"","arasaacBusqueda":"azúcar","voz":"data/voces/azucar.mp3"},
+  {"texto":"chocolate","silabas":["cho","co","la","te"],"categoria":"comida","tipo":"sustantivo","emoji":"🍫","arasaacBusqueda":"chocolate","voz":"data/voces/chocolate.mp3"},
+  {"texto":"dulce","silabas":["dul","ce"],"categoria":"comida","tipo":"sustantivo","emoji":"🍬","arasaacBusqueda":"dulce","voz":"data/voces/dulce.mp3"},
+  {"texto":"café","silabas":["ca","fé"],"categoria":"comida","tipo":"sustantivo","emoji":"☕","arasaacBusqueda":"café","voz":"data/voces/cafe.mp3"},
+  {"texto":"yogur","silabas":["yo","gur"],"categoria":"comida","tipo":"sustantivo","emoji":"","arasaacBusqueda":"yogur","voz":"data/voces/yogur.mp3"},
+  {"texto":"jamón","silabas":["ja","món"],"categoria":"comida","tipo":"sustantivo","emoji":"","arasaacBusqueda":"jamón","voz":"data/voces/jamon.mp3"},
+  {"texto":"mantequilla","silabas":["man","te","qui","lla"],"categoria":"comida","tipo":"sustantivo","emoji":"🧈","arasaacBusqueda":"mantequilla","voz":"data/voces/mantequilla.mp3"},
+  {"texto":"bebida","silabas":["be","bi","da"],"categoria":"comida","tipo":"sustantivo","emoji":"🥤","arasaacBusqueda":"bebida","voz":"data/voces/bebida.mp3"},
+  {"texto":"baño","silabas":["ba","ño"],"categoria":"casa","tipo":"sustantivo","emoji":"🚽","arasaacBusqueda":"baño","voz":"data/voces/bano.mp3"},
+  {"texto":"cocina","silabas":["co","ci","na"],"categoria":"casa","tipo":"sustantivo","emoji":"","arasaacBusqueda":"cocina","voz":"data/voces/cocina.mp3"},
+  {"texto":"patio","silabas":["pa","tio"],"categoria":"casa","tipo":"sustantivo","emoji":"","arasaacBusqueda":"patio","voz":"data/voces/patio.mp3"},
+  {"texto":"ventana","silabas":["ven","ta","na"],"categoria":"casa","tipo":"sustantivo","emoji":"","arasaacBusqueda":"ventana","voz":"data/voces/ventana.mp3"}
 ]
