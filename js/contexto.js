@@ -1,6 +1,7 @@
 // Acceso compartido al almacén y al perfil activo (el niño que está usando la app).
 
 import { abrirStore } from './store.js';
+import { completarVocesIniciales } from './medios.js';
 
 const META_PERFIL = 'perfilActivoId';
 let promesaStore = null;
@@ -27,6 +28,17 @@ export function obtenerStore() {
 /** El perfil activo; si no hay ninguno elegido usa el primero. null si aún no hay perfiles. */
 export async function perfilActivo() {
   const store = await obtenerStore();
+  const perfil = await elegirPerfil(store);
+  if (perfil && !vocesRevisadas.has(perfil.id)) {
+    vocesRevisadas.add(perfil.id);
+    await completarVocesIniciales(store, perfil.id);
+  }
+  return perfil;
+}
+
+const vocesRevisadas = new Set();
+
+async function elegirPerfil(store) {
   const id = await store.leerMeta(META_PERFIL);
   if (id) {
     const perfil = await store.obtener('perfiles', id);

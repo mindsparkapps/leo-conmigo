@@ -34,6 +34,30 @@ export async function ponerVocesIniciales(store, palabras, catalogo) {
 }
 
 /**
+ * Una sola vez por perfil, pone el audio del catálogo a las palabras que ya tenía (creadas antes de que
+ * existieran los audios) y todavía no tienen grabación. Si no hay red, no marca nada y lo reintenta luego.
+ * Una grabación del adulto nunca se pisa, y si la quita después no vuelve.
+ */
+export async function completarVocesIniciales(store, perfilId) {
+  const marca = `vocesIniciales1-${perfilId}`;
+  try {
+    if (await store.leerMeta(marca)) return 0;
+    const respuesta = await fetch('data/vocabulario-inicial.json');
+    if (!respuesta.ok) return 0;
+    const catalogo = await respuesta.json();
+    const palabras = (await store.listar('palabras', { perfilId })).filter((p) => !p.deleted && !p.medioAudioId);
+    const puestas = await ponerVocesIniciales(store, palabras, catalogo);
+    const cambiadas = palabras.filter((p) => p.medioAudioId);
+    if (cambiadas.length) await store.guardarVarios('palabras', cambiadas);
+    const conVoz = new Set(catalogo.filter((c) => c.voz).map((c) => c.texto));
+    if (puestas === palabras.filter((p) => conVoz.has(p.texto)).length) await store.escribirMeta(marca, true);
+    return puestas;
+  } catch {
+    return 0;
+  }
+}
+
+/**
  * Quita un medio: se borra el contenido (para no acumular fotos viejas) y queda la marca
  * de borrado para que se sincronice con los demás dispositivos.
  */
