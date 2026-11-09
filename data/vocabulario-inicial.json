@@ -214,5 +214,21 @@
   {"texto":"zapato","silabas":["za","pa","to"],"categoria":"juguetes","tipo":"sustantivo","emoji":"👟","arasaacBusqueda":"zapato","voz":"data/voces/zapato.mp3"},
   {"texto":"calcetín","silabas":["cal","ce","tín"],"categoria":"juguetes","tipo":"sustantivo","emoji":"🧦","arasaacBusqueda":"calcetín","voz":"data/voces/calcetin.mp3"},
   {"texto":"pantalón","silabas":["pan","ta","lón"],"categoria":"juguetes","tipo":"sustantivo","emoji":"👖","arasaacBusqueda":"pantalón","voz":"data/voces/pantalon.mp3"},
-  {"texto":"chaqueta","silabas":["cha","que","ta"],"categoria":"juguetes","tipo":"sustantivo","emoji":"🧥","arasaacBusqueda":"chaqueta","voz":"data/voces/chaqueta.mp3"}
+  {"texto":"chaqueta","silabas":["cha","que","ta"],"categoria":"juguetes","tipo":"sustantivo","emoji":"🧥","arasaacBusqueda":"chaqueta","voz":"data/voces/chaqueta.mp3"},
+  {"texto":"gorro","silabas":["go","rro"],"categoria":"juguetes","tipo":"sustantivo","emoji":"🧢","arasaacBusqueda":"gorro","voz":"data/voces/gorro.mp3"},
+  {"texto":"polerón","silabas":["po","le","rón"],"categoria":"juguetes","tipo":"sustantivo","emoji":"","arasaacBusqueda":"polerón","voz":"data/voces/poleron.mp3"},
+  {"texto":"vestido","silabas":["ves","ti","do"],"categoria":"juguetes","tipo":"sustantivo","emoji":"👗","arasaacBusqueda":"vestido","voz":"data/voces/vestido.mp3"},
+  {"texto":"sombrero","silabas":["som","bre","ro"],"categoria":"juguetes","tipo":"sustantivo","emoji":"👒","arasaacBusqueda":"sombrero","voz":"data/voces/sombrero.mp3"},
+  {"texto":"reloj","silabas":["re","loj"],"categoria":"juguetes","tipo":"sustantivo","emoji":"⌚","arasaacBusqueda":"reloj","voz":"data/voces/reloj.mp3"},
+  {"texto":"teléfono","silabas":["te","lé","fo","no"],"categoria":"juguetes","tipo":"sustantivo","emoji":"📞","arasaacBusqueda":"teléfono","voz":"data/voces/telefono.mp3"},
+  {"texto":"celular","silabas":["ce","lu","lar"],"categoria":"juguetes","tipo":"sustantivo","emoji":"📱","arasaacBusqueda":"celular","voz":"data/voces/celular.mp3"},
+  {"texto":"paraguas","silabas":["pa","ra","guas"],"categoria":"juguetes","tipo":"sustantivo","emoji":"☂️","arasaacBusqueda":"paraguas","voz":"data/voces/paraguas.mp3"},
+  {"texto":"moneda","silabas":["mo","ne","da"],"categoria":"juguetes","tipo":"sustantivo","emoji":"🪙","arasaacBusqueda":"moneda","voz":"data/voces/moneda.mp3"},
+  {"texto":"plata","silabas":["pla","ta"],"categoria":"juguetes","tipo":"sustantivo","emoji":"💵","arasaacBusqueda":"plata","voz":"data/voces/plata.mp3"},
+  {"texto":"regalo","silabas":["re","ga","lo"],"categoria":"juguetes","tipo":"sustantivo","emoji":"🎁","arasaacBusqueda":"regalo","voz":"data/voces/regalo.mp3"},
+  {"texto":"flor","silabas":["flor"],"categoria":"juguetes","tipo":"sustantivo","emoji":"🌸","arasaacBusqueda":"flor","voz":"data/voces/flor.mp3"},
+  {"texto":"árbol","silabas":["ár","bol"],"categoria":"juguetes","tipo":"sustantivo","emoji":"🌳","arasaacBusqueda":"árbol","voz":"data/voces/arbol.mp3"},
+  {"texto":"sol","silabas":["sol"],"categoria":"juguetes","tipo":"sustantivo","emoji":"☀️","arasaacBusqueda":"sol","voz":"data/voces/sol.mp3"},
+  {"texto":"luna","silabas":["lu","na"],"categoria":"juguetes","tipo":"sustantivo","emoji":"🌙","arasaacBusqueda":"luna","voz":"data/voces/luna.mp3"},
+  {"texto":"estrella","silabas":["es","tre","lla"],"categoria":"juguetes","tipo":"sustantivo","emoji":"⭐","arasaacBusqueda":"estrella","voz":"data/voces/estrella.mp3"}
 ]
