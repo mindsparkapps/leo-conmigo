@@ -86,5 +86,13 @@
   {"texto":"muy","silabas":["muy"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"muy","voz":"data/voces/muy.mp3"},
   {"texto":"ahora","silabas":["a","ho","ra"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"ahora","voz":"data/voces/ahora.mp3"},
   {"texto":"bien","silabas":["bien"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"bien","voz":"data/voces/bien.mp3"},
-  {"texto":"mal","silabas":["mal"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"mal","voz":"data/voces/mal.mp3"}
+  {"texto":"mal","silabas":["mal"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"mal","voz":"data/voces/mal.mp3"},
+  {"texto":"también","silabas":["tam","bién"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"también","voz":"data/voces/tambien.mp3"},
+  {"texto":"pero","silabas":["pe","ro"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"pero","voz":"data/voces/pero.mp3"},
+  {"texto":"o","silabas":["o"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"o","voz":"data/voces/o.mp3"},
+  {"texto":"los","silabas":["los"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"los","voz":"data/voces/los.mp3"},
+  {"texto":"las","silabas":["las"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"las","voz":"data/voces/las.mp3"},
+  {"texto":"al","silabas":["al"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"al","voz":"data/voces/al.mp3"},
+  {"texto":"del","silabas":["del"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"del","voz":"data/voces/del.mp3"},
+  {"texto":"su","silabas":["su"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"su","voz":"data/voces/su.mp3"}
 ]

@@ -1,10 +1,12 @@
 # Voces de Catalina (ElevenLabs): hecho y pendiente
 
+**Voz: Catalina, ID de voz ElevenLabs `5yNXxdAaHAkq8N8bGqwQ`** (modelo Eleven v4, estabilidad 50, similitud 75; cuenta del usuario). Usar siempre esta misma voz en los procesos futuros. Es voz de biblioteca: la API da 402 en plan gratuito, por eso se genera desde la web.
+
 Cómo se hace cada palabra: generar en la web de ElevenLabs con Catalina (sin API), mover el mp3 a `data/voces/`, ponerlo en `voz` de la palabra, agregar la palabra y el mp3 a `PRECACHE` en `sw.js` y subir `VERSION`.
 
 Las palabras de la lista ampliada (`data/voces/lista-ampliada.json`) se agregan al catálogo `data/vocabulario-inicial.json` a medida que tienen voz. Orden de trabajo: 1) catálogo actual, 2) prioridad 1, 3) prioridad 2, 4) prioridad 3.
 
-**Total: 597 palabras, 88 con voz, 509 por generar.**
+**Total: 597 palabras, 96 con voz, 501 por generar.**
 
 ## Catálogo actual (48) (48/48 hechas)
 
@@ -22,9 +24,9 @@ Las palabras de la lista ampliada (`data/voces/lista-ampliada.json`) se agregan 
 
 **enlace:** [x] come · [x] bebe · [x] duerme · [x] juega · [x] es · [x] está · [x] tiene · [x] el · [x] la · [x] y
 
-## Prioridad 1: lo más importante (40/243 hechas)
+## Prioridad 1: lo más importante (48/243 hechas)
 
-**enlace:** [x] yo · [x] tú · [x] mi · [x] un · [x] una · [x] no · [x] sí · [x] quiero · [x] dame · [x] ayuda · [x] mira · [x] ven · [x] vamos · [x] hola · [x] adiós · [x] gracias · [x] favor · [x] más · [x] ya · [x] aquí · [x] con · [x] de · [x] en · [x] a · [x] para · [x] que · [x] soy · [x] eres · [x] hay · [x] voy · [x] va · [x] me · [x] te · [x] se · [x] lo · [x] mucho · [x] muy · [x] ahora · [x] bien · [x] mal · [ ] también · [ ] pero · [ ] o · [ ] los · [ ] las · [ ] al · [ ] del · [ ] su · [ ] ella · [ ] este · [ ] eso · [ ] corre · [ ] salta · [ ] abre · [ ] cierra · [ ] canta · [ ] baila · [ ] lava · [ ] toma · [ ] sube · [ ] baja · [ ] llora · [ ] ríe · [ ] duele · [ ] grande · [ ] chico · [ ] lindo · [ ] feo · [ ] rico · [ ] caliente · [ ] frío · [ ] limpio · [ ] sucio · [ ] bueno · [ ] malo · [ ] feliz · [ ] triste
+**enlace:** [x] yo · [x] tú · [x] mi · [x] un · [x] una · [x] no · [x] sí · [x] quiero · [x] dame · [x] ayuda · [x] mira · [x] ven · [x] vamos · [x] hola · [x] adiós · [x] gracias · [x] favor · [x] más · [x] ya · [x] aquí · [x] con · [x] de · [x] en · [x] a · [x] para · [x] que · [x] soy · [x] eres · [x] hay · [x] voy · [x] va · [x] me · [x] te · [x] se · [x] lo · [x] mucho · [x] muy · [x] ahora · [x] bien · [x] mal · [x] también · [x] pero · [x] o · [x] los · [x] las · [x] al · [x] del · [x] su · [ ] ella · [ ] este · [ ] eso · [ ] corre · [ ] salta · [ ] abre · [ ] cierra · [ ] canta · [ ] baila · [ ] lava · [ ] toma · [ ] sube · [ ] baja · [ ] llora · [ ] ríe · [ ] duele · [ ] grande · [ ] chico · [ ] lindo · [ ] feo · [ ] rico · [ ] caliente · [ ] frío · [ ] limpio · [ ] sucio · [ ] bueno · [ ] malo · [ ] feliz · [ ] triste
 
 **personas:** [ ] hermano · [ ] hermana · [ ] tío · [ ] tía · [ ] amigo · [ ] amiga · [ ] niño · [ ] niña · [ ] profe · [ ] doctor · [ ] primo · [ ] prima
 
