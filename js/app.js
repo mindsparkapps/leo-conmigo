@@ -6,9 +6,11 @@ import { iniciarNube } from './nube.js';
 
 import { aplicarFondo } from './ui/fondo.js';
 import { iniciarSaldo } from './ui/saldo.js';
+import { aplicarColoresDeCajas } from './dev.js';
 import { iniciarBotones } from './ui/botones.js';
 
 aplicarFondo();
+aplicarColoresDeCajas();
 iniciarBotones(); // squash and stretch, destello y sonido en todos los botones
 iniciarSaldo(); // el total de monedas, arriba a la derecha en las pantallas del niño
 iniciarPWA();

@@ -16,7 +16,7 @@ import { cargarMonedas, comprarSobre, venderRepetida } from '../albumes.js';
 import { mapaDePropias, nodoDeCalcomania } from '../ui/calcomania.js';
 import { LAMINAS_POR_SOBRE, precioDeSobre, repetidas, valorDeVenta } from '../core/sobres.js';
 import { lanzarMonedas } from '../ui/monedas-vuelo.js';
-import { saltarLeccionActivo } from '../dev.js';
+import { COLORES_CAJAS_PREDETERMINADOS, coloresDeCajas, fijarColoresDeCajas, saltarLeccionActivo } from '../dev.js';
 import { crearCanje, crearRegalo, faltan, premiosVisibles, puedeCanjear } from '../core/album.js';
 import { normalizarAjustes } from '../core/modelos.js';
 
@@ -81,6 +81,26 @@ async function iniciar(zona, estaVivo) {
   const imagenDe = async (premio, grande = true) =>
     crearMiniatura({ url: await urlDeMedio(store, premio.medioImagenId), emoji: premio.emoji, texto: premio.nombre }, { grande });
 
+  /** Herramienta de desarrollador: color de fondo y de borde de las cajas de la tienda. */
+  function selectorDeColores() {
+    const actual = coloresDeCajas() ?? COLORES_CAJAS_PREDETERMINADOS;
+    const fondo = el('input', { type: 'color', value: actual.fondo, 'aria-label': 'Color de las cajas' });
+    const borde = el('input', { type: 'color', value: actual.borde, 'aria-label': 'Color de los bordes' });
+    const cambiar = () => fijarColoresDeCajas({ fondo: fondo.value, borde: borde.value });
+    fondo.addEventListener('input', cambiar);
+    borde.addEventListener('input', cambiar);
+    const restablecer = el('button', {
+      type: 'button',
+      class: 'boton secundario chico',
+      onclick: () => {
+        fijarColoresDeCajas(null);
+        fondo.value = COLORES_CAJAS_PREDETERMINADOS.fondo;
+        borde.value = COLORES_CAJAS_PREDETERMINADOS.borde;
+      },
+    }, 'Restablecer');
+    return el('div', { class: 'caja-colores' }, el('label', {}, 'Cajas', fondo), el('label', {}, 'Bordes', borde), restablecer);
+  }
+
   /** La lámina vendida sube hasta salir por arriba y, desde donde estaba, salen las monedas hacia el total. */
   async function animarVenta(dibujo, caja, r) {
     const reducido = matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -91,7 +111,8 @@ async function iniciar(zona, estaVivo) {
       clon.style.cssText = `position:fixed;margin:0;z-index:55;pointer-events:none;left:${caja.left}px;top:${caja.top}px;width:${caja.width}px;height:${caja.height}px`;
       document.body.append(clon);
       dibujo.style.visibility = 'hidden';
-      clon.animate([{ transform: 'translateY(0)' }, { transform: `translateY(${-(caja.bottom + 40)}px)` }], { duration: 900, easing: 'ease-in', fill: 'forwards' });
+      // sube un poco y se desvanece
+      clon.animate([{ transform: 'translateY(0)', opacity: 1 }, { transform: `translateY(${-Math.round(caja.height * 0.6)}px)`, opacity: 0 }], { duration: 700, easing: 'ease-out', fill: 'forwards' });
     }
     await lanzarMonedas({
       cantidad: r.valor,
@@ -161,7 +182,7 @@ async function iniciar(zona, estaVivo) {
             'button',
             {
               type: 'button',
-              class: 'premio-carta repetida-carta',
+              class: 'repetida-item repetida-carta',
               'aria-label': `Vender una lámina repetida por ${textoMonedas(valorVenta)}. Te sobran ${sobran}`,
               onclick: async () => {
                 if (ocupado || !toqueValido()) return;
@@ -214,8 +235,9 @@ async function iniciar(zona, estaVivo) {
             '🛠 +1000 monedas',
           )
           : null,
+        saltarLeccionActivo() ? selectorDeColores() : null,
         cartasRepetidas.length ? el('h2', { class: 'tienda-titulo' }, 'Láminas repetidas') : null,
-        cartasRepetidas.length ? el('div', { class: 'tienda-grilla' }, cartasRepetidas) : null,
+        cartasRepetidas.length ? el('div', { class: 'repetidas-caja' }, cartasRepetidas) : null,
         premios.length ? el('h2', { class: 'tienda-titulo' }, 'Premios') : null,
         premios.length ? el('div', { class: 'tienda-grilla' }, cartas) : el('p', { class: 'mensaje-nino' }, 'Todavía no hay premios.'),
       ].filter(Boolean),

@@ -63,7 +63,7 @@ export function crearSobreChico(cantidad) {
  * @returns {() => void} quita la escena
  */
 export function presentarSobre(zona, dibujos, { mensaje, acciones = [], alAbrir = () => {} } = {}) {
-  const { tira, cuerpo, borde, angulo } = caras();
+  const { tira, cuerpo } = caras();
   const laminas = el(
     'span',
     { class: 'sobre-laminas', 'aria-hidden': 'true' },
@@ -75,9 +75,8 @@ export function presentarSobre(zona, dibujos, { mensaje, acciones = [], alAbrir 
   );
   const tijera = el('span', { class: 'sobre-tijera', 'aria-hidden': 'true' }, '✂');
   const trazo = el('span', { class: 'sobre-trazo', 'aria-hidden': 'true' });
-  trazo.innerHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false"><polyline points="${[borde[0], borde.at(-1)].map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')}" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="7 5" vector-effect="non-scaling-stroke"/></svg>`;
+  trazo.innerHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false"><polyline points="0,${CORTE} 100,${CORTE}" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="7 5" vector-effect="non-scaling-stroke"/></svg>`;
   const linea = el('span', { class: 'sobre-linea', 'aria-hidden': 'true' }, trazo, tijera);
-  linea.style.setProperty('--angulo', `${angulo.toFixed(2)}deg`);
   const sobre = el(
     'div',
     { class: 'sobre-pack sobre-grande', role: 'button', tabindex: '0', 'aria-label': 'Abrir el sobre: arrastra por arriba o toca' },
