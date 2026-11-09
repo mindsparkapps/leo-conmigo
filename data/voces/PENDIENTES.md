@@ -6,7 +6,7 @@ Cómo se hace cada palabra: generar en la web de ElevenLabs con Catalina (sin AP
 
 Las palabras de la lista ampliada (`data/voces/lista-ampliada.json`) se agregan al catálogo `data/vocabulario-inicial.json` a medida que tienen voz. Orden de trabajo: 1) catálogo actual, 2) prioridad 1, 3) prioridad 2, 4) prioridad 3.
 
-**Total: 597 palabras, 184 con voz, 413 por generar.**
+**Total: 597 palabras, 200 con voz, 397 por generar.**
 
 ## Catálogo actual (48) (48/48 hechas)
 
@@ -24,7 +24,7 @@ Las palabras de la lista ampliada (`data/voces/lista-ampliada.json`) se agregan 
 
 **enlace:** [x] come · [x] bebe · [x] duerme · [x] juega · [x] es · [x] está · [x] tiene · [x] el · [x] la · [x] y
 
-## Prioridad 1: lo más importante (136/243 hechas)
+## Prioridad 1: lo más importante (152/243 hechas)
 
 **enlace:** [x] yo · [x] tú · [x] mi · [x] un · [x] una · [x] no · [x] sí · [x] quiero · [x] dame · [x] ayuda · [x] mira · [x] ven · [x] vamos · [x] hola · [x] adiós · [x] gracias · [x] favor · [x] más · [x] ya · [x] aquí · [x] con · [x] de · [x] en · [x] a · [x] para · [x] que · [x] soy · [x] eres · [x] hay · [x] voy · [x] va · [x] me · [x] te · [x] se · [x] lo · [x] mucho · [x] muy · [x] ahora · [x] bien · [x] mal · [x] también · [x] pero · [x] o · [x] los · [x] las · [x] al · [x] del · [x] su · [x] ella · [x] este · [x] eso · [x] corre · [x] salta · [x] abre · [x] cierra · [x] canta · [x] baila · [x] lava · [x] toma · [x] sube · [x] baja · [x] llora · [x] ríe · [x] duele · [ ] grande · [ ] chico · [ ] lindo · [ ] feo · [ ] rico · [ ] caliente · [ ] frío · [ ] limpio · [ ] sucio · [ ] bueno · [ ] malo · [ ] feliz · [ ] triste
 
@@ -34,9 +34,9 @@ Las palabras de la lista ampliada (`data/voces/lista-ampliada.json`) se agregan 
 
 **comida:** [x] arroz · [x] huevo · [x] carne · [x] pollo · [x] fruta · [x] pera · [x] uva · [x] helado · [x] galleta · [x] torta · [x] fideos · [x] papas · [x] tomate · [x] zanahoria · [x] naranja · [x] durazno · [x] sandía · [x] frutilla · [x] palta · [x] limón · [x] pizza · [x] sal · [x] azúcar · [x] chocolate · [x] dulce · [x] café · [x] yogur · [x] jamón · [x] mantequilla · [x] bebida
 
-**casa:** [x] baño · [x] cocina · [x] patio · [x] ventana · [x] sofá · [x] luz · [x] tele · [x] plato · [x] vaso · [x] cuchara · [x] tenedor · [x] cuchillo · [x] olla · [x] llave · [x] techo · [x] piso · [x] pared · [x] cortina · [x] toalla · [x] jabón · [ ] cepillo · [ ] ducha
+**casa:** [x] baño · [x] cocina · [x] patio · [x] ventana · [x] sofá · [x] luz · [x] tele · [x] plato · [x] vaso · [x] cuchara · [x] tenedor · [x] cuchillo · [x] olla · [x] llave · [x] techo · [x] piso · [x] pared · [x] cortina · [x] toalla · [x] jabón · [x] cepillo · [x] ducha
 
-**animales:** [ ] caballo · [ ] conejo · [ ] pájaro · [ ] pollito · [ ] mono · [ ] león · [ ] tigre · [ ] elefante · [ ] tortuga · [ ] ratón · [ ] oveja · [ ] chancho · [ ] gallina · [ ] mariposa · [ ] abeja · [ ] hormiga · [ ] araña · [ ] rana
+**animales:** [x] caballo · [x] conejo · [x] pájaro · [x] pollito · [x] mono · [x] león · [x] tigre · [x] elefante · [x] tortuga · [x] ratón · [x] oveja · [x] chancho · [x] gallina · [x] mariposa · [ ] abeja · [ ] hormiga · [ ] araña · [ ] rana
 
 **juguetes:** [ ] bici · [ ] osito · [ ] tren · [ ] avión · [ ] bote · [ ] lápiz · [ ] papel · [ ] mochila · [ ] zapato · [ ] calcetín · [ ] pantalón · [ ] chaqueta · [ ] gorro · [ ] polerón · [ ] vestido · [ ] sombrero · [ ] reloj · [ ] teléfono · [ ] celular · [ ] paraguas · [ ] moneda · [ ] plata · [ ] regalo · [ ] flor · [ ] árbol · [ ] sol · [ ] luna · [ ] estrella · [ ] nube · [ ] lluvia · [ ] mar · [ ] playa · [ ] plaza · [ ] calle · [ ] escuela · [ ] tienda · [ ] hospital · [ ] bus · [ ] micro · [ ] metro · [ ] camión · [ ] moto
 

@@ -182,5 +182,21 @@
   {"texto":"pared","silabas":["pa","red"],"categoria":"casa","tipo":"sustantivo","emoji":"","arasaacBusqueda":"pared","voz":"data/voces/pared.mp3"},
   {"texto":"cortina","silabas":["cor","ti","na"],"categoria":"casa","tipo":"sustantivo","emoji":"","arasaacBusqueda":"cortina","voz":"data/voces/cortina.mp3"},
   {"texto":"toalla","silabas":["to","a","lla"],"categoria":"casa","tipo":"sustantivo","emoji":"","arasaacBusqueda":"toalla","voz":"data/voces/toalla.mp3"},
-  {"texto":"jabón","silabas":["ja","bón"],"categoria":"casa","tipo":"sustantivo","emoji":"🧼","arasaacBusqueda":"jabón","voz":"data/voces/jabon.mp3"}
+  {"texto":"jabón","silabas":["ja","bón"],"categoria":"casa","tipo":"sustantivo","emoji":"🧼","arasaacBusqueda":"jabón","voz":"data/voces/jabon.mp3"},
+  {"texto":"cepillo","silabas":["ce","pi","llo"],"categoria":"casa","tipo":"sustantivo","emoji":"","arasaacBusqueda":"cepillo","voz":"data/voces/cepillo.mp3"},
+  {"texto":"ducha","silabas":["du","cha"],"categoria":"casa","tipo":"sustantivo","emoji":"🚿","arasaacBusqueda":"ducha","voz":"data/voces/ducha.mp3"},
+  {"texto":"caballo","silabas":["ca","ba","llo"],"categoria":"animales","tipo":"sustantivo","emoji":"🐴","arasaacBusqueda":"caballo","voz":"data/voces/caballo.mp3"},
+  {"texto":"conejo","silabas":["co","ne","jo"],"categoria":"animales","tipo":"sustantivo","emoji":"🐰","arasaacBusqueda":"conejo","voz":"data/voces/conejo.mp3"},
+  {"texto":"pájaro","silabas":["pá","ja","ro"],"categoria":"animales","tipo":"sustantivo","emoji":"🐦","arasaacBusqueda":"pájaro","voz":"data/voces/pajaro.mp3"},
+  {"texto":"pollito","silabas":["po","lli","to"],"categoria":"animales","tipo":"sustantivo","emoji":"🐥","arasaacBusqueda":"pollito","voz":"data/voces/pollito.mp3"},
+  {"texto":"mono","silabas":["mo","no"],"categoria":"animales","tipo":"sustantivo","emoji":"🐵","arasaacBusqueda":"mono","voz":"data/voces/mono.mp3"},
+  {"texto":"león","silabas":["le","ón"],"categoria":"animales","tipo":"sustantivo","emoji":"🦁","arasaacBusqueda":"león","voz":"data/voces/leon.mp3"},
+  {"texto":"tigre","silabas":["ti","gre"],"categoria":"animales","tipo":"sustantivo","emoji":"🐯","arasaacBusqueda":"tigre","voz":"data/voces/tigre.mp3"},
+  {"texto":"elefante","silabas":["e","le","fan","te"],"categoria":"animales","tipo":"sustantivo","emoji":"🐘","arasaacBusqueda":"elefante","voz":"data/voces/elefante.mp3"},
+  {"texto":"tortuga","silabas":["tor","tu","ga"],"categoria":"animales","tipo":"sustantivo","emoji":"🐢","arasaacBusqueda":"tortuga","voz":"data/voces/tortuga.mp3"},
+  {"texto":"ratón","silabas":["ra","tón"],"categoria":"animales","tipo":"sustantivo","emoji":"🐭","arasaacBusqueda":"ratón","voz":"data/voces/raton.mp3"},
+  {"texto":"oveja","silabas":["o","ve","ja"],"categoria":"animales","tipo":"sustantivo","emoji":"🐑","arasaacBusqueda":"oveja","voz":"data/voces/oveja.mp3"},
+  {"texto":"chancho","silabas":["chan","cho"],"categoria":"animales","tipo":"sustantivo","emoji":"🐷","arasaacBusqueda":"chancho","voz":"data/voces/chancho.mp3"},
+  {"texto":"gallina","silabas":["ga","lli","na"],"categoria":"animales","tipo":"sustantivo","emoji":"🐔","arasaacBusqueda":"gallina","voz":"data/voces/gallina.mp3"},
+  {"texto":"mariposa","silabas":["ma","ri","po","sa"],"categoria":"animales","tipo":"sustantivo","emoji":"🦋","arasaacBusqueda":"mariposa","voz":"data/voces/mariposa.mp3"}
 ]
