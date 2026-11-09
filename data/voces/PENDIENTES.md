@@ -4,7 +4,7 @@ Cómo se hace cada palabra: generar en la web de ElevenLabs con Catalina (sin AP
 
 Las palabras de la lista ampliada (`data/voces/lista-ampliada.json`) se agregan al catálogo `data/vocabulario-inicial.json` a medida que tienen voz. Orden de trabajo: 1) catálogo actual, 2) prioridad 1, 3) prioridad 2, 4) prioridad 3.
 
-**Total: 597 palabras, 48 con voz, 549 por generar.**
+**Total: 597 palabras, 64 con voz, 533 por generar.**
 
 ## Catálogo actual (48) (48/48 hechas)
 
@@ -22,9 +22,9 @@ Las palabras de la lista ampliada (`data/voces/lista-ampliada.json`) se agregan 
 
 **enlace:** [x] come · [x] bebe · [x] duerme · [x] juega · [x] es · [x] está · [x] tiene · [x] el · [x] la · [x] y
 
-## Prioridad 1: lo más importante (0/243 hechas)
+## Prioridad 1: lo más importante (16/243 hechas)
 
-**enlace:** [ ] yo · [ ] tú · [ ] mi · [ ] un · [ ] una · [ ] no · [ ] sí · [ ] quiero · [ ] dame · [ ] ayuda · [ ] mira · [ ] ven · [ ] vamos · [ ] hola · [ ] adiós · [ ] gracias · [ ] favor · [ ] más · [ ] ya · [ ] aquí · [ ] con · [ ] de · [ ] en · [ ] a · [ ] para · [ ] que · [ ] soy · [ ] eres · [ ] hay · [ ] voy · [ ] va · [ ] me · [ ] te · [ ] se · [ ] lo · [ ] mucho · [ ] muy · [ ] ahora · [ ] bien · [ ] mal · [ ] también · [ ] pero · [ ] o · [ ] los · [ ] las · [ ] al · [ ] del · [ ] su · [ ] ella · [ ] este · [ ] eso · [ ] corre · [ ] salta · [ ] abre · [ ] cierra · [ ] canta · [ ] baila · [ ] lava · [ ] toma · [ ] sube · [ ] baja · [ ] llora · [ ] ríe · [ ] duele · [ ] grande · [ ] chico · [ ] lindo · [ ] feo · [ ] rico · [ ] caliente · [ ] frío · [ ] limpio · [ ] sucio · [ ] bueno · [ ] malo · [ ] feliz · [ ] triste
+**enlace:** [x] yo · [x] tú · [x] mi · [x] un · [x] una · [x] no · [x] sí · [x] quiero · [x] dame · [x] ayuda · [x] mira · [x] ven · [x] vamos · [x] hola · [x] adiós · [x] gracias · [ ] favor · [ ] más · [ ] ya · [ ] aquí · [ ] con · [ ] de · [ ] en · [ ] a · [ ] para · [ ] que · [ ] soy · [ ] eres · [ ] hay · [ ] voy · [ ] va · [ ] me · [ ] te · [ ] se · [ ] lo · [ ] mucho · [ ] muy · [ ] ahora · [ ] bien · [ ] mal · [ ] también · [ ] pero · [ ] o · [ ] los · [ ] las · [ ] al · [ ] del · [ ] su · [ ] ella · [ ] este · [ ] eso · [ ] corre · [ ] salta · [ ] abre · [ ] cierra · [ ] canta · [ ] baila · [ ] lava · [ ] toma · [ ] sube · [ ] baja · [ ] llora · [ ] ríe · [ ] duele · [ ] grande · [ ] chico · [ ] lindo · [ ] feo · [ ] rico · [ ] caliente · [ ] frío · [ ] limpio · [ ] sucio · [ ] bueno · [ ] malo · [ ] feliz · [ ] triste
 
 **personas:** [ ] hermano · [ ] hermana · [ ] tío · [ ] tía · [ ] amigo · [ ] amiga · [ ] niño · [ ] niña · [ ] profe · [ ] doctor · [ ] primo · [ ] prima
 

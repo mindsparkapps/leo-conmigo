@@ -12,8 +12,8 @@ const pal = (id, texto, orden, extra = {}) => ({ id, texto, orden, perfilId: 'p1
 
 // ---------- catálogo inicial ----------
 
-test('catálogo inicial: 48 entradas completas, sin repetir y con sílabas que forman la palabra', () => {
-  assert.equal(CATALOGO.length, 48);
+test('catálogo inicial: entradas completas, sin repetir y con sílabas que forman la palabra (48 originales y las que se agregan con voz)', () => {
+  assert.ok(CATALOGO.length >= 48);
   const ids = CATEGORIAS.map((c) => c.id);
   const vistos = new Set();
   for (const e of CATALOGO) {
@@ -37,10 +37,12 @@ test('catálogo inicial: contiene las palabras del plan y las de enlace van como
   for (const t of ['mamá', 'papá', 'abuela', 'mano', 'ojo', 'pan', 'leche', 'casa', 'perro', 'gato', 'pelota', 'auto', 'libro']) {
     assert.ok(textos.includes(t), t);
   }
-  const enlace = CATALOGO.filter((e) => e.categoria === 'enlace');
+  const originales = CATALOGO.slice(0, 48);
+  const enlace = originales.filter((e) => e.categoria === 'enlace');
   assert.equal(enlace.length, 10);
   assert.ok(enlace.every((e) => e.tipo === 'enlace'));
-  assert.ok(CATALOGO.filter((e) => e.categoria !== 'enlace').every((e) => e.tipo === 'sustantivo'));
+  assert.ok(originales.filter((e) => e.categoria !== 'enlace').every((e) => e.tipo === 'sustantivo'));
+  assert.ok(CATALOGO.filter((e) => e.categoria === 'enlace').every((e) => e.tipo === 'enlace'));
 });
 
 // ---------- texto ----------
