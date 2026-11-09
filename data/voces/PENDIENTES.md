@@ -6,7 +6,7 @@ Cómo se hace cada palabra: generar en la web de ElevenLabs con Catalina (sin AP
 
 Las palabras de la lista ampliada (`data/voces/lista-ampliada.json`) se agregan al catálogo `data/vocabulario-inicial.json` a medida que tienen voz. Orden de trabajo: 1) catálogo actual, 2) prioridad 1, 3) prioridad 2, 4) prioridad 3.
 
-**Total: 597 palabras, 136 con voz, 461 por generar.**
+**Total: 597 palabras, 152 con voz, 445 por generar.**
 
 ## Catálogo actual (48) (48/48 hechas)
 
@@ -24,7 +24,7 @@ Las palabras de la lista ampliada (`data/voces/lista-ampliada.json`) se agregan 
 
 **enlace:** [x] come · [x] bebe · [x] duerme · [x] juega · [x] es · [x] está · [x] tiene · [x] el · [x] la · [x] y
 
-## Prioridad 1: lo más importante (88/243 hechas)
+## Prioridad 1: lo más importante (104/243 hechas)
 
 **enlace:** [x] yo · [x] tú · [x] mi · [x] un · [x] una · [x] no · [x] sí · [x] quiero · [x] dame · [x] ayuda · [x] mira · [x] ven · [x] vamos · [x] hola · [x] adiós · [x] gracias · [x] favor · [x] más · [x] ya · [x] aquí · [x] con · [x] de · [x] en · [x] a · [x] para · [x] que · [x] soy · [x] eres · [x] hay · [x] voy · [x] va · [x] me · [x] te · [x] se · [x] lo · [x] mucho · [x] muy · [x] ahora · [x] bien · [x] mal · [x] también · [x] pero · [x] o · [x] los · [x] las · [x] al · [x] del · [x] su · [x] ella · [x] este · [x] eso · [x] corre · [x] salta · [x] abre · [x] cierra · [x] canta · [x] baila · [x] lava · [x] toma · [x] sube · [x] baja · [x] llora · [x] ríe · [x] duele · [ ] grande · [ ] chico · [ ] lindo · [ ] feo · [ ] rico · [ ] caliente · [ ] frío · [ ] limpio · [ ] sucio · [ ] bueno · [ ] malo · [ ] feliz · [ ] triste
 
@@ -32,7 +32,7 @@ Las palabras de la lista ampliada (`data/voces/lista-ampliada.json`) se agregan 
 
 **cuerpo:** [x] cara · [x] pelo · [x] oreja · [x] dedo · [x] brazo · [x] pierna · [x] panza · [x] diente · [x] lengua · [x] cabeza
 
-**comida:** [x] arroz · [x] huevo · [ ] carne · [ ] pollo · [ ] fruta · [ ] pera · [ ] uva · [ ] helado · [ ] galleta · [ ] torta · [ ] fideos · [ ] papas · [ ] tomate · [ ] zanahoria · [ ] naranja · [ ] durazno · [ ] sandía · [ ] frutilla · [ ] palta · [ ] limón · [ ] pizza · [ ] sal · [ ] azúcar · [ ] chocolate · [ ] dulce · [ ] café · [ ] yogur · [ ] jamón · [ ] mantequilla · [ ] bebida
+**comida:** [x] arroz · [x] huevo · [x] carne · [x] pollo · [x] fruta · [x] pera · [x] uva · [x] helado · [x] galleta · [x] torta · [x] fideos · [x] papas · [x] tomate · [x] zanahoria · [x] naranja · [x] durazno · [x] sandía · [x] frutilla · [ ] palta · [ ] limón · [ ] pizza · [ ] sal · [ ] azúcar · [ ] chocolate · [ ] dulce · [ ] café · [ ] yogur · [ ] jamón · [ ] mantequilla · [ ] bebida
 
 **casa:** [ ] baño · [ ] cocina · [ ] patio · [ ] ventana · [ ] sofá · [ ] luz · [ ] tele · [ ] plato · [ ] vaso · [ ] cuchara · [ ] tenedor · [ ] cuchillo · [ ] olla · [ ] llave · [ ] techo · [ ] piso · [ ] pared · [ ] cortina · [ ] toalla · [ ] jabón · [ ] cepillo · [ ] ducha
 

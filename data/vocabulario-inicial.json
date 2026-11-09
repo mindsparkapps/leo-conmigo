@@ -134,5 +134,21 @@
   {"texto":"lengua","silabas":["len","gua"],"categoria":"cuerpo","tipo":"sustantivo","emoji":"👅","arasaacBusqueda":"lengua","voz":"data/voces/lengua.mp3"},
   {"texto":"cabeza","silabas":["ca","be","za"],"categoria":"cuerpo","tipo":"sustantivo","emoji":"🧠","arasaacBusqueda":"cabeza","voz":"data/voces/cabeza.mp3"},
   {"texto":"arroz","silabas":["a","rroz"],"categoria":"comida","tipo":"sustantivo","emoji":"🍚","arasaacBusqueda":"arroz","voz":"data/voces/arroz.mp3"},
-  {"texto":"huevo","silabas":["hue","vo"],"categoria":"comida","tipo":"sustantivo","emoji":"🥚","arasaacBusqueda":"huevo","voz":"data/voces/huevo.mp3"}
+  {"texto":"huevo","silabas":["hue","vo"],"categoria":"comida","tipo":"sustantivo","emoji":"🥚","arasaacBusqueda":"huevo","voz":"data/voces/huevo.mp3"},
+  {"texto":"carne","silabas":["car","ne"],"categoria":"comida","tipo":"sustantivo","emoji":"🥩","arasaacBusqueda":"carne","voz":"data/voces/carne.mp3"},
+  {"texto":"pollo","silabas":["po","llo"],"categoria":"comida","tipo":"sustantivo","emoji":"🍗","arasaacBusqueda":"pollo","voz":"data/voces/pollo.mp3"},
+  {"texto":"fruta","silabas":["fru","ta"],"categoria":"comida","tipo":"sustantivo","emoji":"🍎","arasaacBusqueda":"fruta","voz":"data/voces/fruta.mp3"},
+  {"texto":"pera","silabas":["pe","ra"],"categoria":"comida","tipo":"sustantivo","emoji":"🍐","arasaacBusqueda":"pera","voz":"data/voces/pera.mp3"},
+  {"texto":"uva","silabas":["u","va"],"categoria":"comida","tipo":"sustantivo","emoji":"🍇","arasaacBusqueda":"uva","voz":"data/voces/uva.mp3"},
+  {"texto":"helado","silabas":["he","la","do"],"categoria":"comida","tipo":"sustantivo","emoji":"🍦","arasaacBusqueda":"helado","voz":"data/voces/helado.mp3"},
+  {"texto":"galleta","silabas":["ga","lle","ta"],"categoria":"comida","tipo":"sustantivo","emoji":"🍪","arasaacBusqueda":"galleta","voz":"data/voces/galleta.mp3"},
+  {"texto":"torta","silabas":["tor","ta"],"categoria":"comida","tipo":"sustantivo","emoji":"🎂","arasaacBusqueda":"torta","voz":"data/voces/torta.mp3"},
+  {"texto":"fideos","silabas":["fi","de","os"],"categoria":"comida","tipo":"sustantivo","emoji":"🍝","arasaacBusqueda":"fideos","voz":"data/voces/fideos.mp3"},
+  {"texto":"papas","silabas":["pa","pas"],"categoria":"comida","tipo":"sustantivo","emoji":"🥔","arasaacBusqueda":"papas","voz":"data/voces/papas.mp3"},
+  {"texto":"tomate","silabas":["to","ma","te"],"categoria":"comida","tipo":"sustantivo","emoji":"🍅","arasaacBusqueda":"tomate","voz":"data/voces/tomate.mp3"},
+  {"texto":"zanahoria","silabas":["za","na","ho","ria"],"categoria":"comida","tipo":"sustantivo","emoji":"🥕","arasaacBusqueda":"zanahoria","voz":"data/voces/zanahoria.mp3"},
+  {"texto":"naranja","silabas":["na","ran","ja"],"categoria":"comida","tipo":"sustantivo","emoji":"🍊","arasaacBusqueda":"naranja","voz":"data/voces/naranja.mp3"},
+  {"texto":"durazno","silabas":["du","raz","no"],"categoria":"comida","tipo":"sustantivo","emoji":"🍑","arasaacBusqueda":"durazno","voz":"data/voces/durazno.mp3"},
+  {"texto":"sandía","silabas":["san","dí","a"],"categoria":"comida","tipo":"sustantivo","emoji":"🍉","arasaacBusqueda":"sandía","voz":"data/voces/sandia.mp3"},
+  {"texto":"frutilla","silabas":["fru","ti","lla"],"categoria":"comida","tipo":"sustantivo","emoji":"🍓","arasaacBusqueda":"frutilla","voz":"data/voces/frutilla.mp3"}
 ]
