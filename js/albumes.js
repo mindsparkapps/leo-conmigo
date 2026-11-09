@@ -3,7 +3,7 @@
 
 import { CODIGOS_CATALOGO, codigosEnJuego, elegirCalcomania } from './core/calcomanias.js';
 import { calcularAlbumes, crearPagoLeccion, normalizarAlbum, premiosDeAlbumPorCrear, saldo } from './core/album.js';
-import { crearCompraSobre, crearVenta, precioDeSobre, registroAVender, sacarSobre } from './core/sobres.js';
+import { crearCompraSobre, crearVenta, precioDeSobre, registroAVender, sacarSobre, valorDeVenta } from './core/sobres.js';
 
 /** Todo lo que hace falta para pintar el álbum, el cofre y la tienda de un niño. */
 export async function cargarMonedas(store, perfil) {
@@ -88,7 +88,7 @@ export async function venderRepetida(store, perfil, codigo, { ahora = () => new 
   const registro = registroAVender(calcomanias, codigo);
   if (!registro) return { vendida: false };
   await store.borrar('calcomanias', registro.id);
-  const venta = await store.guardar('movimientos', crearVenta({ perfilId: perfil.id, codigo, fecha: ahora() }));
+  const venta = await store.guardar('movimientos', crearVenta({ perfilId: perfil.id, codigo, valor: valorDeVenta(perfil.album), fecha: ahora() }));
   const movimientos = await store.listar('movimientos', filtro);
   return { vendida: true, valor: venta.cantidad, saldo: saldo(movimientos) };
 }

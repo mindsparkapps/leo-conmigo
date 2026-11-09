@@ -35,13 +35,17 @@ export function montar(contenedor, { ir }) {
   const casa = el('button', { type: 'button', class: 'boton-casa boton-casa-chico', 'aria-label': 'Volver al inicio', onclick: () => ir('/nino') });
   casa.innerHTML = ICONO_CASA;
   const zona = el('div', { class: 'libro-zona' });
-  contenedor.append(el('section', { class: 'vista-nino libro-nino' }, zona, casa));
+  // Pantalla de carga mientras el álbum todavía no se ve
+  const cargando = el('div', { class: 'libro-cargando', role: 'status' }, el('span', { class: 'libro-cargando-giro', 'aria-hidden': 'true' }), el('p', { class: 'mensaje-nino' }, 'Preparando tu álbum…'));
+  contenedor.append(el('section', { class: 'vista-nino libro-nino' }, zona, cargando, casa));
 
   const estado = { vivo: true, libro: null, sueltas: null };
-  pintar(zona, estado).catch((error) => {
-    console.error(error);
-    zona.replaceChildren(el('p', { class: 'mensaje-nino' }, 'Algo no funcionó. Toca la casa para volver.'));
-  });
+  pintar(zona, estado)
+    .catch((error) => {
+      console.error(error);
+      zona.replaceChildren(el('p', { class: 'mensaje-nino' }, 'Algo no funcionó. Toca la casa para volver.'));
+    })
+    .finally(() => cargando.remove());
   return () => {
     estado.vivo = false;
     estado.sueltas?.destruir();

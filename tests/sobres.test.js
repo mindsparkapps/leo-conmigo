@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { comprarSobre, cargarMonedas, pagarLeccion, reiniciarAlbumes, venderRepetida } from '../js/albumes.js';
-import { LAMINAS_POR_SOBRE, precioDeSobre, registroAVender, repetidas, sacarSobre } from '../js/core/sobres.js';
+import { LAMINAS_POR_SOBRE, precioDeSobre, registroAVender, repetidas, sacarSobre, valorDeVenta } from '../js/core/sobres.js';
 import { crearRegalo } from '../js/core/album.js';
 import { CODIGOS_CATALOGO } from '../js/core/calcomanias.js';
 import { crearAleatorio } from '../js/core/azar.js';
@@ -67,7 +67,9 @@ test('venderRepetida: paga una moneda, quita una copia y nunca la última', asyn
   await s.guardar('calcomanias', { perfilId: 'p1', codigo: 'gta001', fecha: ahora(), pegada: false });
   const r = await venderRepetida(s, perfil, 'gta001', { ahora });
   assert.equal(r.vendida, true);
-  assert.equal(r.saldo, 1);
+  assert.equal(r.valor, valorDeVenta(perfil.album));
+  assert.equal(r.valor, Math.max(1, Math.round((precioDeSobre(perfil.album) / LAMINAS_POR_SOBRE) * 0.8)));
+  assert.equal(r.saldo, r.valor);
   assert.equal((await s.listar('calcomanias', { perfilId: 'p1' })).length, 1);
   assert.equal((await venderRepetida(s, perfil, 'gta001', { ahora })).vendida, false);
 });

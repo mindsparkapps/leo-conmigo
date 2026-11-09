@@ -14,7 +14,8 @@ import { liberarUrls, urlDeMedio } from '../medios.js';
 import { desbloquearAudio, detener, hablarTexto } from '../audio.js';
 import { cargarMonedas, comprarSobre, venderRepetida } from '../albumes.js';
 import { mapaDePropias, nodoDeCalcomania } from '../ui/calcomania.js';
-import { LAMINAS_POR_SOBRE, VALOR_VENTA, precioDeSobre, repetidas } from '../core/sobres.js';
+import { LAMINAS_POR_SOBRE, precioDeSobre, repetidas, valorDeVenta } from '../core/sobres.js';
+import { lanzarMonedas } from '../ui/monedas-vuelo.js';
 import { saltarLeccionActivo } from '../dev.js';
 import { crearCanje, crearRegalo, faltan, premiosVisibles, puedeCanjear } from '../core/album.js';
 import { normalizarAjustes } from '../core/modelos.js';
@@ -80,6 +81,29 @@ async function iniciar(zona, estaVivo) {
   const imagenDe = async (premio, grande = true) =>
     crearMiniatura({ url: await urlDeMedio(store, premio.medioImagenId), emoji: premio.emoji, texto: premio.nombre }, { grande });
 
+  /** La lámina vendida sube hasta salir por arriba y, desde donde estaba, salen las monedas hacia el total. */
+  async function animarVenta(dibujo, caja, r) {
+    const reducido = matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    fijarSaldo(r.saldo - r.valor); // el total sube moneda a moneda al llegar cada una
+    let clon = null;
+    if (!reducido && dibujo.animate) {
+      clon = dibujo.cloneNode(true);
+      clon.style.cssText = `position:fixed;margin:0;z-index:55;pointer-events:none;left:${caja.left}px;top:${caja.top}px;width:${caja.width}px;height:${caja.height}px`;
+      document.body.append(clon);
+      dibujo.style.visibility = 'hidden';
+      clon.animate([{ transform: 'translateY(0)' }, { transform: `translateY(${-(caja.bottom + 40)}px)` }], { duration: 900, easing: 'ease-in', fill: 'forwards' });
+    }
+    await lanzarMonedas({
+      cantidad: r.valor,
+      origen: { x: caja.left + caja.width / 2, y: caja.bottom + 8 }, // bajo la lámina
+      desdeOrigen: true,
+      sonido: ajustes.sonido,
+      movimientoReducido: reducido,
+      activo: estaVivo,
+    });
+    clon?.remove();
+  }
+
   async function lista() {
     const datos = await cargarMonedas(store, perfil);
     if (!estaVivo()) return;
@@ -127,6 +151,7 @@ async function iniciar(zona, estaVivo) {
     );
     const propiasPorId = mapaDePropias(datos.propias);
     const sobrantes = repetidas(datos.calcomanias);
+    const valorVenta = valorDeVenta(datos.album);
     const cartasRepetidas = (
       await Promise.all(
         sobrantes.map(async ({ codigo, sobran }) => {
@@ -137,16 +162,17 @@ async function iniciar(zona, estaVivo) {
             {
               type: 'button',
               class: 'premio-carta repetida-carta',
-              'aria-label': `Vender una lámina repetida por ${textoMonedas(VALOR_VENTA)}. Te sobran ${sobran}`,
+              'aria-label': `Vender una lámina repetida por ${textoMonedas(valorVenta)}. Te sobran ${sobran}`,
               onclick: async () => {
                 if (ocupado || !toqueValido()) return;
                 ocupado = true;
                 try {
+                  const caja = dibujo.getBoundingClientRect();
                   const r = await venderRepetida(store, perfil, codigo);
                   if (r.vendida) {
-                    fijarSaldo(r.saldo);
                     aviso = `¡Vendida! Ganaste ${textoMonedas(r.valor)}.`;
                     decir(`Ganaste ${textoMonedas(r.valor)}`);
+                    await animarVenta(dibujo, caja, r);
                   }
                   await lista();
                 } finally {
@@ -156,7 +182,7 @@ async function iniciar(zona, estaVivo) {
             },
             dibujo,
             el('span', { class: 'repetida-sobran' }, `×${sobran}`),
-            crearPrecio(VALOR_VENTA, { prefijo: '+' }),
+            crearPrecio(valorVenta, { prefijo: '+' }),
           );
         }),
       )

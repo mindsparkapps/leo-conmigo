@@ -5,12 +5,17 @@ import { normalizarAlbum } from './album.js';
 
 export const SESIONES_POR_SOBRE = 5;
 export const LAMINAS_POR_SOBRE = 3;
-export const VALOR_VENTA = 1;
+export const PORCENTAJE_VENTA = 0.8; // una repetida se paga al 80 % de lo que cuesta cada lámina de un sobre
 
 /** Precio de un sobre en monedas: lo que paga terminar SESIONES_POR_SOBRE lecciones. */
 export function precioDeSobre(album) {
   const { monedasPorLeccion } = normalizarAlbum(album);
   return Math.max(1, SESIONES_POR_SOBRE * monedasPorLeccion);
+}
+
+/** Lo que paga vender una repetida: el 80 % de lo que cuesta cada lámina del sobre (precio ÷ láminas), mínimo 1. */
+export function valorDeVenta(album) {
+  return Math.max(1, Math.round((precioDeSobre(album) / LAMINAS_POR_SOBRE) * PORCENTAJE_VENTA));
 }
 
 /** Saca `cantidad` láminas al azar entre las que están en juego (pueden repetirse). */
@@ -25,7 +30,7 @@ export function crearCompraSobre({ perfilId, precio, codigos, fecha = new Date()
 }
 
 /** El movimiento que paga una lámina repetida. */
-export function crearVenta({ perfilId, codigo, valor = VALOR_VENTA, fecha = new Date().toISOString() }) {
+export function crearVenta({ perfilId, codigo, valor = 1, fecha = new Date().toISOString() }) {
   return { perfilId, fecha, cantidad: valor, tipo: 'venta', nota: 'Lámina repetida', codigo };
 }
 

@@ -1094,6 +1094,10 @@ img.calcomania-grande { border-width: 3px; border-radius: 24px; }
 .sobre-acciones .boton-respuesta { width: clamp(80px, 18vmin, 120px); }
 .sobre-acciones.aparece { animation: aparecer 0.5s ease-out; }
 .sobre-acciones[hidden] { display: none; }
+.libro-cargando { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; background: var(--fondo, #eaf3fa); }
+.libro-cargando p { margin: 0; }
+.libro-cargando-giro { width: 72px; height: 72px; border-radius: 50%; border: 8px solid var(--borde); border-top-color: var(--azul); animation: libro-giro 0.9s linear infinite; }
+@keyframes libro-giro { to { transform: rotate(360deg); } }
 .repetida-carta { position: relative; }
 .repetida-carta img.calcomania { width: clamp(80px, 16vmin, 120px); }
 .repetida-sobran { position: absolute; top: 8px; right: 10px; font-weight: 800; font-size: 1.3rem; }

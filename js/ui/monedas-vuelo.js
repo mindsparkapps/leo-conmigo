@@ -41,7 +41,7 @@ export function sonidoMoneda(indice = 0) {
  * @param sonido    false para que no suenen
  * @returns Promise que se cumple cuando llegó la última
  */
-export function lanzarMonedas({ cantidad, origen = null, sonido = true, movimientoReducido = false, activo = () => true }) {
+export function lanzarMonedas({ cantidad, origen = null, sonido = true, movimientoReducido = false, activo = () => true, desdeOrigen = false }) {
   const visibles = Math.min(cantidad, MAX_VISIBLES);
   const valores = Array.from({ length: visibles }, (_, i) => Math.floor(cantidad / visibles) + (i < cantidad % visibles ? 1 : 0));
   const destino = destinoSaldo();
@@ -63,11 +63,30 @@ export function lanzarMonedas({ cantidad, origen = null, sonido = true, movimien
       const moneda = crearMoneda3D({ gira: true, tamano });
       moneda.classList.add('moneda-vuela');
       document.body.append(moneda);
-      const x0 = centro.x + (Math.random() - 0.5) * innerWidth * 0.45 - tamano / 2;
-      const y0 = centro.y + (Math.random() - 0.5) * innerHeight * 0.25 - tamano / 2;
+      const x0 = desdeOrigen ? centro.x - tamano / 2 : centro.x + (Math.random() - 0.5) * innerWidth * 0.45 - tamano / 2;
+      const y0 = desdeOrigen ? centro.y - tamano / 2 : centro.y + (Math.random() - 0.5) * innerHeight * 0.25 - tamano / 2;
       const x1 = destino.x - tamano / 2;
       const y1 = destino.y - tamano / 2;
-      const retraso = i * 110;
+      const retraso = i * (desdeOrigen ? 140 : 110);
+      if (desdeOrigen && moneda.animate && !movimientoReducido) {
+        // todas salen del mismo punto y cada una hace un rodeo distinto (un punto intermedio al azar) hasta el total
+        const mx = (x0 + x1) / 2 + (Math.random() - 0.5) * innerWidth * 0.5;
+        const my = (y0 + y1) / 2 + (Math.random() - 0.5) * innerHeight * 0.4;
+        const animacion = moneda.animate(
+          [
+            { transform: `translate(${x0}px, ${y0}px) scale(0.3)`, opacity: 0 },
+            { transform: `translate(${x0}px, ${y0 - 16}px) scale(1.1)`, opacity: 1, offset: 0.12 },
+            { transform: `translate(${mx}px, ${my}px) scale(0.9)`, opacity: 1, offset: 0.55 },
+            { transform: `translate(${x1}px, ${y1}px) scale(0.45)`, opacity: 1 },
+          ],
+          { duration: 1000 + Math.random() * 250, delay: retraso, easing: 'ease-in-out', fill: 'both' },
+        );
+        animacion.onfinish = () => {
+          moneda.remove();
+          llegar(i);
+        };
+        continue;
+      }
       if (movimientoReducido || !moneda.animate) {
         moneda.remove();
         setTimeout(() => llegar(i), retraso);

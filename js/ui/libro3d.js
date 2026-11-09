@@ -389,14 +389,9 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
         ultimoToque.t = -Infinity;
         enfocar(sitio.cara, sitio.u, sitio.v, semiLado);
       } else {
-        ultimoToque.t = ahora;
-        clearTimeout(pendiente);
-        const x = e.clientX;
-        pendiente = setTimeout(() => pasarPorToque(x), DOBLE_TOQUE_MS); // espera por si es un doble toque
+        ultimoToque.t = ahora; // un solo toque no voltea la página: las hojas se pasan solo arrastrando (o con las flechas)
       }
-      return;
     }
-    pasarPorToque(e.clientX);
   };
   lienzo.addEventListener('pointerup', (e) => soltar(e, false));
   lienzo.addEventListener('pointercancel', (e) => soltar(e, true));
