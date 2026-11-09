@@ -4,7 +4,7 @@ import { el } from '../ui/dom.js';
 import { cabecera, cargando, mostrarError, describirError } from '../ui/adulto.js';
 import { crearMiniatura } from '../ui/miniatura.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
-import { urlDeMedio, liberarUrls } from '../medios.js';
+import { urlDeMedio, liberarUrls, ponerVocesIniciales } from '../medios.js';
 import { decirPalabra, desbloquearAudio, detener } from '../audio.js';
 import {
   armarPalabrasDelAsistente, agruparPorCategoria, clavePalabra, mover, nombreDeCategoria, ordenadas,
@@ -190,6 +190,7 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
             catalogo: pendientes.filter((e) => elegidas.has(e.texto)),
             existentes: palabras,
           });
+          await ponerVocesIniciales(store, nuevas, catalogo);
           await store.guardarVarios('palabras', nuevas);
           repintar({ catalogoAbierto: true });
         } catch (e) {

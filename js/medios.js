@@ -8,6 +8,32 @@ export async function guardarMedio(store, { tipo, blob, mime, origen, arasaacId 
 }
 
 /**
+ * A las palabras recién creadas desde el catálogo les pone su audio grabado (campo `voz` del catálogo:
+ * ruta de un mp3 de la app). Si el archivo no existe o no se puede bajar, la palabra queda con la voz sintética.
+ * Modifica las palabras y devuelve cuántas recibieron audio; hay que guardarlas después.
+ */
+export async function ponerVocesIniciales(store, palabras, catalogo) {
+  const rutaDe = new Map(catalogo.filter((c) => c.voz).map((c) => [c.texto, c.voz]));
+  let puestas = 0;
+  for (const palabra of palabras) {
+    const ruta = rutaDe.get(palabra.texto);
+    if (!ruta || palabra.medioAudioId) continue;
+    try {
+      const respuesta = await fetch(ruta);
+      if (!respuesta.ok) continue;
+      const blob = await respuesta.blob();
+      if (!blob.size) continue;
+      const medio = await guardarMedio(store, { tipo: 'audio', blob, mime: 'audio/mpeg', origen: 'catalogo' });
+      palabra.medioAudioId = medio.id;
+      puestas += 1;
+    } catch {
+      // sin red o sin el archivo: se queda con la voz sintética
+    }
+  }
+  return puestas;
+}
+
+/**
  * Quita un medio: se borra el contenido (para no acumular fotos viejas) y queda la marca
  * de borrado para que se sincronice con los demás dispositivos.
  */

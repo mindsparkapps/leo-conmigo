@@ -9,7 +9,7 @@ import { crearSelectorFoto } from '../ui/selector-foto.js';
 import { obtenerStore, fijarPerfilActivo } from '../contexto.js';
 import { nuevoPerfil } from '../core/modelos.js';
 import { armarPalabrasDelAsistente, agruparPorCategoria, nombreDeCategoria, MAX_LARGO_PALABRA } from '../core/vocabulario.js';
-import { guardarMedio, borrarMedio } from '../medios.js';
+import { guardarMedio, borrarMedio, ponerVocesIniciales } from '../medios.js';
 
 export const titulo = 'Nuevo niño · Leo Conmigo';
 
@@ -226,6 +226,7 @@ async function iniciar(raiz, ir, limpiezas, estaVivo) {
         catalogo: catalogo.filter((e) => marcadas.has(e.texto)),
         existentes,
       });
+      await ponerVocesIniciales(store, palabras, catalogo);
       await store.guardarVarios('palabras', palabras);
 
       // Las fotos que quedaron sin usar (palabra repetida) no se guardan

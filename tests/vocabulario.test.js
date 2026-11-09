@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import {
   CATEGORIAS, MAX_LARGO_PALABRA, nombreDeCategoria, normalizarTexto, clavePalabra, existeTexto, validarTexto, parsearSilabas,
   silabasForman, siguienteOrden, ordenadas, mover, agruparPorCategoria, armarPalabrasDelAsistente,
@@ -17,7 +17,9 @@ test('catálogo inicial: 48 entradas completas, sin repetir y con sílabas que f
   const ids = CATEGORIAS.map((c) => c.id);
   const vistos = new Set();
   for (const e of CATALOGO) {
-    assert.deepEqual(Object.keys(e).sort(), ['arasaacBusqueda', 'categoria', 'emoji', 'silabas', 'texto', 'tipo']);
+    const { voz, ...basicos } = e; // `voz` es opcional: ruta de un mp3 de la app
+    assert.deepEqual(Object.keys(basicos).sort(), ['arasaacBusqueda', 'categoria', 'emoji', 'silabas', 'texto', 'tipo']);
+    if (voz !== undefined) assert.ok(existsSync(new URL(`../${voz}`, import.meta.url)), `falta el audio ${voz}`);
     assert.ok(ids.includes(e.categoria), `${e.texto}: categoría ${e.categoria}`);
     assert.ok(['sustantivo', 'enlace'].includes(e.tipo));
     assert.equal(silabasForman(e.silabas, e.texto), true, e.texto);
