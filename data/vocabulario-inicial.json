@@ -198,5 +198,21 @@
   {"texto":"oveja","silabas":["o","ve","ja"],"categoria":"animales","tipo":"sustantivo","emoji":"🐑","arasaacBusqueda":"oveja","voz":"data/voces/oveja.mp3"},
   {"texto":"chancho","silabas":["chan","cho"],"categoria":"animales","tipo":"sustantivo","emoji":"🐷","arasaacBusqueda":"chancho","voz":"data/voces/chancho.mp3"},
   {"texto":"gallina","silabas":["ga","lli","na"],"categoria":"animales","tipo":"sustantivo","emoji":"🐔","arasaacBusqueda":"gallina","voz":"data/voces/gallina.mp3"},
-  {"texto":"mariposa","silabas":["ma","ri","po","sa"],"categoria":"animales","tipo":"sustantivo","emoji":"🦋","arasaacBusqueda":"mariposa","voz":"data/voces/mariposa.mp3"}
+  {"texto":"mariposa","silabas":["ma","ri","po","sa"],"categoria":"animales","tipo":"sustantivo","emoji":"🦋","arasaacBusqueda":"mariposa","voz":"data/voces/mariposa.mp3"},
+  {"texto":"abeja","silabas":["a","be","ja"],"categoria":"animales","tipo":"sustantivo","emoji":"🐝","arasaacBusqueda":"abeja","voz":"data/voces/abeja.mp3"},
+  {"texto":"hormiga","silabas":["hor","mi","ga"],"categoria":"animales","tipo":"sustantivo","emoji":"🐜","arasaacBusqueda":"hormiga","voz":"data/voces/hormiga.mp3"},
+  {"texto":"araña","silabas":["a","ra","ña"],"categoria":"animales","tipo":"sustantivo","emoji":"🕷️","arasaacBusqueda":"araña","voz":"data/voces/arana.mp3"},
+  {"texto":"rana","silabas":["ra","na"],"categoria":"animales","tipo":"sustantivo","emoji":"🐸","arasaacBusqueda":"rana","voz":"data/voces/rana.mp3"},
+  {"texto":"bici","silabas":["bi","ci"],"categoria":"juguetes","tipo":"sustantivo","emoji":"🚲","arasaacBusqueda":"bici","voz":"data/voces/bici.mp3"},
+  {"texto":"osito","silabas":["o","si","to"],"categoria":"juguetes","tipo":"sustantivo","emoji":"🧸","arasaacBusqueda":"osito","voz":"data/voces/osito.mp3"},
+  {"texto":"tren","silabas":["tren"],"categoria":"juguetes","tipo":"sustantivo","emoji":"🚂","arasaacBusqueda":"tren","voz":"data/voces/tren.mp3"},
+  {"texto":"avión","silabas":["a","vión"],"categoria":"juguetes","tipo":"sustantivo","emoji":"✈️","arasaacBusqueda":"avión","voz":"data/voces/avion.mp3"},
+  {"texto":"bote","silabas":["bo","te"],"categoria":"juguetes","tipo":"sustantivo","emoji":"⛵","arasaacBusqueda":"bote","voz":"data/voces/bote.mp3"},
+  {"texto":"lápiz","silabas":["lá","piz"],"categoria":"juguetes","tipo":"sustantivo","emoji":"✏️","arasaacBusqueda":"lápiz","voz":"data/voces/lapiz.mp3"},
+  {"texto":"papel","silabas":["pa","pel"],"categoria":"juguetes","tipo":"sustantivo","emoji":"📄","arasaacBusqueda":"papel","voz":"data/voces/papel.mp3"},
+  {"texto":"mochila","silabas":["mo","chi","la"],"categoria":"juguetes","tipo":"sustantivo","emoji":"🎒","arasaacBusqueda":"mochila","voz":"data/voces/mochila.mp3"},
+  {"texto":"zapato","silabas":["za","pa","to"],"categoria":"juguetes","tipo":"sustantivo","emoji":"👟","arasaacBusqueda":"zapato","voz":"data/voces/zapato.mp3"},
+  {"texto":"calcetín","silabas":["cal","ce","tín"],"categoria":"juguetes","tipo":"sustantivo","emoji":"🧦","arasaacBusqueda":"calcetín","voz":"data/voces/calcetin.mp3"},
+  {"texto":"pantalón","silabas":["pan","ta","lón"],"categoria":"juguetes","tipo":"sustantivo","emoji":"👖","arasaacBusqueda":"pantalón","voz":"data/voces/pantalon.mp3"},
+  {"texto":"chaqueta","silabas":["cha","que","ta"],"categoria":"juguetes","tipo":"sustantivo","emoji":"🧥","arasaacBusqueda":"chaqueta","voz":"data/voces/chaqueta.mp3"}
 ]
