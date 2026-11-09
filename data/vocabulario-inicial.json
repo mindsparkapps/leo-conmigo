@@ -118,5 +118,21 @@
   {"texto":"amigo","silabas":["a","mi","go"],"categoria":"personas","tipo":"sustantivo","emoji":"🧑","arasaacBusqueda":"amigo","voz":"data/voces/amigo.mp3"},
   {"texto":"amiga","silabas":["a","mi","ga"],"categoria":"personas","tipo":"sustantivo","emoji":"👩","arasaacBusqueda":"amiga","voz":"data/voces/amiga.mp3"},
   {"texto":"niño","silabas":["ni","ño"],"categoria":"personas","tipo":"sustantivo","emoji":"🧒","arasaacBusqueda":"niño","voz":"data/voces/nino.mp3"},
-  {"texto":"niña","silabas":["ni","ña"],"categoria":"personas","tipo":"sustantivo","emoji":"👧","arasaacBusqueda":"niña","voz":"data/voces/nina.mp3"}
+  {"texto":"niña","silabas":["ni","ña"],"categoria":"personas","tipo":"sustantivo","emoji":"👧","arasaacBusqueda":"niña","voz":"data/voces/nina.mp3"},
+  {"texto":"profe","silabas":["pro","fe"],"categoria":"personas","tipo":"sustantivo","emoji":"🧑‍🏫","arasaacBusqueda":"profe","voz":"data/voces/profe.mp3"},
+  {"texto":"doctor","silabas":["doc","tor"],"categoria":"personas","tipo":"sustantivo","emoji":"🧑‍⚕️","arasaacBusqueda":"doctor","voz":"data/voces/doctor.mp3"},
+  {"texto":"primo","silabas":["pri","mo"],"categoria":"personas","tipo":"sustantivo","emoji":"🧒","arasaacBusqueda":"primo","voz":"data/voces/primo.mp3"},
+  {"texto":"prima","silabas":["pri","ma"],"categoria":"personas","tipo":"sustantivo","emoji":"👧","arasaacBusqueda":"prima","voz":"data/voces/prima.mp3"},
+  {"texto":"cara","silabas":["ca","ra"],"categoria":"cuerpo","tipo":"sustantivo","emoji":"🙂","arasaacBusqueda":"cara","voz":"data/voces/cara.mp3"},
+  {"texto":"pelo","silabas":["pe","lo"],"categoria":"cuerpo","tipo":"sustantivo","emoji":"💇","arasaacBusqueda":"pelo","voz":"data/voces/pelo.mp3"},
+  {"texto":"oreja","silabas":["o","re","ja"],"categoria":"cuerpo","tipo":"sustantivo","emoji":"👂","arasaacBusqueda":"oreja","voz":"data/voces/oreja.mp3"},
+  {"texto":"dedo","silabas":["de","do"],"categoria":"cuerpo","tipo":"sustantivo","emoji":"☝️","arasaacBusqueda":"dedo","voz":"data/voces/dedo.mp3"},
+  {"texto":"brazo","silabas":["bra","zo"],"categoria":"cuerpo","tipo":"sustantivo","emoji":"💪","arasaacBusqueda":"brazo","voz":"data/voces/brazo.mp3"},
+  {"texto":"pierna","silabas":["pier","na"],"categoria":"cuerpo","tipo":"sustantivo","emoji":"🦵","arasaacBusqueda":"pierna","voz":"data/voces/pierna.mp3"},
+  {"texto":"panza","silabas":["pan","za"],"categoria":"cuerpo","tipo":"sustantivo","emoji":"🤰","arasaacBusqueda":"panza","voz":"data/voces/panza.mp3"},
+  {"texto":"diente","silabas":["dien","te"],"categoria":"cuerpo","tipo":"sustantivo","emoji":"🦷","arasaacBusqueda":"diente","voz":"data/voces/diente.mp3"},
+  {"texto":"lengua","silabas":["len","gua"],"categoria":"cuerpo","tipo":"sustantivo","emoji":"👅","arasaacBusqueda":"lengua","voz":"data/voces/lengua.mp3"},
+  {"texto":"cabeza","silabas":["ca","be","za"],"categoria":"cuerpo","tipo":"sustantivo","emoji":"🧠","arasaacBusqueda":"cabeza","voz":"data/voces/cabeza.mp3"},
+  {"texto":"arroz","silabas":["a","rroz"],"categoria":"comida","tipo":"sustantivo","emoji":"🍚","arasaacBusqueda":"arroz","voz":"data/voces/arroz.mp3"},
+  {"texto":"huevo","silabas":["hue","vo"],"categoria":"comida","tipo":"sustantivo","emoji":"🥚","arasaacBusqueda":"huevo","voz":"data/voces/huevo.mp3"}
 ]
