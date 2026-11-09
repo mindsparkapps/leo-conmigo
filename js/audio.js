@@ -1,5 +1,7 @@
 // Reproducción de voz: grabación del adulto (prioridad) o voz sintética es-CL (respaldo).
 
+import { rutaDeFrase } from './frases-voz.js';
+
 const PREFERIDAS = ['es-CL', 'es-419', 'es-US', 'es-MX', 'es-ES'];
 const normalizarLang = (lang) => String(lang ?? '').replace('_', '-').toLowerCase();
 
@@ -86,7 +88,16 @@ export function detener() {
 }
 
 async function hablarTextoInterno(texto, { velocidad = 1 } = {}) {
-  if (!hayVozSintetica() || !String(texto ?? '').trim()) return false;
+  if (!String(texto ?? '').trim()) return false;
+  // Las frases fijas de la app (consignas, felicitaciones, tienda, álbum) tienen su grabación
+  const ruta = rutaDeFrase(texto);
+  if (ruta) {
+    try {
+      const respuesta = await fetch(ruta);
+      if (respuesta.ok && (await reproducirBlobInterno(await respuesta.blob(), { velocidad }))) return true;
+    } catch { /* sin el archivo o sin red: voz sintética */ }
+  }
+  if (!hayVozSintetica()) return false;
   const voz = elegirVoz(await cargarVoces());
   pararSonido();
   return new Promise((resolver) => {
