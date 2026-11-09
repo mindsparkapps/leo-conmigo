@@ -39,18 +39,20 @@ export async function ponerVocesIniciales(store, palabras, catalogo) {
  * Una grabación del adulto nunca se pisa, y si la quita después no vuelve.
  */
 export async function completarVocesIniciales(store, perfilId) {
-  const marca = `vocesIniciales1-${perfilId}`;
+  const marca = `vocesIniciales2-${perfilId}`;
   try {
-    if (await store.leerMeta(marca)) return 0;
     const respuesta = await fetch('data/vocabulario-inicial.json');
     if (!respuesta.ok) return 0;
     const catalogo = await respuesta.json();
+    // La marca guarda cuántas voces tenía el catálogo la última vez: si se agregan voces nuevas, se vuelve a revisar
+    const totalConVoz = catalogo.filter((c) => c.voz).length;
+    if ((await store.leerMeta(marca)) === totalConVoz) return 0;
     const palabras = (await store.listar('palabras', { perfilId })).filter((p) => !p.deleted && !p.medioAudioId);
     const puestas = await ponerVocesIniciales(store, palabras, catalogo);
     const cambiadas = palabras.filter((p) => p.medioAudioId);
     if (cambiadas.length) await store.guardarVarios('palabras', cambiadas);
     const conVoz = new Set(catalogo.filter((c) => c.voz).map((c) => c.texto));
-    if (puestas === palabras.filter((p) => conVoz.has(p.texto)).length) await store.escribirMeta(marca, true);
+    if (puestas === palabras.filter((p) => conVoz.has(p.texto)).length) await store.escribirMeta(marca, totalConVoz);
     return puestas;
   } catch {
     return 0;
