@@ -62,5 +62,13 @@
   {"texto":"vamos","silabas":["va","mos"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"vamos","voz":"data/voces/vamos.mp3"},
   {"texto":"hola","silabas":["ho","la"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"hola","voz":"data/voces/hola.mp3"},
   {"texto":"adiós","silabas":["a","diós"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"adiós","voz":"data/voces/adios.mp3"},
-  {"texto":"gracias","silabas":["gra","cias"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"gracias","voz":"data/voces/gracias.mp3"}
+  {"texto":"gracias","silabas":["gra","cias"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"gracias","voz":"data/voces/gracias.mp3"},
+  {"texto":"favor","silabas":["fa","vor"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"favor","voz":"data/voces/favor.mp3"},
+  {"texto":"más","silabas":["más"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"más","voz":"data/voces/mas.mp3"},
+  {"texto":"ya","silabas":["ya"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"ya","voz":"data/voces/ya.mp3"},
+  {"texto":"aquí","silabas":["a","quí"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"aquí","voz":"data/voces/aqui.mp3"},
+  {"texto":"con","silabas":["con"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"con","voz":"data/voces/con-palabra.mp3"},
+  {"texto":"de","silabas":["de"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"de","voz":"data/voces/de.mp3"},
+  {"texto":"en","silabas":["en"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"en","voz":"data/voces/en.mp3"},
+  {"texto":"a","silabas":["a"],"categoria":"enlace","tipo":"enlace","emoji":"","arasaacBusqueda":"a","voz":"data/voces/a.mp3"}
 ]
