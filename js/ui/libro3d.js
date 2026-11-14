@@ -265,7 +265,7 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
   /** Va a una cara (en modo 'doble', a la doble página que la contiene). */
   function irACara(destino) {
     const f = limitar(Math.round(destino), 0, caras.length - 1);
-    if (modo === 'pagina') cara = f;
+    if (modo === 'pagina') cara = f === 1 ? 2 : f;
     else {
       pasadas = Math.ceil(f / 2);
       cara = pasadas * 2;
@@ -273,10 +273,17 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
     aplicarEstado();
   }
 
+  // En modo 'pagina' se salta la cara 1 (el reverso de la portada, que no tiene nada): de la portada se pasa directo
+  // a la primera página, y de ella se vuelve directo a la portada.
+  function siguienteCara(direccion) {
+    const n = cara + direccion;
+    return modo === 'pagina' && n === 1 ? (direccion > 0 ? 2 : 0) : n;
+  }
+
   function pasar(direccion) {
     if (direccion > 0 && !puedeAdelante()) return;
     if (direccion < 0 && !puedeAtras()) return;
-    if (modo === 'pagina') cara += direccion;
+    if (modo === 'pagina') cara = siguienteCara(direccion);
     else {
       pasadas += direccion;
       cara = pasadas * 2;
@@ -329,8 +336,9 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
     if (modo === 'doble') j = dir > 0 ? pasadas : pasadas - 1;
     else if (dir > 0 && cara % 2 === 0) j = cara / 2;
     else if (dir < 0 && cara % 2 === 1) j = (cara - 1) / 2;
+    else if (dir < 0 && cara === 2) j = 0; // de la primera página a la portada (sin pasar por el reverso vacío)
     if (j >= 0) espera[j] = 0;
-    arrastre = { dir, j, t: 0, focoBase: foco, focoDestino: (cara + dir) % 2 === 0 ? ANCHO / 2 : -ANCHO / 2 };
+    arrastre = { dir, j, t: 0, focoBase: foco, focoDestino: siguienteCara(dir) % 2 === 0 ? ANCHO / 2 : -ANCHO / 2 };
   }
   function moverArrastre(t) {
     arrastre.t = t;

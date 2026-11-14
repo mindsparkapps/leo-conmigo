@@ -1008,9 +1008,17 @@ img.calcomania-grande { border-width: 3px; border-radius: 24px; }
 .lamina-frente .lamina-img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 14px; }
 .lamina-frente .calcomania-propia { width: 100%; height: 100%; border: 0; border-radius: 14px; }
 .lamina-dorso { transform: rotateY(180deg); background: #fdf8ea; color: var(--azul-oscuro); gap: 2px; text-align: center; }
-.lamina-dorso { padding: 2px; }
-.dorso-titulo { font-size: 0.7rem; line-height: 1; color: var(--texto-suave); }
-.dorso-letra, .dorso-numero { font-size: clamp(1.4rem, 6vmin, 2.4rem); font-weight: 700; line-height: 1; }
+/* El texto del dorso se mide en la caja de la lámina (cqmin): siempre cabe, sea cual sea su tamaño en pantalla */
+.lamina-dorso { padding: 2px; container-type: size; justify-content: space-evenly; gap: 0; overflow: hidden; }
+.dorso-titulo { font-size: 14cqmin; line-height: 1; color: var(--texto-suave); }
+.dorso-letra, .dorso-numero { font-size: min(26cqmin, 44cqw); font-weight: 700; line-height: 1; max-width: 100%; }
+/* Las láminas por pegar flotan (con la propiedad `translate`, que no pisa el giro ni el arrastre) */
+.lamina-suelta { animation: suelta-flota 3s ease-in-out infinite; }
+.lamina-suelta:nth-child(2n) { animation-delay: -1s; }
+.lamina-suelta:nth-child(3n) { animation-delay: -2s; }
+.lamina-suelta.arrastrando, .lamina-suelta.pegada { animation: none; }
+@keyframes suelta-flota { 0%, 100% { translate: 0 0; } 50% { translate: 0 -7px; } }
+@media (prefers-reduced-motion: reduce) { .lamina-suelta { animation: none; } }
 .libro-flecha {
   display: grid; place-items: center; width: 72px; height: 72px; padding: 14px; border: 0; border-radius: 18px;
   background: var(--azul); color: #fff; cursor: pointer; touch-action: manipulation;
@@ -1020,6 +1028,24 @@ img.calcomania-grande { border-width: 3px; border-radius: 24px; }
 .libro-puntos { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; max-width: 120px; }
 .libro-puntos .punto { width: 12px; height: 12px; border-radius: 50%; border: 3px solid var(--borde-fuerte); }
 .libro-puntos .punto.lleno { background: var(--amarillo); border-color: var(--amarillo); }
+
+/* Celular acostado: el libro ocupa casi toda la pantalla; las láminas por pegar van arriba y los controles en una columna a la derecha
+   (va DESPUÉS de las reglas base de arriba para que gane) */
+@media (orientation: landscape) and (max-height: 520px) {
+  .libro-nino { padding: 8px 8px 8px 84px; gap: 0; }
+  .libro-nino .boton-casa-chico { top: 8px; left: 8px; width: 64px; }
+  .libro-zona { display: grid; grid-template-columns: minmax(0, 1fr) 190px; grid-template-rows: auto minmax(0, 1fr); gap: 4px 10px; align-items: stretch; }
+  .libro-zona > .laminas-sueltas { grid-column: 1; grid-row: 1; min-height: 0; }
+  .libro-zona > .libro-lienzo-zona { grid-column: 1; grid-row: 2; min-height: 0; }
+  .libro-zona > .libro-controles { grid-column: 2; grid-row: 1 / span 2; justify-content: center; padding-top: 52px; gap: 8px; overflow-y: auto; }
+  .lamina-suelta { width: clamp(44px, 16vh, 70px); }
+  .libro-letras { max-width: 190px; gap: 4px; }
+  .libro-letra { width: 30px; height: 30px; border-width: 2px; font-size: 0.95rem; }
+  .libro-flechas { flex-wrap: wrap; gap: 6px; }
+  .libro-lado { flex: 1 1 100%; justify-content: center; gap: 8px; }
+  .libro-flecha { width: 52px; height: 52px; padding: 10px; border-radius: 14px; }
+  .libro-avance { min-width: 40px; }
+}
 
 /* La vista es el desplazador (rueda del ratón y dedo): ocupa toda la ventana con altura fija; el botón de la casa queda fijo */
 .albumes-nino, .tienda-nino {
@@ -1087,10 +1113,11 @@ img.calcomania-grande { border-width: 3px; border-radius: 24px; }
 .sobre-grande.vacio .sobre-cuerpo { transform: translateY(60vh); opacity: 0; }
 .sobre-laminas { position: absolute; z-index: 1; left: 11%; right: 11%; top: 17%; }
 .sobre-lamina {
-  position: absolute; top: 0; left: 0; width: 100%; z-index: calc(var(--i) + 1); border-radius: 10px; background: #fff;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35); transition: transform 0.75s cubic-bezier(0.2, 0.8, 0.3, 1);
+  position: absolute; top: 0; left: 0; width: 100%; z-index: calc(var(--i) + 1); border-radius: 10px;
+  transition: transform 0.75s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
-.sobre-lamina > * { display: block; width: 100%; height: auto; border-radius: 10px; }
+/* El fondo y la sombra van en la imagen (que es la que flota), no en la caja fija: si no, queda un marco quieto detrás */
+.sobre-lamina > * { display: block; width: 100%; height: auto; border-radius: 10px; background: #fff; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35); }
 .sobre-lamina > .calcomania-grande { width: 100%; aspect-ratio: 1; }
 .sobre-lamina.sale { transform: translateY(calc(var(--w) * -1.05)); }
 .sobre-lamina.abanico {
