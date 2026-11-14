@@ -153,6 +153,7 @@ async function pintar(vista, ir, estaVivo) {
       el('h1', { class: 'titulo-nino' }, perfil.nombre),
       hayQuePracticar ? null : el('p', { class: 'mensaje-nino' }, 'Un adulto debe agregar palabras con imagen.'),
       menu,
+      el('p', { class: 'version-app' }, TEXTO_VERSION),
     ].filter(Boolean), // un nodo null se escribiría como el texto «null»
   );
 }
