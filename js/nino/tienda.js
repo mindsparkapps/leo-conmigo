@@ -147,6 +147,7 @@ async function iniciar(zona, estaVivo) {
           {
             type: 'button',
             class: alcanza ? 'premio-carta' : 'premio-carta premio-lejos',
+            'data-flip': `p-${premio.id ?? premio.nombre}`,
             'aria-label': `${premio.nombre}, ${textoMonedas(premio.precio)}`,
             onclick: () => {
               if (ocupado || !toqueValido()) return;
@@ -193,6 +194,7 @@ async function iniciar(zona, estaVivo) {
             {
               type: 'button',
               class: 'repetida-item repetida-carta',
+              'data-flip': `r-${codigo}`,
               'aria-label': `Vender una lámina repetida por ${textoMonedas(valorVenta)}. Te sobran ${sobran}`,
               onclick: async (e) => {
                 if (ocupado || !toqueValido()) return;
@@ -221,10 +223,22 @@ async function iniciar(zona, estaVivo) {
       )
     ).filter(Boolean);
     if (!estaVivo()) return;
+    // Para mover con suavidad lo que cambia de sitio (al vender una lámina las demás se acomodan sin saltar)
+    const antes = new Map([...zona.querySelectorAll('[data-flip]')].map((n) => [n.dataset.flip, n.getBoundingClientRect()]));
     zona.replaceChildren(
       ...[
         aviso ? el('p', { class: 'mensaje-nino mensaje-premio', role: 'status' }, aviso) : null,
-        el('div', { class: 'tienda-grilla' }, sobre),
+        // Productos (sobre y premios) a la izquierda y láminas repetidas a la derecha cuando la pantalla es ancha (CSS)
+        el('div', { class: 'tienda-productos' },
+          el('div', { class: 'tienda-grilla' }, sobre),
+          premios.length ? el('h2', { class: 'tienda-titulo' }, 'Premios') : null,
+          premios.length ? el('div', { class: 'tienda-grilla' }, cartas) : el('p', { class: 'mensaje-nino' }, 'Todavía no hay premios.'),
+        ),
+        cartasRepetidas.length
+          ? el('div', { class: 'tienda-repetidas' },
+            el('h2', { class: 'tienda-titulo' }, 'Láminas repetidas'),
+            el('div', { class: 'repetidas-caja' }, cartasRepetidas))
+          : null,
         // Herramienta de desarrollador (Ajustes → modo adulto): regala mil monedas
         saltarLeccionActivo()
           ? el(
@@ -248,13 +262,20 @@ async function iniciar(zona, estaVivo) {
           )
           : null,
         saltarLeccionActivo() ? selectorDeColores() : null,
-        cartasRepetidas.length ? el('h2', { class: 'tienda-titulo' }, 'Láminas repetidas') : null,
-        cartasRepetidas.length ? el('div', { class: 'repetidas-caja' }, cartasRepetidas) : null,
-        premios.length ? el('h2', { class: 'tienda-titulo' }, 'Premios') : null,
-        premios.length ? el('div', { class: 'tienda-grilla' }, cartas) : el('p', { class: 'mensaje-nino' }, 'Todavía no hay premios.'),
       ].filter(Boolean),
     );
     aviso = null;
+    if (antes.size && !matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      zona.querySelectorAll('[data-flip]').forEach((n) => {
+        const viejo = antes.get(n.dataset.flip);
+        if (!viejo || !n.animate) return;
+        const nuevo = n.getBoundingClientRect();
+        const dx = viejo.left - nuevo.left;
+        const dy = viejo.top - nuevo.top;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+        n.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }], { duration: 550, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' });
+      });
+    }
   }
 
   async function comprar() {

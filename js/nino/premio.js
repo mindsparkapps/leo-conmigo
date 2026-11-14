@@ -16,8 +16,8 @@ import { lanzarMonedas } from '../ui/monedas-vuelo.js';
 
 export const titulo = NOMBRE_APP;
 
-const ICONO_CASA = `
-<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path d="M32 8L6 32h8v22h14V40h8v14h14V32h8z" fill="currentColor"/></svg>`;
+const ICONO_JUGAR = `
+<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path d="M18 8l38 24-38 24z" fill="currentColor"/></svg>`;
 
 let premio = null;
 
@@ -57,10 +57,15 @@ export function montar(contenedor, { ir }) {
     return undefined;
   }
   const { codigo, ajustes, album = null, saldo = 0, monedas = 0, saldoAntes = 0 } = premio;
-  const casa = el('button', { type: 'button', class: 'boton-casa', 'aria-label': 'Volver al inicio', onclick: () => ir('/nino') });
-  casa.innerHTML = ICONO_CASA;
+  // Al completar la práctica: el botón es «volver a jugar» (la casa queda para el resto de pantallas)
+  const casa = el('button', { type: 'button', class: 'boton-jugar premio-jugar', 'aria-label': 'Volver a jugar', onclick: () => { desbloquearAudio(); ir('/nino/sesion'); } });
+  casa.innerHTML = ICONO_JUGAR;
 
   const centro = el('div', { class: album ? 'premio-album' : 'premio-calcomania' });
+  if (!album) {
+    // La calcomanía flota; un toque la agranda y otro la devuelve a su tamaño
+    centro.addEventListener('click', () => centro.classList.toggle('ampliada'));
+  }
   const vista = el(
     'section',
     { class: 'vista-nino premio-nino', 'aria-label': album ? 'Completaste tu álbum' : 'Calcomanía nueva' },

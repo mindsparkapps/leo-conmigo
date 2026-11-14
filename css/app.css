@@ -490,6 +490,17 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 .calcomania-hueco { display: block; width: 100%; aspect-ratio: 1; border: 3px dashed var(--borde); border-radius: 50%; }
 
 .premio-nino { gap: 28px; justify-content: center; }
+/* La calcomanía del premio flota (con `translate`, que no pisa la animación de entrada); al tocarla se agranda */
+.premio-calcomania { cursor: pointer; animation: premio-flota 3.2s ease-in-out infinite; transition: scale 0.3s ease-out; }
+.premio-calcomania.ampliada { scale: 1.3; animation-play-state: paused; }
+@keyframes premio-flota { 0%, 100% { translate: 0 0; } 50% { translate: 0 -10px; } }
+@media (prefers-reduced-motion: reduce) { .premio-calcomania { animation: none; } }
+/* Horizontal: «volver a jugar» a la izquierda y el premio a la derecha */
+@media (orientation: landscape) {
+  .premio-nino { flex-direction: row; justify-content: space-evenly; }
+  .premio-nino .premio-jugar { order: -1; flex: none; }
+  .premio-nino .premio-calcomania, .premio-nino .premio-album { width: auto; flex: 0 1 auto; }
+}
 .calcomania-grande { width: clamp(180px, 45vmin, 320px); aspect-ratio: 1; animation: aparecer 0.7s ease-out; }
 @keyframes aparecer { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); } }
 
@@ -1041,10 +1052,17 @@ img.calcomania-grande { border-width: 3px; border-radius: 24px; }
   .lamina-suelta { width: clamp(44px, 16vh, 70px); }
   .libro-letras { max-width: 190px; gap: 4px; }
   .libro-letra { width: 30px; height: 30px; border-width: 2px; font-size: 0.95rem; }
-  .libro-flechas { flex-wrap: wrap; gap: 6px; }
-  .libro-lado { flex: 1 1 100%; justify-content: center; gap: 8px; }
+  /* «Por pegar» arriba, las dos flechas en medio y la barra con el porcentaje abajo */
+  .libro-flechas { flex-wrap: wrap; gap: 6px 10px; }
+  .libro-lado { display: contents; }
+  .libro-por-pegar { order: 1; flex: 1 1 100%; text-align: center; }
+  .libro-atras { order: 2; }
+  .libro-adelante { order: 3; }
+  .libro-avance { order: 4; flex: 1 1 60%; max-width: none; min-width: 40px; }
+  .libro-avance-texto { order: 5; }
   .libro-flecha { width: 52px; height: 52px; padding: 10px; border-radius: 14px; }
-  .libro-avance { min-width: 40px; }
+  /* la versión de la app, en la esquina superior izquierda */
+  .inicio-nino .version-app { position: absolute; top: 6px; left: 8px; font-size: 0.75rem; }
 }
 
 /* La vista es el desplazador (rueda del ratón y dedo): ocupa toda la ventana con altura fija; el botón de la casa queda fijo */
@@ -1076,6 +1094,22 @@ img.calcomania-grande { border-width: 3px; border-radius: 24px; }
 .tienda-nino > .tienda-zona > .miniatura-grande { width: clamp(150px, 32vmin, 260px); height: clamp(150px, 32vmin, 260px); }
 .mensaje-premio { color: var(--verde); font-weight: 700; }
 .tienda-titulo { margin: 8px 0 0; font-size: 1.6rem; }
+/* Vertical: una sola columna (sobre, láminas repetidas, premios). Los dos grupos se «disuelven» y el orden lo da `order` */
+.tienda-productos, .tienda-repetidas { display: contents; }
+.tienda-productos > :first-child { order: 1; }
+.tienda-repetidas > * { order: 2; }
+.tienda-productos > :not(:first-child) { order: 3; }
+.tienda-zona > .boton, .tienda-zona > .caja-colores { order: 4; }
+/* Horizontal: los productos de la tienda a la izquierda y las láminas repetidas a la derecha */
+@media (orientation: landscape) and (min-width: 700px) {
+  .tienda-zona { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; justify-items: center; gap: 20px 28px; }
+  .tienda-productos, .tienda-repetidas { display: flex; flex-direction: column; align-items: center; gap: 20px; grid-row: 2; width: 100%; }
+  .tienda-productos { grid-column: 1; }
+  .tienda-repetidas { grid-column: 2; }
+  .tienda-productos > *, .tienda-repetidas > * { order: 0; }
+  .tienda-zona > .mensaje-nino { grid-column: 1 / -1; grid-row: 1; max-width: none; }
+  .tienda-zona > .boton, .tienda-zona > .caja-colores { grid-column: 1 / -1; grid-row: 3; order: 0; }
+}
 /* ===== Sobre de láminas: metálico, con la portada del álbum ===== */
 .sobre-pack { --w: clamp(90px, 18vmin, 130px); position: relative; display: block; width: var(--w); aspect-ratio: 3 / 5; flex: none; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35)); }
 .sobre-grande { --w: clamp(150px, 36vmin, 280px); touch-action: none; cursor: grab; outline: none; animation: aparecer 0.6s ease-out; }
