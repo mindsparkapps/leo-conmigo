@@ -1021,7 +1021,12 @@ img.calcomania-grande { border-width: 3px; border-radius: 24px; }
 .libro-puntos .punto { width: 12px; height: 12px; border-radius: 50%; border: 3px solid var(--borde-fuerte); }
 .libro-puntos .punto.lleno { background: var(--amarillo); border-color: var(--amarillo); }
 
-.albumes-nino, .tienda-nino { justify-content: flex-start; padding-top: 112px; overflow-y: auto; }
+/* La vista es el desplazador (rueda del ratón y dedo): ocupa toda la ventana con altura fija; el botón de la casa queda fijo */
+.albumes-nino, .tienda-nino {
+  position: fixed; inset: 0; justify-content: flex-start; padding-top: 112px; overflow-y: auto; overflow-x: hidden;
+  touch-action: pan-y; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch;
+}
+.albumes-nino .boton-casa-chico, .tienda-nino .boton-casa-chico { position: fixed; }
 .albumes-zona, .tienda-zona { display: flex; flex-direction: column; align-items: center; gap: 24px; width: 100%; }
 
 .tienda-grilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 20px; width: min(100%, 760px); }
@@ -1090,10 +1095,20 @@ img.calcomania-grande { border-width: 3px; border-radius: 24px; }
 .sobre-lamina.sale { transform: translateY(calc(var(--w) * -1.05)); }
 .sobre-lamina.abanico {
   transform: translate(calc((var(--i) - 1) * min(var(--w) * 0.62, 30vw)), calc(var(--w) * -0.1)) rotate(calc((var(--i) - 1) * 7deg)) scale(1.1);
+  cursor: pointer;
 }
+/* Las láminas nuevas flotan; al pasar el ratón o tocarla, una pasa al frente, sube y crece un 20 % */
+.sobre-lamina.abanico > * { animation: lamina-flota 3.2s ease-in-out infinite; animation-delay: calc(var(--i) * -0.9s); }
+@keyframes lamina-flota { 0%, 100% { transform: translateY(0) rotate(-0.8deg); } 50% { transform: translateY(-9px) rotate(0.8deg); } }
+.sobre-lamina.abanico:hover, .sobre-lamina.abanico.frente {
+  z-index: 20; transition-duration: 0.25s;
+  transform: translate(calc((var(--i) - 1) * min(var(--w) * 0.62, 30vw)), calc(var(--w) * -0.1 - 26px)) rotate(0deg) scale(1.32);
+}
+.sobre-grande.vacio .sobre-cara { pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .sobre-lamina.abanico > * { animation: none; } }
 .sobre-escena {
   position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
-  padding: 90px 16px 24px; overflow: hidden; background: radial-gradient(circle at 50% 45%, #28375f, #0a0e1e);
+  padding: 90px 16px 24px; overflow: hidden; background: radial-gradient(circle at 50% 45%, #28375f, #0a0e1e); touch-action: none;
 }
 .sobre-escena .sobre-mensaje { margin: 0; color: #fff; text-align: center; }
 .sobre-centro { display: grid; place-items: center; min-height: calc(clamp(150px, 36vmin, 280px) * 1.7); }

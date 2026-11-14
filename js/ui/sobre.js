@@ -125,18 +125,21 @@ export function presentarSobre(zona, dibujos, { mensaje, acciones = [], alAbrir 
   // Arrastre: el recorrido horizontal con el dedo va cortando la tira
   let inicio = null;
   let movido = false;
-  sobre.addEventListener('pointerdown', (e) => {
-    if (abierto) return;
+  // Se escucha en toda la escena: el arrastre vale aunque empiece fuera del sobre y luego entre
+  escena.addEventListener('pointerdown', (e) => {
+    if (abierto || e.target.closest?.('.sobre-acciones')) return;
     inicio = { x: e.clientX, id: e.pointerId };
     movido = false;
     sobre.classList.add('cortando');
-    try { sobre.setPointerCapture(e.pointerId); } catch { /* sin captura */ }
   });
-  sobre.addEventListener('pointermove', (e) => {
+  escena.addEventListener('pointermove', (e) => {
     if (!inicio || abierto || e.pointerId !== inicio.id) return;
     const ancho = sobre.getBoundingClientRect().width || 1;
     const dx = Math.abs(e.clientX - inicio.x);
-    if (dx > 8) movido = true;
+    if (dx > 8 && !movido) {
+      movido = true;
+      try { escena.setPointerCapture(e.pointerId); } catch { /* sin captura */ }
+    }
     if (movido && !rasgado) {
       rasgado = true;
       sonidoCorte();
@@ -154,8 +157,14 @@ export function presentarSobre(zona, dibujos, { mensaje, acciones = [], alAbrir 
       rasgado = false;
     }
   };
-  sobre.addEventListener('pointerup', soltar);
-  sobre.addEventListener('pointercancel', soltar);
+  escena.addEventListener('pointerup', soltar);
+  escena.addEventListener('pointercancel', soltar);
+  // Láminas nuevas: la que se toca pasa al frente (con el ratón basta pasar por encima: lo hace el CSS)
+  laminas.addEventListener('pointerdown', (e) => {
+    if (!abierto) return;
+    const lamina = e.target.closest?.('.sobre-lamina');
+    [...laminas.children].forEach((h) => h.classList.toggle('frente', h === lamina && !h.classList.contains('frente')));
+  });
   // Un toque (o Enter/Espacio) también lo abre
   sobre.addEventListener('click', () => {
     if (!movido) abrir();
