@@ -2,6 +2,7 @@
 // Sin foto, el niño ve un collage con los dibujos de sus palabras. Sirven para F1, F2, F3 y para los libros.
 
 import { el } from '../ui/dom.js';
+import { nodoIcono, SVG_ALTAVOZ } from '../ui/iconos.js';
 import { cabecera, campo, cargando, mostrarError, describirError } from '../ui/adulto.js';
 import { crearMiniatura } from '../ui/miniatura.js';
 import { crearSelectorFoto } from '../ui/selector-foto.js';
@@ -103,7 +104,7 @@ async function pintar(raiz, estado, { editando = null } = {}) {
                   desbloquearAudio();
                   decirFrase(ps, { obtenerMedio, velocidad: perfil.ajustes?.velocidadVoz ?? 1 });
                 },
-              }, '🔊')
+              }, nodoIcono(SVG_ALTAVOZ))
             : null,
           el('button', { type: 'button', class: 'boton secundario chico', onclick: () => repintar({ editando: f }) }, 'Editar'),
           el('button', { type: 'button', class: 'boton secundario chico', onclick: () => alternarActiva(f) }, f.activa === false ? 'Activar' : 'Pausar'),

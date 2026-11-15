@@ -1,4 +1,4 @@
-// Álbum y monedas (modo adulto, fase 11): tamaño del álbum, monedas por álbum, qué calcomanías están en juego,
+// Álbum y monedas (modo adulto, fase 11): tamaño del álbum, monedas por álbum, 
 // calcomanías propias y los álbumes ya completos.
 
 import { el } from '../ui/dom.js';
@@ -27,7 +27,7 @@ let editandoId = null;
 /**
  * Editor de un álbum (el de la app, con las láminas de GTA 6, o uno cargado): cambiar su nombre, la imagen de su
  * portada y la de sus sobres, ver todas sus láminas y quitar las que se quiera.
- * En el álbum de la app «quitar» la saca del juego (se puede volver a poner en «Calcomanías en juego»).
+ * En el álbum de la app «quitar» la saca del juego (se puede volver a poner desde «Láminas quitadas»).
  */
 function editorDeAlbum({ store, perfil, coleccion, propias, repintar, registrar }) {
   const esBase = coleccion.esBase;
@@ -36,6 +36,7 @@ function editorDeAlbum({ store, perfil, coleccion, propias, repintar, registrar 
   const previaPortada = el('img', { class: 'carga-previa', alt: '' });
   const previaSobre = el('img', { class: 'carga-previa', alt: '' });
   const rejilla = el('div', { class: 'editor-album-laminas' });
+  const quitadasCaja = el('div');
 
   // guarda el cambio en el perfil: en `perfil.base` (álbum de la app) o dentro de `perfil.colecciones`
   async function guardarCambio(cambios) {
@@ -78,7 +79,7 @@ function editorDeAlbum({ store, perfil, coleccion, propias, repintar, registrar 
       return;
     }
     const aviso = esBase
-      ? `¿Sacar «${lamina.nombre}» del álbum? Podrás volver a ponerla en «Calcomanías en juego».`
+      ? `¿Sacar «${lamina.nombre}» del álbum? Podrás volver a ponerla desde «Láminas quitadas».`
       : `¿Quitar la lámina «${lamina.nombre}»? Si el niño ya la ganó, desaparece de su álbum.`;
     if (!window.confirm(aviso)) return;
     try {
@@ -93,6 +94,16 @@ function editorDeAlbum({ store, perfil, coleccion, propias, repintar, registrar 
           await borrarMedio(store, propia.medioImagenId);
         }
       }
+      await repintar();
+    } catch (error) {
+      estado.textContent = describirError(error);
+    }
+  }
+
+  async function ponerLamina(codigo, totalPosible) {
+    try {
+      const codigos = [...new Set([...coleccion.codigos, codigo])];
+      await store.guardar('perfiles', { ...perfil, album: normalizarAlbum({ ...perfil.album, codigos: codigos.length >= totalPosible ? null : codigos }) });
       await repintar();
     } catch (error) {
       estado.textContent = describirError(error);
@@ -115,6 +126,20 @@ function editorDeAlbum({ store, perfil, coleccion, propias, repintar, registrar 
         el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Quitar la lámina ${nombre}`, onclick: () => quitarLamina({ codigo, nombre }) }, 'Quitar')));
     }
     rejilla.replaceChildren(...nodos);
+    if (esBase) {
+      const propiasBase = propias.filter((p) => !p.coleccionId);
+      const todas = [...CALCOMANIAS.map((c) => ({ codigo: c.codigo, nombre: c.nombre })), ...propiasBase.map((p) => ({ codigo: codigoDePropia(p.id), nombre: p.nombre, propia: p }))];
+      const quitadas = todas.filter((c) => !coleccion.codigos.includes(c.codigo));
+      const nodosQuitadas = [];
+      for (const q of quitadas) {
+        const url = q.propia ? await urlDeMedio(store, q.propia.medioImagenId) : rutaCalcomania(q.codigo);
+        nodosQuitadas.push(el('div', { class: 'editor-album-lamina' },
+          url ? el('img', { src: url, alt: '', loading: 'lazy' }) : el('span', { class: 'calcomania-emoji' }, q.propia?.emoji ?? '★'),
+          el('span', {}, q.nombre),
+          el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Volver a poner la lámina ${q.nombre}`, onclick: () => ponerLamina(q.codigo, todas.length) }, 'Poner')));
+      }
+      quitadasCaja.replaceChildren(...(nodosQuitadas.length ? [el('h3', {}, `Láminas quitadas (${nodosQuitadas.length})`), el('div', { class: 'editor-album-laminas' }, nodosQuitadas)] : []));
+    }
   })().catch((error) => { estado.textContent = describirError(error); });
 
   return el('div', { class: 'editor-album' },
@@ -125,6 +150,7 @@ function editorDeAlbum({ store, perfil, coleccion, propias, repintar, registrar 
     el('div', { class: 'fila' }, campo('Imagen de los sobres', previaSobre), el('button', { type: 'button', class: 'boton secundario chico', onclick: () => cambiarImagen('medioSobreId') }, 'Cambiar el sobre')),
     el('h3', {}, `Láminas (${coleccion.codigos.length})`),
     rejilla,
+    quitadasCaja,
     estado,
     el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton secundario chico', onclick: () => { editandoId = null; repintar(); } }, 'Cerrar el editor')),
   );
@@ -254,6 +280,27 @@ function panelAlbumesCargados({ store, perfil, propias, miniaturas, repintar, re
     editor.replaceChildren(editorDeAlbum({ store, perfil, coleccion, propias, repintar, registrar }));
   };
 
+  const base = normalizarBase(perfil.base);
+  async function quitarBase() {
+    if (!todos.some((c) => !c.esBase)) { estado.textContent = 'Es el único álbum: carga otro antes de quitar este.'; return; }
+    if (!window.confirm('¿Quitar el álbum de la app? Dejará de verse y de dar láminas. Podrás restaurarlo cuando quieras.')) return;
+    try {
+      if (editandoId === 'base') editandoId = null;
+      await store.guardar('perfiles', { ...perfil, base: { ...base, quitado: true } });
+      await repintar();
+    } catch (error) {
+      estado.textContent = describirError(error);
+    }
+  }
+  async function restaurarBase() {
+    try {
+      await store.guardar('perfiles', { ...perfil, base: { ...base, quitado: false } });
+      await repintar();
+    } catch (error) {
+      estado.textContent = describirError(error);
+    }
+  }
+
   const lista = todos.map((c) =>
     el(
       'li',
@@ -261,7 +308,7 @@ function panelAlbumesCargados({ store, perfil, propias, miniaturas, repintar, re
       crearMiniatura({ url: miniaturas.get(c.medioPortadaId) ?? (c.esBase ? RUTA_PORTADA : null), texto: c.nombre }),
       el('div', { class: 'fila-texto' }, el('strong', {}, c.nombre), el('span', { class: 'ayuda' }, `${c.codigos.length} láminas${c.esBase ? ' · el álbum de la app' : ''}`)),
       el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Editar el álbum ${c.nombre}`, onclick: () => abrirEditor(c) }, 'Editar'),
-      c.esBase ? null : el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Quitar el álbum ${c.nombre}`, onclick: () => quitar(c) }, 'Quitar'),
+      el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Quitar el álbum ${c.nombre}`, onclick: () => (c.esBase ? quitarBase() : quitar(c)) }, 'Quitar'),
     ));
   const abierto = todos.find((c) => c.id === editandoId);
   if (abierto) abrirEditor(abierto);
@@ -272,6 +319,9 @@ function panelAlbumesCargados({ store, perfil, propias, miniaturas, repintar, re
     el('h2', {}, 'Álbumes'),
     el('p', { class: 'ayuda' }, 'Carga una carpeta de imágenes como un álbum nuevo: tú eliges cuál es la portada del álbum y cuál la de los sobres, y todas las demás son láminas. El niño elige de cuál álbum quiere su premio (hasta 3 al azar) y la tienda tiene un sobre de cada álbum.'),
     el('ul', { class: 'lista-simple' }, lista),
+    base.quitado && !todos.some((c) => c.esBase)
+      ? el('div', { class: 'fila-contenido' }, el('p', { class: 'ayuda' }, 'El álbum de la app está quitado.'), el('button', { type: 'button', class: 'boton secundario chico', onclick: restaurarBase }, 'Restaurar el álbum de la app'))
+      : null,
     editor,
     el('h3', {}, 'Cargar un álbum nuevo'),
     campo('Nombre del álbum', nombre),
@@ -313,28 +363,9 @@ export function montar(contenedor) {
     const entradaMonedas = el('input', { type: 'number', min: MONEDAS_MIN, max: MONEDAS_MAX, value: config.monedasPorAlbum, inputmode: 'numeric' });
     // las láminas de los álbumes cargados (con `coleccionId`) tienen su propio panel: aquí solo las sueltas
     const propiasBase = [...propias.values()].filter((p) => !p.coleccionId);
-    const enJuego = new Set(config.codigos ?? [...CALCOMANIAS.map((c) => c.codigo), ...propiasBase.map((p) => codigoDePropia(p.id))]);
     const mensaje = el('p', { class: 'ayuda', role: 'status' });
 
-    const todos = [
-      ...CALCOMANIAS.map((c) => ({ codigo: c.codigo, nombre: c.nombre, url: rutaCalcomania(c.codigo) })),
-      ...propiasBase.map((p) => ({ codigo: codigoDePropia(p.id), nombre: p.nombre, url: miniaturasPropias.get(p.id), emoji: p.emoji })),
-    ];
-    const casillas = new Map();
-    const cuadricula = el(
-      'div',
-      { class: 'casillas-calcomanias' },
-      todos.map((c) => {
-        const casilla = el('input', { type: 'checkbox', checked: enJuego.has(c.codigo) });
-        casillas.set(c.codigo, casilla);
-        const dibujo = c.url ? el('img', { src: c.url, alt: '', draggable: 'false' }) : el('span', { class: 'calcomania-emoji' }, c.emoji ?? '★');
-        return el('label', { class: 'casilla-calcomania' }, casilla, dibujo, el('span', {}, c.nombre));
-      }),
-    );
-    const marcar = (valor) => casillas.forEach((c) => { c.checked = valor; });
-
     async function guardarAjustes() {
-      const elegidas = todos.filter((c) => casillas.get(c.codigo).checked).map((c) => c.codigo);
       const tamano = Number(entradaTamano.value);
       const monedas = Number(entradaMonedas.value);
       if (!Number.isInteger(tamano) || tamano < TAMANO_MIN || tamano > TAMANO_MAX) {
@@ -345,18 +376,13 @@ export function montar(contenedor) {
         mensaje.textContent = `Las monedas por álbum van de ${MONEDAS_MIN} a ${MONEDAS_MAX}.`;
         return;
       }
-      if (elegidas.length < tamano) {
-        mensaje.textContent = `Elige al menos ${tamano} calcomanías (ahora hay ${elegidas.length}) o achica el álbum.`;
-        return;
-      }
       const porLeccion = Number(entradaLeccion.value);
       if (!Number.isInteger(porLeccion) || porLeccion < MONEDAS_LECCION_MIN || porLeccion > MONEDAS_LECCION_MAX) {
         mensaje.textContent = `Las monedas por lección van de ${MONEDAS_LECCION_MIN} a ${MONEDAS_LECCION_MAX}.`;
         return;
       }
-      const todasMarcadas = elegidas.length === todos.length;
       try {
-        await store.guardar('perfiles', { ...perfil, album: normalizarAlbum({ tamano, monedasPorAlbum: monedas, monedasPorLeccion: porLeccion, codigos: todasMarcadas ? null : elegidas }) });
+        await store.guardar('perfiles', { ...perfil, album: normalizarAlbum({ tamano, monedasPorAlbum: monedas, monedasPorLeccion: porLeccion, codigos: config.codigos }) });
         mensaje.textContent = 'Guardado. Rige desde la próxima calcomanía; los álbumes ya completos no cambian.';
         await pintar();
       } catch (error) {
@@ -397,7 +423,9 @@ export function montar(contenedor) {
       if (!imagen.blob && !imagen.emoji) { mensajePropia.textContent = 'Elige una foto, un pictograma o un emoji.'; return; }
       try {
         const medio = imagen.blob ? await guardarMedio(store, { tipo: 'imagen', blob: imagen.blob, mime: imagen.mime, origen: imagen.origen, arasaacId: imagen.arasaacId }) : null;
-        await store.guardar('calcomaniasPropias', { perfilId: perfil.id, nombre, medioImagenId: medio?.id ?? null, arasaacId: imagen.arasaacId, emoji: imagen.emoji });
+        const nueva = await store.guardar('calcomaniasPropias', { perfilId: perfil.id, nombre, medioImagenId: medio?.id ?? null, arasaacId: imagen.arasaacId, emoji: imagen.emoji });
+        // si el álbum de la app tiene una lista de láminas, la nueva entra a ella
+        if (config.codigos) await store.guardar('perfiles', { ...perfil, album: normalizarAlbum({ ...config, codigos: [...config.codigos, codigoDePropia(nueva.id)] }) });
         await pintar();
       } catch (error) {
         mensajePropia.textContent = describirError(error);
@@ -435,7 +463,7 @@ export function montar(contenedor) {
           ? el('div', { class: 'album album-adulto', 'aria-label': 'Calcomanías del álbum actual' }, actualesNodos)
           : el('p', { class: 'ayuda' }, 'Aún no tiene calcomanías en este álbum.'),
         el('p', { class: 'ayuda' }, `Álbumes completos: ${datos.completos.length}. Cada sesión terminada da una calcomanía; al llenar el álbum el niño gana ${config.monedasPorAlbum} monedas de oro y empieza otro álbum vacío.`),
-        el('div', { class: 'fila-contenido' }, crearCofre({ saldo: datos.saldo }), el('a', { class: 'boton secundario', href: '#/adulto/tienda' }, 'Ir a la tienda')),
+        el('div', { class: 'fila-contenido' }, crearCofre({ saldo: datos.saldo, compacto: true }), el('a', { class: 'boton secundario', href: '#/adulto/tienda' }, 'Ir a la tienda')),
       ),
       panelAlbumesCargados({ store, perfil, propias: [...propias.values()], miniaturas: portadasCargadas, repintar: pintar, registrar: (url) => urlsTemporales.push(url) }),
       el(
@@ -444,10 +472,6 @@ export function montar(contenedor) {
         el('h2', {}, 'Cómo es el álbum'),
         el('div', { class: 'fila' }, campo('Calcomanías por álbum', entradaTamano, `De ${TAMANO_MIN} a ${TAMANO_MAX}`), campo('Monedas de oro por álbum', entradaMonedas, `De ${MONEDAS_MIN} a ${MONEDAS_MAX}`)),
         el('div', { class: 'fila' }, campo('Monedas por lección terminada', entradaLeccion, `De ${MONEDAS_LECCION_MIN} a ${MONEDAS_LECCION_MAX}. Un sobre de láminas cuesta 5 lecciones.`)),
-        el('h3', {}, 'Calcomanías en juego'),
-        el('p', { class: 'ayuda' }, 'Solo salen las marcadas. Tiene que haber al menos tantas como calcomanías por álbum.'),
-        el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton secundario chico', onclick: () => marcar(true) }, 'Marcar todas'), el('button', { type: 'button', class: 'boton secundario chico', onclick: () => marcar(false) }, 'Quitar todas')),
-        cuadricula,
         mensaje,
         el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton', onclick: guardarAjustes }, 'Guardar')),
       ),
@@ -468,7 +492,7 @@ export function montar(contenedor) {
         'div',
         { class: 'panel' },
         el('h2', {}, 'Mis calcomanías propias'),
-        el('p', { class: 'ayuda' }, 'Crea calcomanías con una foto (su mascota, un familiar), un pictograma o un emoji. Si arriba están todas las calcomanías marcadas, las nuevas entran solas al juego; si no, márcalas arriba y guarda.'),
+        el('p', { class: 'ayuda' }, 'Crea calcomanías con una foto (su mascota, un familiar), un pictograma o un emoji. Las nuevas entran solas al álbum de la app; para sacarlas, usa «Editar» en el álbum.'),
         listaPropias.length ? el('ul', { class: 'lista-simple' }, listaPropias) : el('p', { class: 'ayuda' }, 'Todavía no hay ninguna.'),
         campo('Nombre', entradaNombre),
         selector.elemento,

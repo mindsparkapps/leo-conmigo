@@ -4,6 +4,7 @@
 //   Sonido: voz y velocidad, vibración, intensidad de la celebración.
 
 import { el } from '../ui/dom.js';
+import { nodoIcono, SVG_ALTAVOZ } from '../ui/iconos.js';
 import { cabecera, campo, cargando, mostrarError, describirError } from '../ui/adulto.js';
 import { crearCarta } from '../ui/carta.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
@@ -188,7 +189,7 @@ async function pintar(raiz, estaVivo) {
   const velocidad = el('input', { type: 'range', min: '0.6', max: '1.2', step: '0.1', value: String(a.velocidadVoz) });
   const velocidadValor = el('output', { class: 'valor-ajuste' }, `${Number(a.velocidadVoz).toFixed(1)}×`);
   velocidad.addEventListener('input', () => { velocidadValor.textContent = `${Number(velocidad.value).toFixed(1)}×`; });
-  const probar = el('button', { type: 'button', class: 'boton secundario chico' }, '🔊 Probar la velocidad');
+  const probar = el('button', { type: 'button', class: 'boton secundario chico' }, nodoIcono(SVG_ALTAVOZ), ' Probar la velocidad');
   probar.addEventListener('click', () => {
     desbloquearAudio();
     hablarTexto('Hola, esta es la velocidad de la voz', { velocidad: Number(velocidad.value) });

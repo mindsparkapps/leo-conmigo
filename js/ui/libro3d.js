@@ -16,6 +16,9 @@ const ARRASTRE_INICIO_PX = 10; // desde aquí un movimiento deja de ser un toque
 const DOBLE_TOQUE_MS = 350;
 const ZOOM_LLENADO = 0.94; // parte de la pantalla que ocupa la lámina al acercarla
 const FOV = 30;
+// El lienzo se extiende más allá de su caja (esta fracción del ancho y del alto por cada lado): al girar, la hoja se
+// acerca a la cámara y se ve más grande; si el lienzo terminara en la caja, la hoja saldría cortada.
+const MARGEN_LIENZO = 0.4;
 const RETRASO_HOJA_S = 0.07; // entre una hoja y la siguiente cuando se pasan varias de golpe
 
 const limitar = (n, min, max) => Math.min(max, Math.max(min, n));
@@ -155,16 +158,21 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
   function ajustarTamano() {
     const ancho = Math.max(1, contenedor.clientWidth);
     const alto = Math.max(1, contenedor.clientHeight);
-    renderer.setSize(ancho, alto, false);
-    lienzo.style.width = '100%';
-    lienzo.style.height = '100%';
-    camara.aspect = ancho / alto;
+    aspectoCaja = ancho / alto;
+    extraX = Math.round(ancho * MARGEN_LIENZO);
+    extraY = Math.round(alto * MARGEN_LIENZO);
+    const total = { ancho: ancho + 2 * extraX, alto: alto + 2 * extraY };
+    renderer.setSize(total.ancho, total.alto, false);
+    lienzo.style.cssText = `left:${-extraX}px;top:${-extraY}px;width:${total.ancho}px;height:${total.alto}px`;
+    // misma escala que una cámara que solo viera la caja, pero con más campo alrededor
+    camara.aspect = total.ancho / total.alto;
+    camara.fov = (2 * Math.atan(Math.tan((FOV * Math.PI) / 360) * (total.alto / alto)) * 180) / Math.PI;
     camara.updateProjectionMatrix();
-    const nuevoModo = camara.aspect < 0.85 ? 'pagina' : 'doble';
+    const nuevoModo = aspectoCaja < 0.85 ? 'pagina' : 'doble';
     const tan = Math.tan((FOV * Math.PI) / 360);
     const dAlto = (ALTO * 1.14) / 2 / tan;
     const paginasAnchas = nuevoModo === 'pagina' ? 1 : 2;
-    const dAncho = (ANCHO * paginasAnchas * 1.06) / 2 / (tan * camara.aspect);
+    const dAncho = (ANCHO * paginasAnchas * 1.06) / 2 / (tan * aspectoCaja);
     dBase = Math.max(dAlto, dAncho);
     colocarCamara();
     if (nuevoModo !== modo || primeraVez) {
@@ -175,6 +183,9 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
     primeraVez = false;
   }
   let primeraVez = true;
+  let aspectoCaja = 1;
+  let extraX = 0;
+  let extraY = 0;
 
   let cuadro = 0;
   let ultimo = 0;
@@ -317,7 +328,7 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
     panXObjetivo = (c % 2 === 0 ? 0 : -ANCHO) + u * ANCHO + libro.position.x;
     panYObjetivo = ALTO / 2 - v * ALTO;
     const altoVista = 2 * dBase * Math.tan((FOV * Math.PI) / 360); // alto visible del plano del libro sin zoom
-    const menor = Math.min(altoVista, altoVista * camara.aspect);
+    const menor = Math.min(altoVista, altoVista * aspectoCaja);
     zoomObjetivo = limitar((menor * ZOOM_LLENADO) / (2 * semiLado * ANCHO), 1.5, 10);
     acercando = { cara: c, u, v, avisado: false };
     pedirCuadro();
@@ -356,11 +367,14 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
     pasar(clientX - caja.left > caja.width / 2 ? 1 : -1);
   }
 
-  lienzo.addEventListener('pointerdown', (e) => {
-    lienzo.setPointerCapture?.(e.pointerId);
+  // el lienzo se sale de su caja y no recibe toques: los recibe el contenedor
+  const propio = (e) => e.target === contenedor || e.target === lienzo;
+  contenedor.addEventListener('pointerdown', (e) => {
+    if (!propio(e)) return;
+    contenedor.setPointerCapture?.(e.pointerId);
     toque = { x: e.clientX, y: e.clientY, movido: false };
   });
-  lienzo.addEventListener('pointermove', (e) => {
+  contenedor.addEventListener('pointermove', (e) => {
     if (!toque) return;
     const dx = e.clientX - toque.x;
     const dy = e.clientY - toque.y;
@@ -372,7 +386,7 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
     }
     if (arrastre) {
       const hacia = arrastre.dir > 0 ? -dx : dx;
-      moverArrastre(limitar(hacia / (lienzo.clientWidth * 0.45), 0, 1));
+      moverArrastre(limitar(hacia / (contenedor.clientWidth * 0.45), 0, 1));
     }
   });
   const soltar = (e, cancelado) => {
@@ -401,9 +415,9 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
       }
     }
   };
-  lienzo.addEventListener('pointerup', (e) => soltar(e, false));
-  lienzo.addEventListener('pointercancel', (e) => soltar(e, true));
-  lienzo.addEventListener('contextmenu', (e) => e.preventDefault());
+  contenedor.addEventListener('pointerup', (e) => soltar(e, false));
+  contenedor.addEventListener('pointercancel', (e) => soltar(e, true));
+  contenedor.addEventListener('contextmenu', (e) => e.preventDefault());
 
   const observador = typeof ResizeObserver === 'function' ? new ResizeObserver(ajustarTamano) : null;
   observador?.observe(contenedor);
@@ -437,7 +451,7 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
       const punto = new THREE.Vector3(x + libro.position.x, ALTO / 2 - v * ALTO, 0.01);
       camara.updateMatrixWorld();
       punto.project(camara);
-      return { x: ((punto.x + 1) / 2) * contenedor.clientWidth, y: ((1 - punto.y) / 2) * contenedor.clientHeight };
+      return { x: ((punto.x + 1) / 2) * (contenedor.clientWidth + 2 * extraX) - extraX, y: ((1 - punto.y) / 2) * (contenedor.clientHeight + 2 * extraY) - extraY };
     },
     destruir() {
       cancelAnimationFrame(cuadro);

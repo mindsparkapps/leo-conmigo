@@ -999,7 +999,8 @@ img.calcomania-grande { border-width: 3px; border-radius: 24px; }
 }
 .libro-zona { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; flex: 1; min-height: 0; }
 .libro-lienzo-zona { flex: 1; width: 100%; min-height: 0; touch-action: pan-y; }
-.libro-lienzo { display: block; width: 100%; height: 100%; touch-action: pan-y; cursor: pointer; }
+.libro-lienzo { position: absolute; display: block; pointer-events: none; }
+.libro-lienzo-zona { cursor: pointer; }
 .libro-plano { display: flex; flex-direction: column; align-items: center; gap: 12px; overflow-y: auto; }
 .libro-cara-plana { width: min(100%, 360px); height: auto; border-radius: var(--radio); box-shadow: 0 2px 10px rgb(0 0 0 / 0.15); }
 .libro-controles { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
@@ -1138,6 +1139,14 @@ img.calcomania-grande { border-width: 3px; border-radius: 24px; }
   min-width: 2.2em; height: 2.2em; padding: 0 0.3em; border-radius: 14px; background: rgb(43 125 81 / 0.78); border: 3px solid rgb(255 255 255 / 0.85);
   color: #fff; font-size: clamp(1.8rem, 6vmin, 2.8rem); font-weight: 800; line-height: 1; text-shadow: 0 2px 4px rgb(0 0 0 / 0.4);
 }
+/* Los sobres de la tienda: flotan y se agrandan al pasar el ratón (en pantallas táctiles flotan siempre); al tocarlos se aplastan y se estiran */
+.sobre-carta { transition: scale 0.25s ease-out; }
+@media (hover: hover) { .sobre-carta:hover, .sobre-carta:focus-visible { scale: 1.1; animation: album-flota 2.4s ease-in-out infinite; } }
+@media (hover: none) { .sobre-carta { animation: album-flota 3.2s ease-in-out infinite; } }
+.sobre-carta.aplastar { scale: 1.1; animation: album-aplasta 0.65s ease-in-out both; transform-origin: 50% 100%; }
+@media (prefers-reduced-motion: reduce) { .sobre-carta, .sobre-carta:hover { animation: none; transition: none; } }
+.cofre-compacto { flex-direction: column; gap: 4px; }
+.icono-nodo { display: inline-block; }
 .icono-boton { width: 1.2em; height: 1.2em; vertical-align: -0.2em; }
 /* Editor de un álbum (modo adulto): sus láminas, cada una con su botón para quitarla */
 .editor-album { margin-top: 12px; padding: 12px; border: 2px solid var(--borde-fuerte); border-radius: var(--radio); background: var(--tarjeta); }

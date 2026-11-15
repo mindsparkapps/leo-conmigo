@@ -55,6 +55,9 @@ function codigosParaSacar(perfil, config, propias, coleccionId) {
     const coleccion = listarColecciones({ perfil, propias }).find((c) => c.id === coleccionId);
     if (coleccion) return coleccion.codigos;
   }
+  // con el álbum de la app quitado, «sin álbum» es el primero que quede
+  const primero = listarColecciones({ perfil, propias })[0];
+  if (primero && !primero.esBase) return primero.codigos;
   const enJuego = codigosEnJuego(config, propias);
   return enJuego.length ? enJuego : CODIGOS_CATALOGO;
 }

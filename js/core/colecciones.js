@@ -38,6 +38,7 @@ export function normalizarBase(base) {
     nombre: String(base?.nombre ?? '').trim(),
     medioPortadaId: base?.medioPortadaId ?? null,
     medioSobreId: base?.medioSobreId ?? null,
+    quitado: base?.quitado === true,
   };
 }
 
@@ -60,18 +61,18 @@ export function listarColecciones({ perfil, propias = [] }) {
   const vigentes = propias.filter((p) => !p.deleted);
   const base = codigosEnJuego(perfil?.album, vigentes);
   const ajustesBase = normalizarBase(perfil?.base);
-  const lista = [{
+  const lista = [];
+  const cargadas = normalizarColecciones(perfil?.colecciones).map((c) => ({ c, codigos: laminasDeColeccion(vigentes, c.id).map((p) => codigoDePropia(p.id)) })).filter((x) => x.codigos.length);
+  // el álbum de la app se puede quitar, pero siempre queda al menos un álbum
+  if (!ajustesBase.quitado || !cargadas.length) lista.push({
     id: ID_BASE,
     nombre: ajustesBase.nombre || NOMBRE_BASE,
     codigos: base.length ? base : [...CODIGOS_CATALOGO],
     medioPortadaId: ajustesBase.medioPortadaId,
     medioSobreId: ajustesBase.medioSobreId,
     esBase: true,
-  }];
-  for (const c of normalizarColecciones(perfil?.colecciones)) {
-    const codigos = laminasDeColeccion(vigentes, c.id).map((p) => codigoDePropia(p.id));
-    if (codigos.length) lista.push({ ...c, codigos, esBase: false });
-  }
+  });
+  for (const { c, codigos } of cargadas) lista.push({ ...c, codigos, esBase: false });
   return lista;
 }
 

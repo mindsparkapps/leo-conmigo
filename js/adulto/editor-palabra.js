@@ -3,6 +3,7 @@
 // y para editar (#/adulto/palabra/<id>).
 
 import { el } from '../ui/dom.js';
+import { nodoIcono, SVG_ALTAVOZ, SVG_MICROFONO, SVG_REPRODUCIR } from '../ui/iconos.js';
 import { cabecera, campo, cargando, mostrarError, describirError } from '../ui/adulto.js';
 import { crearMiniatura, pintarMiniatura } from '../ui/miniatura.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
@@ -19,8 +20,6 @@ import {
   CATEGORIAS, MAX_LARGO_PALABRA, TIPOS, parsearSilabas, siguienteOrden, silabasForman, validarTexto,
 } from '../core/vocabulario.js';
 
-// El emoji del micrófono no se dibuja en todos los equipos: se usa un dibujo propio
-const SVG_MICROFONO = '<svg class="icono-boton" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="2" width="6" height="12" rx="3" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 
 export const titulo = 'Palabra · Leo Conmigo';
 
@@ -398,9 +397,9 @@ async function iniciar(raiz, id, ir, limpiezas, estaVivo) {
     else botonGrabar.innerHTML = `${SVG_MICROFONO} Grabar mi voz`;
   };
   ponerTextoGrabar(false);
-  const botonEscuchar = el('button', { type: 'button', class: 'boton secundario chico' }, '▶ Escuchar mi grabación');
+  const botonEscuchar = el('button', { type: 'button', class: 'boton secundario chico' }, nodoIcono(SVG_REPRODUCIR), ' Escuchar mi grabación');
   const botonBorrar = el('button', { type: 'button', class: 'boton secundario chico' }, 'Borrar grabación');
-  const botonSintetica = el('button', { type: 'button', class: 'boton secundario chico' }, '🔊 Escuchar la voz sintética');
+  const botonSintetica = el('button', { type: 'button', class: 'boton secundario chico' }, nodoIcono(SVG_ALTAVOZ), ' Escuchar la voz sintética');
 
   let vozSinteticaDisponible = hayVozSintetica(); // se confirma más abajo: puede haber síntesis pero ninguna voz en español
 

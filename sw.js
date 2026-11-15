@@ -134,6 +134,7 @@ const PRECACHE = [
   'js/core/colecciones.js',
   'js/colecciones.js',
   'js/ui/tarjeta-album.js',
+  'js/ui/iconos.js',
   'vendor/three.module.min.js',
   'data/laminas/gta001.jpg',
   'data/laminas/gta002.jpg',

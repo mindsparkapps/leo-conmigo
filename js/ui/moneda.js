@@ -74,7 +74,16 @@ export function crearPrecio(cantidad, { prefijo = '' } = {}) {
 }
 
 /** El cofre: sus monedas y el número del saldo. */
-export function crearCofre({ saldo, nuevas = 0 }) {
+export function crearCofre({ saldo, nuevas = 0, compacto = false }) {
+  // compacto: una sola moneda girando y el número abajo (sin la fila de monedas)
+  if (compacto) {
+    return el(
+      'div',
+      { class: 'cofre cofre-compacto', role: 'img', 'aria-label': `Tienes ${saldo} ${saldo === 1 ? 'moneda' : 'monedas'}` },
+      crearMoneda3D({ gira: true, tamano: 56 }),
+      el('span', { class: 'cofre-numero', 'aria-hidden': 'true' }, String(saldo)),
+    );
+  }
   return el(
     'div',
     { class: 'cofre', role: 'img', 'aria-label': `Tienes ${saldo} ${saldo === 1 ? 'moneda' : 'monedas'}` },

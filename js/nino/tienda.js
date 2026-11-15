@@ -5,7 +5,7 @@
 import { el } from '../ui/dom.js';
 import { crearMiniatura } from '../ui/miniatura.js';
 import { crearPrecio } from '../ui/moneda.js';
-import { fijarSaldo } from '../ui/saldo.js';
+import { fijarSaldo, sincronizarSaldo } from '../ui/saldo.js';
 import { crearSobreChico, presentarSobre } from '../ui/sobre.js';
 import { deshabilitarAdulto } from '../acceso.js';
 import { NOMBRE_APP } from '../config.js';
@@ -24,6 +24,7 @@ import { normalizarAjustes } from '../core/modelos.js';
 export const titulo = NOMBRE_APP;
 
 const BLOQUEO_MS = 400;
+const MS_APLASTAR = 650; // lo que dura el aplastar y estirar del sobre antes de comprarlo
 
 const ICONO_CASA = `
 <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path d="M32 8L6 32h8v22h14V40h8v14h14V32h8z" fill="currentColor"/></svg>`;
@@ -51,6 +52,8 @@ export function montar(contenedor, { ir }) {
     vivo = false;
     detener();
     liberarUrls();
+    // las ventas ya están guardadas: aunque queden monedas volando, el monedero se muestra completo
+    sincronizarSaldo();
   };
 }
 
@@ -78,6 +81,8 @@ async function iniciar(zona, estaVivo) {
   let aviso = null;
   let ocupado = false;
   let quitarEscena = null;
+  let enVuelo = 0; // ventas cuyas monedas aún van hacia el monedero
+  let secuencia = 0; // solo se pinta la lista pedida más recientemente
 
   const imagenDe = async (premio, grande = true) =>
     crearMiniatura({ url: await urlDeMedio(store, premio.medioImagenId), emoji: premio.emoji, texto: premio.nombre }, { grande });
@@ -103,9 +108,10 @@ async function iniciar(zona, estaVivo) {
   }
 
   /** La lámina vendida sube hasta salir por arriba y, desde donde estaba, salen las monedas hacia el total. */
-  async function animarVenta(item, caja, cajaRepetidas, r, alSubir) {
+  async function animarVenta(item, caja, cajaRepetidas, r) {
     const reducido = matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    fijarSaldo(r.saldo - r.valor); // el total sube moneda a moneda al llegar cada una
+    if (!enVuelo) fijarSaldo(r.saldo - r.valor); // el total sube moneda a moneda al llegar cada una
+    enVuelo += 1;
     let clon = null;
     let origen = { x: caja.left + caja.width / 2, y: caja.top + caja.height / 2 };
     if (!reducido && item.animate) {
@@ -122,7 +128,6 @@ async function iniciar(zona, estaVivo) {
       await clon.animate([{ transform: 'translateY(0) scale(1)' }, { transform: `translateY(${dy}px) scale(1.15)` }], { duration: 650, easing: 'ease-in-out', fill: 'forwards' }).finished.catch(() => {});
       clon.animate([{ transform: `translateY(${dy}px) scale(1.15)`, opacity: 1 }, { transform: `translateY(${dy}px) scale(0.4)`, opacity: 0 }], { duration: 350, easing: 'ease-in', fill: 'forwards' });
     }
-    // Las demás láminas se reordenan en cuanto la vendida sube, sin esperar a que lleguen todas las monedas
     const monedas = lanzarMonedas({
       cantidad: r.valor,
       origen,
@@ -131,14 +136,15 @@ async function iniciar(zona, estaVivo) {
       movimientoReducido: reducido,
       activo: estaVivo,
     });
-    await alSubir();
     await monedas;
     clon?.remove();
+    enVuelo -= 1;
   }
 
   async function lista() {
+    const mia = ++secuencia;
     const datos = await cargarMonedas(store, perfil);
-    if (!estaVivo()) return;
+    if (!estaVivo() || mia !== secuencia) return;
     const premios = premiosVisibles(datos.premios);
     const cartas = await Promise.all(
       premios.map(async (premio) => {
@@ -163,7 +169,7 @@ async function iniciar(zona, estaVivo) {
         return boton;
       }),
     );
-    if (!estaVivo()) return;
+    if (!estaVivo() || mia !== secuencia) return;
     const precioSobre = precioDeSobre(datos.album);
     const alcanzaSobre = datos.saldo >= precioSobre;
     // Un sobre por álbum (el de la app y cada álbum cargado), cada uno con su imagen
@@ -176,9 +182,20 @@ async function iniciar(zona, estaVivo) {
           type: 'button',
           class: alcanzaSobre ? 'premio-carta sobre-carta' : 'premio-carta sobre-carta premio-lejos',
           'aria-label': `${nombreSobre}, ${textoMonedas(precioSobre)}`,
-          onclick: () => {
+          onclick: (e) => {
             if (ocupado || !toqueValido()) return;
-            if (alcanzaSobre) comprar(coleccion);
+            if (alcanzaSobre) {
+              // el sobre se aplasta y se estira y recién entonces se abre la compra, para que se alcance a ver
+              const carta = e.currentTarget;
+              ocupado = true;
+              if (matchMedia?.('(prefers-reduced-motion: reduce)').matches) { ocupado = false; comprar(coleccion); return; }
+              carta.classList.add('aplastar');
+              setTimeout(() => {
+                carta.classList.remove('aplastar');
+                ocupado = false;
+                if (estaVivo()) comprar(coleccion);
+              }, MS_APLASTAR);
+            }
             else decir(`${nombreSobre}. Te faltan ${textoMonedas(precioSobre - datos.saldo)}`, { siempre: true });
           },
         },
@@ -187,7 +204,7 @@ async function iniciar(zona, estaVivo) {
         crearPrecio(precioSobre),
       );
     }));
-    if (!estaVivo()) return;
+    if (!estaVivo() || mia !== secuencia) return;
     const propiasPorId = mapaDePropias(datos.propias);
     const sobrantes = repetidas(datos.calcomanias);
     const valorVenta = valorDeVenta(datos.album);
@@ -204,22 +221,23 @@ async function iniciar(zona, estaVivo) {
               'data-flip': `r-${codigo}`,
               'aria-label': `Vender una lámina repetida por ${textoMonedas(valorVenta)}. Te sobran ${sobran}`,
               onclick: async (e) => {
-                if (ocupado || !toqueValido()) return;
+                // Vender no espera a nadie: la lámina sube y la lista se reacomoda al instante; las monedas siguen su camino
+                if (ocupado) return;
                 ocupado = true;
+                let r;
+                const item = e.currentTarget;
+                const caja = item.getBoundingClientRect();
                 try {
-                  const item = e.currentTarget;
-                  const caja = item.getBoundingClientRect();
-                  const r = await venderRepetida(store, perfil, codigo);
-                  if (r.vendida) {
-                    aviso = `¡Vendida! Ganaste ${textoMonedas(r.valor)}.`;
-                    decir(`Ganaste ${textoMonedas(r.valor)}`);
-                    await animarVenta(item, caja, item.closest('.repetidas-caja'), r, lista);
-                  } else {
-                    await lista();
-                  }
+                  r = await venderRepetida(store, perfil, codigo);
                 } finally {
                   ocupado = false;
                 }
+                if (r.vendida) {
+                  aviso = `¡Vendida! Ganaste ${textoMonedas(r.valor)}.`;
+                  decir(`Ganaste ${textoMonedas(r.valor)}`);
+                  animarVenta(item, caja, item.closest('.repetidas-caja'), r).catch((error) => console.error(error));
+                }
+                await lista();
               },
             },
             dibujo,
@@ -229,7 +247,7 @@ async function iniciar(zona, estaVivo) {
         }),
       )
     ).filter(Boolean);
-    if (!estaVivo()) return;
+    if (!estaVivo() || mia !== secuencia) return;
     // Para mover con suavidad lo que cambia de sitio (al vender una lámina las demás se acomodan sin saltar)
     const antes = new Map([...zona.querySelectorAll('[data-flip]')].map((n) => [n.dataset.flip, n.getBoundingClientRect()]));
     zona.replaceChildren(

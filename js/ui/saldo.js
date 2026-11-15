@@ -80,6 +80,12 @@ async function leerSaldo() {
   }
 }
 
+/**
+ * Vuelve a leer el total del almacén y lo muestra completo. Las ventas y los premios ya están guardados antes de que
+ * las monedas lleguen volando: si el niño sale de la pantalla con monedas en el aire, el monedero igual queda lleno.
+ */
+export const sincronizarSaldo = leerSaldo;
+
 /** Muestra el total en las pantallas del niño (#/nino…) y lo oculta en las del adulto. */
 export function iniciarSaldo() {
   asegurar();

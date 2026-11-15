@@ -73,6 +73,13 @@ test('el álbum de la app toma nombre y portada de perfil.base', () => {
   assert.equal(lista[0].medioSobreId, null);
 });
 
+test('el álbum de la app se puede quitar, pero siempre queda un álbum', () => {
+  const propias = [{ id: 'a', coleccionId: 'c1' }];
+  const perfil = { base: { quitado: true }, colecciones: [{ id: 'c1', nombre: 'Animales' }] };
+  assert.deepEqual(listarColecciones({ perfil, propias }).map((c) => c.id), ['c1']);
+  assert.deepEqual(listarColecciones({ perfil: { base: { quitado: true } }, propias: [] }).map((c) => c.id), [ID_BASE]);
+});
+
 test('opcionesDeRecompensa: hasta 3 distintos, o los que haya', () => {
   const cinco = ['a', 'b', 'c', 'd', 'e'].map((id) => ({ id }));
   const tres = opcionesDeRecompensa(cinco, () => 0.3);

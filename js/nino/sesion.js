@@ -226,7 +226,8 @@ async function iniciar({ vista, area, ir, sesion }) {
         destino = '/nino/elegir';
       } else {
         // La calcomanía de hoy; si completa el álbum, también guarda sus monedas (fase 11)
-        await terminarLeccion(store, perfil, ajustes);
+        const unico = colecciones[0];
+        await terminarLeccion(store, perfil, ajustes, { coleccionId: unico && !unico.esBase ? unico.id : null });
       }
     } catch (error) {
       console.error('No se pudo cerrar la sesión', error);

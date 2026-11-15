@@ -1,6 +1,7 @@
 // Lista de palabras del niño activo: orden de introducción, activar/desactivar, escuchar y editar.
 
 import { el } from '../ui/dom.js';
+import { nodoIcono, SVG_ALTAVOZ } from '../ui/iconos.js';
 import { cabecera, cargando, mostrarError, describirError } from '../ui/adulto.js';
 import { crearMiniatura } from '../ui/miniatura.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
@@ -96,7 +97,7 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
               desbloquearAudio();
               decirPalabra(p, { obtenerMedio: (id) => store.obtener('medios', id), velocidad: perfil.ajustes?.velocidadVoz ?? 1 });
             },
-          }, '🔊'),
+          }, nodoIcono(SVG_ALTAVOZ)),
           el('button', {
             type: 'button',
             class: 'boton secundario chico',
