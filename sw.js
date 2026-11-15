@@ -485,6 +485,7 @@ const PRECACHE = [
   'data/voces/frases/muy-bien.mp3',
   'data/voces/frases/eso-es.mp3',
   'data/voces/frases/lo-lograste.mp3',
+  'data/voces/frases/lo-lograste-elige-un-album.mp3',
   'data/voces/frases/genial.mp3',
   'data/voces/frases/excelente.mp3',
   'data/voces/frases/bien-hecho.mp3',

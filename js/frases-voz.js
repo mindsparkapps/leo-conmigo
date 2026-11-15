@@ -32,6 +32,7 @@ const FRASES = [
   ['¡Es tuyo! Pídeselo a un adulto', 'es-tuyo'],
   ['¡Completaste tu álbum! ¡Ganaste 10 monedas!', 'completaste-tu-album'],
   ['Ganaste 13 monedas', 'ganaste-13-monedas'],
+  ['¡Lo lograste! Elige un álbum', 'lo-lograste-elige-un-album'],
 ];
 
 export const RUTAS_DE_FRASES = Object.freeze(FRASES.map(([, archivo]) => rutaDe(archivo)));
