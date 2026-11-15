@@ -6,7 +6,7 @@ Cómo se hace cada palabra: generar en la web de ElevenLabs con Catalina (sin AP
 
 Las palabras de la lista ampliada (`data/voces/lista-ampliada.json`) se agregan al catálogo `data/vocabulario-inicial.json` a medida que tienen voz. Orden de trabajo: 1) catálogo actual, 2) prioridad 1, 3) prioridad 2, 4) prioridad 3.
 
-**Total: 597 palabras, 232 con voz, 365 por generar.**
+**Total: 597 palabras, 267 con voz, 330 por generar.**
 
 ## Catálogo actual (48) (48/48 hechas)
 
@@ -24,7 +24,7 @@ Las palabras de la lista ampliada (`data/voces/lista-ampliada.json`) se agregan 
 
 **enlace:** [x] come · [x] bebe · [x] duerme · [x] juega · [x] es · [x] está · [x] tiene · [x] el · [x] la · [x] y
 
-## Prioridad 1: lo más importante (184/243 hechas)
+## Prioridad 1: lo más importante (219/243 hechas)
 
 **enlace:** [x] yo · [x] tú · [x] mi · [x] un · [x] una · [x] no · [x] sí · [x] quiero · [x] dame · [x] ayuda · [x] mira · [x] ven · [x] vamos · [x] hola · [x] adiós · [x] gracias · [x] favor · [x] más · [x] ya · [x] aquí · [x] con · [x] de · [x] en · [x] a · [x] para · [x] que · [x] soy · [x] eres · [x] hay · [x] voy · [x] va · [x] me · [x] te · [x] se · [x] lo · [x] mucho · [x] muy · [x] ahora · [x] bien · [x] mal · [x] también · [x] pero · [x] o · [x] los · [x] las · [x] al · [x] del · [x] su · [x] ella · [x] este · [x] eso · [x] corre · [x] salta · [x] abre · [x] cierra · [x] canta · [x] baila · [x] lava · [x] toma · [x] sube · [x] baja · [x] llora · [x] ríe · [x] duele · [ ] grande · [ ] chico · [ ] lindo · [ ] feo · [ ] rico · [ ] caliente · [ ] frío · [ ] limpio · [ ] sucio · [ ] bueno · [ ] malo · [ ] feliz · [ ] triste
 
@@ -38,9 +38,9 @@ Las palabras de la lista ampliada (`data/voces/lista-ampliada.json`) se agregan 
 
 **animales:** [x] caballo · [x] conejo · [x] pájaro · [x] pollito · [x] mono · [x] león · [x] tigre · [x] elefante · [x] tortuga · [x] ratón · [x] oveja · [x] chancho · [x] gallina · [x] mariposa · [x] abeja · [x] hormiga · [x] araña · [x] rana
 
-**juguetes:** [x] bici · [x] osito · [x] tren · [x] avión · [x] bote · [x] lápiz · [x] papel · [x] mochila · [x] zapato · [x] calcetín · [x] pantalón · [x] chaqueta · [x] gorro · [x] polerón · [x] vestido · [x] sombrero · [x] reloj · [x] teléfono · [x] celular · [x] paraguas · [x] moneda · [x] plata · [x] regalo · [x] flor · [x] árbol · [x] sol · [x] luna · [x] estrella · [ ] nube · [ ] lluvia · [ ] mar · [ ] playa · [ ] plaza · [ ] calle · [ ] escuela · [ ] tienda · [ ] hospital · [ ] bus · [ ] micro · [ ] metro · [ ] camión · [ ] moto
+**juguetes:** [x] bici · [x] osito · [x] tren · [x] avión · [x] bote · [x] lápiz · [x] papel · [x] mochila · [x] zapato · [x] calcetín · [x] pantalón · [x] chaqueta · [x] gorro · [x] polerón · [x] vestido · [x] sombrero · [x] reloj · [x] teléfono · [x] celular · [x] paraguas · [x] moneda · [x] plata · [x] regalo · [x] flor · [x] árbol · [x] sol · [x] luna · [x] estrella · [x] nube · [x] lluvia · [x] mar · [x] playa · [x] plaza · [x] calle · [x] escuela · [x] tienda · [x] hospital · [x] bus · [x] micro · [x] metro · [x] camión · [x] moto
 
-**otras:** [ ] rojo · [ ] azul · [ ] verde · [ ] amarillo · [ ] blanco · [ ] negro · [ ] uno · [ ] dos · [ ] tres · [ ] cuatro · [ ] cinco · [ ] entrada · [ ] salida · [ ] abierto · [ ] cerrado · [ ] cuidado · [ ] peligro · [ ] pare · [ ] empujar · [ ] tirar · [ ] hombres · [ ] mujeres · [ ] precio · [ ] hambre · [ ] sed · [ ] sueño · [ ] calor · [ ] dolor · [ ] miedo · [ ] amor · [ ] perdón · [ ] permiso
+**otras:** [x] rojo · [x] azul · [x] verde · [x] amarillo · [x] blanco · [x] negro · [x] uno · [x] dos · [x] tres · [x] cuatro · [x] cinco · [x] entrada · [x] salida · [x] abierto · [x] cerrado · [x] cuidado · [x] peligro · [x] pare · [x] empujar · [x] tirar · [x] hombres · [ ] mujeres · [ ] precio · [ ] hambre · [ ] sed · [ ] sueño · [ ] calor · [ ] dolor · [ ] miedo · [ ] amor · [ ] perdón · [ ] permiso
 
 ## Prioridad 2 (0/255 hechas)
 
