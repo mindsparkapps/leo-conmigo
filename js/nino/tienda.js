@@ -16,6 +16,7 @@ import { cargarMonedas, comprarSobre, venderRepetida } from '../albumes.js';
 import { mapaDePropias, nodoDeCalcomania } from '../ui/calcomania.js';
 import { LAMINAS_POR_SOBRE, precioDeSobre, repetidas, valorDeVenta } from '../core/sobres.js';
 import { lanzarMonedas } from '../ui/monedas-vuelo.js';
+import { cargarColecciones, urlDeSobre } from '../colecciones.js';
 import { COLORES_CAJAS_PREDETERMINADOS, coloresDeCajas, fijarColoresDeCajas, saltarLeccionActivo } from '../dev.js';
 import { crearCanje, crearRegalo, faltan, premiosVisibles, puedeCanjear } from '../core/album.js';
 import { normalizarAjustes } from '../core/modelos.js';
@@ -165,22 +166,28 @@ async function iniciar(zona, estaVivo) {
     if (!estaVivo()) return;
     const precioSobre = precioDeSobre(datos.album);
     const alcanzaSobre = datos.saldo >= precioSobre;
-    const sobre = el(
-      'button',
-      {
-        type: 'button',
-        class: alcanzaSobre ? 'premio-carta sobre-carta' : 'premio-carta sobre-carta premio-lejos',
-        'aria-label': `Sobre de láminas, ${textoMonedas(precioSobre)}`,
-        onclick: () => {
-          if (ocupado || !toqueValido()) return;
-          if (alcanzaSobre) comprar();
-          else decir(`Sobre de láminas. Te faltan ${textoMonedas(precioSobre - datos.saldo)}`, { siempre: true });
+    // Un sobre por álbum (el de la app y cada álbum cargado), cada uno con su imagen
+    const { colecciones } = await cargarColecciones(store, perfil);
+    const sobres = await Promise.all(colecciones.map(async (coleccion) => {
+      const nombreSobre = coleccion.esBase ? 'Sobre de láminas' : `Sobre: ${coleccion.nombre}`;
+      return el(
+        'button',
+        {
+          type: 'button',
+          class: alcanzaSobre ? 'premio-carta sobre-carta' : 'premio-carta sobre-carta premio-lejos',
+          'aria-label': `${nombreSobre}, ${textoMonedas(precioSobre)}`,
+          onclick: () => {
+            if (ocupado || !toqueValido()) return;
+            if (alcanzaSobre) comprar(coleccion);
+            else decir(`${nombreSobre}. Te faltan ${textoMonedas(precioSobre - datos.saldo)}`, { siempre: true });
+          },
         },
-      },
-      crearSobreChico(LAMINAS_POR_SOBRE),
-      el('span', { class: 'premio-nombre' }, 'Sobre de láminas'),
-      crearPrecio(precioSobre),
-    );
+        crearSobreChico(LAMINAS_POR_SOBRE, await urlDeSobre(store, coleccion)),
+        el('span', { class: 'premio-nombre' }, nombreSobre),
+        crearPrecio(precioSobre),
+      );
+    }));
+    if (!estaVivo()) return;
     const propiasPorId = mapaDePropias(datos.propias);
     const sobrantes = repetidas(datos.calcomanias);
     const valorVenta = valorDeVenta(datos.album);
@@ -230,7 +237,7 @@ async function iniciar(zona, estaVivo) {
         aviso ? el('p', { class: 'mensaje-nino mensaje-premio', role: 'status' }, aviso) : null,
         // Productos (sobre y premios) a la izquierda y láminas repetidas a la derecha cuando la pantalla es ancha (CSS)
         el('div', { class: 'tienda-productos' },
-          el('div', { class: 'tienda-grilla' }, sobre),
+          el('div', { class: 'tienda-grilla' }, sobres),
           premios.length ? el('h2', { class: 'tienda-titulo' }, 'Premios') : null,
           premios.length ? el('div', { class: 'tienda-grilla' }, cartas) : el('p', { class: 'mensaje-nino' }, 'Todavía no hay premios.'),
         ),
@@ -278,10 +285,10 @@ async function iniciar(zona, estaVivo) {
     }
   }
 
-  async function comprar() {
+  async function comprar(coleccion) {
     ocupado = true;
     try {
-      const r = await comprarSobre(store, perfil);
+      const r = await comprarSobre(store, perfil, { coleccionId: coleccion.esBase ? null : coleccion.id });
       if (!estaVivo()) return;
       if (!r.comprado) {
         aviso = `Te faltan ${textoMonedas(r.faltan)}.`;
@@ -297,6 +304,7 @@ async function iniciar(zona, estaVivo) {
       const album = el('a', { class: 'boton-respuesta boton-no', href: '#/nino/albumes', 'aria-label': 'Ir a pegar las láminas al álbum' }, '📖');
       ultimoToque = performance.now();
       quitarEscena = presentarSobre(zona.closest('.vista-nino') ?? zona, dibujos, {
+        imagen: await urlDeSobre(store, coleccion),
         mensaje: 'Arrastra el dedo por arriba del sobre para abrirlo.',
         acciones: [album, seguir],
         alAbrir: () => decir('¡Tus láminas nuevas! Pégalas en el álbum'),

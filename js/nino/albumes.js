@@ -9,10 +9,13 @@ import { el } from '../ui/dom.js';
 import { deshabilitarAdulto } from '../acceso.js';
 import { NOMBRE_APP } from '../config.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
+import { cargarColecciones, urlDePortada } from '../colecciones.js';
+import { faltantesPorPegar } from '../core/colecciones.js';
+import { crearTarjetaAlbum } from '../ui/tarjeta-album.js';
 import { liberarUrls } from '../medios.js';
 import { cargarMonedas } from '../albumes.js';
 import {
-  armarLibro, codigosDelLibro, lugarDeLamina, registrosAlPegar, separarCalcomanias,
+  armarLibro, lugarDeLamina, registrosAlPegar, separarCalcomanias,
 } from '../core/libro-album.js';
 import { ANCHO_CARA, ALTO_CARA, caraDePagina, dibujarCaraDePagina, dibujarCaras, dibujarPortadaDeLibro, lugaresDePagina } from '../ui/laminas.js';
 import { mapaDePropias, nodoDeCalcomania } from '../ui/calcomania.js';
@@ -35,12 +38,15 @@ export function montar(contenedor, { ir }) {
   const casa = el('button', { type: 'button', class: 'boton-casa boton-casa-chico', 'aria-label': 'Volver al inicio', onclick: () => ir('/nino') });
   casa.innerHTML = ICONO_CASA;
   const zona = el('div', { class: 'libro-zona' });
+  // Con varios álbumes, este botón (junto a la casa) vuelve a la lista para elegir otro
+  const volver = el('button', { type: 'button', class: 'boton-casa boton-casa-chico libro-volver', hidden: true, 'aria-label': 'Elegir otro álbum', onclick: () => estado.alSelector?.() });
+  volver.innerHTML = ICONO_ATRAS;
   // Pantalla de carga mientras el álbum todavía no se ve
   const cargando = el('div', { class: 'libro-cargando', role: 'status' }, el('span', { class: 'libro-cargando-giro', 'aria-hidden': 'true' }), el('p', { class: 'mensaje-nino' }, 'Preparando tu álbum…'));
-  contenedor.append(el('section', { class: 'vista-nino libro-nino' }, zona, cargando, casa));
+  contenedor.append(el('section', { class: 'vista-nino libro-nino' }, zona, cargando, casa, volver));
 
-  const estado = { vivo: true, libro: null, sueltas: null };
-  pintar(zona, estado)
+  const estado = { vivo: true, libro: null, sueltas: null, alSelector: null };
+  iniciar(zona, estado, volver)
     .catch((error) => {
       console.error(error);
       zona.replaceChildren(el('p', { class: 'mensaje-nino' }, 'Algo no funcionó. Toca la casa para volver.'));
@@ -60,7 +66,58 @@ function flecha(clase, etiqueta, icono, alTocar) {
   return b;
 }
 
-async function pintar(zona, estado) {
+function limpiarLibro(estado) {
+  estado.sueltas?.destruir();
+  estado.libro?.destruir();
+  estado.sueltas = null;
+  estado.libro = null;
+}
+
+/**
+ * Primero se elige el álbum (si hay más de uno): cada portada muestra en un cuadrado verde cuántas láminas faltan por pegar.
+ * Con un solo álbum se entra directo a su libro.
+ */
+async function iniciar(zona, estado, volver) {
+  const store = await obtenerStore();
+  const perfil = await perfilActivo();
+  if (!perfil || !estado.vivo) return;
+  const { colecciones } = await cargarColecciones(store, perfil);
+
+  const abrir = async (coleccion) => {
+    limpiarLibro(estado);
+    volver.hidden = colecciones.length < 2;
+    zona.classList.remove('eligiendo');
+    zona.replaceChildren(el('p', { class: 'mensaje-nino' }, 'Preparando tu álbum…'));
+    try {
+      await pintar(zona, estado, coleccion);
+    } catch (error) {
+      console.error(error);
+      zona.replaceChildren(el('p', { class: 'mensaje-nino' }, 'Algo no funcionó. Toca la casa para volver.'));
+    }
+  };
+  const elegir = async () => {
+    limpiarLibro(estado);
+    volver.hidden = true;
+    const calcomanias = await store.listar('calcomanias', { perfilId: perfil.id });
+    const tarjetas = await Promise.all(colecciones.map(async (coleccion) => crearTarjetaAlbum({
+      url: await urlDePortada(store, coleccion),
+      nombre: coleccion.nombre,
+      faltan: faltantesPorPegar(coleccion, calcomanias),
+      alTocar: () => abrir(coleccion),
+    })));
+    if (!estado.vivo) return;
+    zona.classList.add('eligiendo');
+    zona.replaceChildren(
+      el('h2', { class: 'tienda-titulo' }, '¿A qué álbum quieres entrar?'),
+      el('div', { class: 'elegir-albumes' }, tarjetas),
+    );
+  };
+  estado.alSelector = elegir;
+  if (colecciones.length === 1) await abrir(colecciones[0]);
+  else await elegir();
+}
+
+async function pintar(zona, estado, coleccion) {
   const store = await obtenerStore();
   const perfil = await perfilActivo();
   if (!perfil || !estado.vivo) return;
@@ -68,11 +125,13 @@ async function pintar(zona, estado) {
   const propias = datos.propias.filter((p) => !p.deleted);
   const propiasPorId = mapaDePropias(propias);
   let calcomanias = datos.calcomanias.filter((c) => !c.deleted);
-  const codigos = codigosDelLibro({ album: datos.album, propias });
+  const codigos = coleccion.codigos;
+  const delAlbum = new Set(codigos);
+  const urlPortada = await urlDePortada(store, coleccion);
 
   const calcular = () => {
     const { pegadas, sueltas } = separarCalcomanias(calcomanias);
-    return { libro: armarLibro({ codigos, pegadas }), sueltas };
+    return { libro: armarLibro({ codigos, pegadas }), sueltas: sueltas.filter((c) => delAlbum.has(c)) };
   };
   let { libro, sueltas } = calcular();
 
@@ -89,7 +148,7 @@ async function pintar(zona, estado) {
     if (!controlador) return;
     const lugar = lugarDeLamina(libro, codigo);
     controlador.actualizarCara(caraDePagina(lugar.pagina), await dibujarCaraDePagina({ store, libro, propias, indice: lugar.pagina }));
-    controlador.actualizarCara(0, await dibujarPortadaDeLibro(libro));
+    controlador.actualizarCara(0, await dibujarPortadaDeLibro(libro, urlPortada));
   }
 
   const lienzo = el('div', { class: 'libro-lienzo-zona', role: 'img', 'aria-label': `Mi álbum: ${libro.pegadas} de ${libro.total} láminas pegadas` });
@@ -99,7 +158,7 @@ async function pintar(zona, estado) {
   try {
     const { crearLibro3D } = await import('../ui/libro3d.js');
     if (!estado.vivo) return;
-    const caras = await dibujarCaras({ store, libro, propias });
+    const caras = await dibujarCaras({ store, libro, propias, urlPortada });
     if (!estado.vivo) return;
 
     const atras = flecha('libro-atras', 'Página anterior', ICONO_ATRAS, () => controlador?.pasar(-1));
@@ -226,7 +285,7 @@ async function pintar(zona, estado) {
     zona.querySelector('.libro-controles')?.remove();
     for (const codigo of sueltas) await pegar(codigo, null);
     ({ libro, sueltas } = calcular());
-    const caras = await dibujarCaras({ store, libro, propias });
+    const caras = await dibujarCaras({ store, libro, propias, urlPortada });
     if (!estado.vivo) return;
     lienzo.replaceChildren(...caras.slice(2).map((c) => { c.classList.add('libro-cara-plana'); return c; }));
     lienzo.classList.add('libro-plano');

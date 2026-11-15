@@ -13,6 +13,7 @@ import { mapaDePropias, nodoDeCalcomania } from '../ui/calcomania.js';
 import { ganarCalcomania, pagarLeccion } from '../albumes.js';
 import { destinoSaldo, fijarSaldo } from '../ui/saldo.js';
 import { lanzarMonedas } from '../ui/monedas-vuelo.js';
+import { lanzarConfeti } from '../ui/confeti.js';
 
 export const titulo = NOMBRE_APP;
 
@@ -33,21 +34,15 @@ export function establecerPremio(datos) {
  * Cierra una lección: elige la calcomanía de hoy, paga las monedas de la lección y deja todo listo para la pantalla del
  * premio. Lo usan el fin de la sesión y el atajo «saltar la lección» de las herramientas de desarrollador.
  */
-export async function terminarLeccion(store, perfil, ajustes) {
-  const { codigo, album, saldo } = await ganarCalcomania(store, perfil);
+export async function terminarLeccion(store, perfil, ajustes, { coleccionId = null } = {}) {
+  const { codigo, album, saldo } = await ganarCalcomania(store, perfil, { coleccionId });
   const pago = await pagarLeccion(store, perfil);
   establecerPremio({ codigo, ajustes, album, saldo: saldo + pago.cantidad, monedas: pago.cantidad, saldoAntes: pago.saldoAntes });
 }
 
-/** Estrellas que suben y se desvanecen (≤ 1,5 s). Con movimiento reducido el CSS las oculta. */
-export function lluviaDeEstrellas(vista) {
-  const lluvia = el(
-    'div',
-    { class: 'estrellas', 'aria-hidden': 'true' },
-    [12, 30, 50, 70, 88].map((x, i) => el('span', { style: `left:${x}%; animation-delay:${i * 90}ms` }, '⭐')),
-  );
-  vista.append(lluvia);
-  setTimeout(() => lluvia.remove(), 1500);
+/** Confeti que cae (≈ 2 s). Se llama igual que antes (`vista` ya no hace falta): ahora son papelitos, no estrellas. */
+export function lluviaDeEstrellas() {
+  lanzarConfeti();
 }
 
 export function montar(contenedor, { ir }) {

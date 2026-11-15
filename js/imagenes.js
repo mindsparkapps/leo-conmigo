@@ -37,7 +37,7 @@ const aBlob = (lienzo, tipo, calidad) => new Promise((resolver) => lienzo.toBlob
  * Convierte la foto en un cuadrado de hasta `lado` px.
  * @returns { blob, mime, lado }
  */
-export async function prepararImagen(archivo, { lado = 512, calidad = 0.85 } = {}) {
+export async function prepararImagen(archivo, { lado = 512, calidad = 0.85, conservarProporcion = false } = {}) {
   let fuente;
   try {
     fuente = await abrirImagen(archivo);
@@ -45,17 +45,22 @@ export async function prepararImagen(archivo, { lado = 512, calidad = 0.85 } = {
     throw new Error('No se pudo leer la imagen. Prueba con otra foto.');
   }
   try {
-    const { sx, sy, tam } = calcularRecorteCuadrado(fuente.ancho, fuente.alto);
+    // `conservarProporcion`: sin recorte (portadas), con el lado MAYOR reducido a `lado`; si no, recorte cuadrado
+    const { sx, sy, tam } = conservarProporcion ? { sx: 0, sy: 0, tam: Math.max(fuente.ancho, fuente.alto) } : calcularRecorteCuadrado(fuente.ancho, fuente.alto);
     if (!tam) throw new Error('La imagen está vacía.');
     const destino = ladoFinal(tam, lado);
     const lienzo = document.createElement('canvas');
-    lienzo.width = destino;
-    lienzo.height = destino;
+    const k = destino / tam;
+    const anchoDestino = conservarProporcion ? Math.max(1, Math.round(fuente.ancho * k)) : destino;
+    const altoDestino = conservarProporcion ? Math.max(1, Math.round(fuente.alto * k)) : destino;
+    lienzo.width = anchoDestino;
+    lienzo.height = altoDestino;
     const ctx = lienzo.getContext('2d');
     ctx.fillStyle = '#ffffff'; // fondo blanco para transparencias
-    ctx.fillRect(0, 0, destino, destino);
+    ctx.fillRect(0, 0, anchoDestino, altoDestino);
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(fuente.imagen, sx, sy, tam, tam, 0, 0, destino, destino);
+    if (conservarProporcion) ctx.drawImage(fuente.imagen, 0, 0, fuente.ancho, fuente.alto, 0, 0, anchoDestino, altoDestino);
+    else ctx.drawImage(fuente.imagen, sx, sy, tam, tam, 0, 0, destino, destino);
 
     let blob = await aBlob(lienzo, 'image/webp', calidad);
     if (!blob || blob.type !== 'image/webp') blob = await aBlob(lienzo, 'image/jpeg', calidad);

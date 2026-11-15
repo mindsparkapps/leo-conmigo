@@ -12,14 +12,160 @@ import { borrarMedio, guardarMedio, liberarUrls, urlDeMedio } from '../medios.js
 import { cargarMonedas, reiniciarAlbumes } from '../albumes.js';
 import { MONEDAS_LECCION_MAX, MONEDAS_LECCION_MIN, MONEDAS_MAX, MONEDAS_MIN, TAMANO_MAX, TAMANO_MIN, crearRegalo, normalizarAlbum } from '../core/album.js';
 import { CALCOMANIAS, codigoDePropia, rutaCalcomania } from '../core/calcomanias.js';
+import { laminasDeColeccion, normalizarColecciones, nuevaColeccion } from '../core/colecciones.js';
+import { elegirImagenes } from '../hardware.js';
+import { prepararImagen } from '../imagenes.js';
 
 export const titulo = 'Álbum y monedas · Leo Conmigo';
+
+const sinExtension = (nombre) => nombre.replace(/\.[^.]+$/, '');
+
+/**
+ * Panel «Álbumes cargados»: cargar una carpeta de imágenes como un álbum nuevo (el adulto elige cuál es la portada del
+ * álbum y cuál la del sobre; todas las demás son láminas) y quitar los que ya no se quieran.
+ * @param registrar  guarda las URLs de vista previa para soltarlas al salir de la pantalla
+ */
+function panelAlbumesCargados({ store, perfil, propias, miniaturas, repintar, registrar }) {
+  const colecciones = normalizarColecciones(perfil.colecciones);
+  const nombre = el('input', { type: 'text', maxlength: 40, autocomplete: 'off', placeholder: 'Por ejemplo: Animales' });
+  const estado = el('p', { class: 'ayuda', role: 'status' });
+  const selPortada = el('select', { 'aria-label': 'Imagen de la portada del álbum' });
+  const selSobre = el('select', { 'aria-label': 'Imagen de los sobres' });
+  const previaPortada = el('img', { class: 'carga-previa', alt: '' });
+  const previaSobre = el('img', { class: 'carga-previa', alt: '' });
+  const resumen = el('p', { class: 'ayuda' });
+  const eleccion = el('div', { hidden: true }, resumen,
+    el('div', { class: 'fila' }, campo('Portada del álbum', selPortada), previaPortada),
+    el('div', { class: 'fila' }, campo('Portada de los sobres', selSobre), previaSobre));
+  const botonCrear = el('button', { type: 'button', class: 'boton', hidden: true }, 'Crear el álbum');
+  let archivos = [];
+
+  const urlDe = (i) => {
+    const url = URL.createObjectURL(archivos[i]);
+    registrar(url);
+    return url;
+  };
+  function actualizarVista() {
+    const p = Number(selPortada.value);
+    const s = Number(selSobre.value);
+    previaPortada.src = urlDe(p);
+    previaSobre.src = urlDe(s);
+    const laminas = archivos.length - (p === s ? 1 : 2);
+    resumen.textContent = `${archivos.length} imágenes. Las ${laminas} que no son portada ni sobre serán láminas.`;
+    botonCrear.disabled = laminas < 1;
+  }
+  async function elegir(carpeta) {
+    estado.textContent = '';
+    const nuevos = await elegirImagenes({ carpeta });
+    if (!nuevos.length) return;
+    archivos = nuevos;
+    const opciones = () => archivos.map((f, i) => el('option', { value: String(i) }, f.name));
+    selPortada.replaceChildren(...opciones());
+    selSobre.replaceChildren(...opciones());
+    const buscar = (patron) => archivos.findIndex((f) => patron.test(f.name));
+    const iPortada = Math.max(0, buscar(/portada|cover|tapa/i));
+    const iSobre = buscar(/sobre|pack|envelope/i);
+    selPortada.value = String(iPortada);
+    selSobre.value = String(iSobre >= 0 ? iSobre : iPortada);
+    if (!nombre.value.trim()) nombre.value = (nuevos[0].webkitRelativePath || '').split('/')[0] || '';
+    eleccion.hidden = false;
+    botonCrear.hidden = false;
+    actualizarVista();
+  }
+  selPortada.addEventListener('change', actualizarVista);
+  selSobre.addEventListener('change', actualizarVista);
+
+  async function crear() {
+    const nombreAlbum = nombre.value.trim();
+    if (!nombreAlbum) { estado.textContent = 'Ponle un nombre al álbum.'; return; }
+    const iPortada = Number(selPortada.value);
+    const iSobre = Number(selSobre.value);
+    const laminas = archivos.filter((_, i) => i !== iPortada && i !== iSobre);
+    if (!laminas.length) { estado.textContent = 'Hace falta al menos una lámina además de las dos portadas.'; return; }
+    botonCrear.disabled = true;
+    const creados = []; // para deshacer si algo falla a la mitad
+    const medios = [];
+    try {
+      const subirPortada = async (archivo) => {
+        const { blob, mime } = await prepararImagen(archivo, { lado: 1024, conservarProporcion: true });
+        const medio = await guardarMedio(store, { tipo: 'imagen', blob, mime, origen: 'foto' });
+        medios.push(medio.id);
+        return medio;
+      };
+      estado.textContent = 'Preparando las portadas…';
+      const portada = await subirPortada(archivos[iPortada]);
+      const sobre = iSobre === iPortada ? portada : await subirPortada(archivos[iSobre]);
+      const coleccion = nuevaColeccion({ nombre: nombreAlbum, medioPortadaId: portada.id, medioSobreId: sobre.id });
+      for (let k = 0; k < laminas.length; k++) {
+        estado.textContent = `Cargando láminas: ${k + 1} de ${laminas.length}…`;
+        const { blob, mime } = await prepararImagen(laminas[k]);
+        const medio = await guardarMedio(store, { tipo: 'imagen', blob, mime, origen: 'foto' });
+        medios.push(medio.id);
+        creados.push(await store.guardar('calcomaniasPropias', {
+          perfilId: perfil.id, nombre: sinExtension(laminas[k].name), medioImagenId: medio.id, arasaacId: null, emoji: null, coleccionId: coleccion.id,
+        }));
+      }
+      await store.guardar('perfiles', { ...perfil, colecciones: [...colecciones, coleccion] });
+      await repintar();
+    } catch (error) {
+      for (const c of creados) await store.borrar('calcomaniasPropias', c.id).catch(() => {});
+      for (const id of medios) await borrarMedio(store, id).catch(() => {});
+      estado.textContent = describirError(error);
+      botonCrear.disabled = false;
+    }
+  }
+  botonCrear.addEventListener('click', crear);
+
+  async function quitar(coleccion) {
+    if (!window.confirm(`¿Quitar el álbum «${coleccion.nombre}» con todas sus láminas? Si el niño ya ganó láminas de él, desaparecen.`)) return;
+    try {
+      const sueltas = laminasDeColeccion(propias, coleccion.id);
+      const codigos = new Set(sueltas.map((p) => codigoDePropia(p.id)));
+      for (const c of (await store.listar('calcomanias', { perfilId: perfil.id })).filter((x) => codigos.has(x.codigo))) await store.borrar('calcomanias', c.id);
+      for (const p of sueltas) {
+        await store.borrar('calcomaniasPropias', p.id);
+        await borrarMedio(store, p.medioImagenId);
+      }
+      await borrarMedio(store, coleccion.medioPortadaId);
+      if (coleccion.medioSobreId !== coleccion.medioPortadaId) await borrarMedio(store, coleccion.medioSobreId);
+      await store.guardar('perfiles', { ...perfil, colecciones: colecciones.filter((c) => c.id !== coleccion.id) });
+      await repintar();
+    } catch (error) {
+      estado.textContent = describirError(error);
+    }
+  }
+
+  const lista = colecciones.map((c) =>
+    el(
+      'li',
+      { class: 'fila-contenido' },
+      crearMiniatura({ url: miniaturas.get(c.medioPortadaId), texto: c.nombre }),
+      el('div', { class: 'fila-texto' }, el('strong', {}, c.nombre), el('span', { class: 'ayuda' }, `${laminasDeColeccion(propias, c.id).length} láminas`)),
+      el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Quitar el álbum ${c.nombre}`, onclick: () => quitar(c) }, 'Quitar'),
+    ));
+
+  return el(
+    'div',
+    { class: 'panel' },
+    el('h2', {}, 'Álbumes cargados'),
+    el('p', { class: 'ayuda' }, 'Carga una carpeta de imágenes como un álbum nuevo: tú eliges cuál es la portada del álbum y cuál la de los sobres, y todas las demás son láminas. El niño elige de cuál álbum quiere su premio (hasta 3 al azar) y la tienda tiene un sobre de cada álbum.'),
+    lista.length ? el('ul', { class: 'lista-simple' }, lista) : el('p', { class: 'ayuda' }, 'Todavía no hay álbumes cargados (siempre está el álbum de la app).'),
+    campo('Nombre del álbum', nombre),
+    el('div', { class: 'acciones' },
+      el('button', { type: 'button', class: 'boton secundario', onclick: () => elegir(true) }, 'Elegir una carpeta'),
+      el('button', { type: 'button', class: 'boton secundario', onclick: () => elegir(false) }, 'Elegir imágenes sueltas')),
+    eleccion,
+    estado,
+    el('div', { class: 'acciones' }, botonCrear),
+  );
+}
 
 export function montar(contenedor) {
   const raiz = el('section', { class: 'vista-adulto' }, cabecera('Álbum y monedas'), cargando());
   contenedor.append(raiz);
   let vivo = true;
   let selector = null;
+  const urlsTemporales = []; // vistas previas de las imágenes elegidas para un álbum nuevo
 
   async function pintar() {
     const store = await obtenerStore();
@@ -32,7 +178,8 @@ export function montar(contenedor) {
     const datos = await cargarMonedas(store, perfil);
     const propias = mapaDePropias(datos.propias);
     const actualesNodos = (await Promise.all(datos.actual.codigos.map((c) => nodoDeCalcomania(store, c, propias)))).filter(Boolean);
-    const miniaturasPropias = new Map(await Promise.all([...propias.values()].map(async (p) => [p.id, await urlDeMedio(store, p.medioImagenId)])));
+    const miniaturasPropias = new Map(await Promise.all([...propias.values()].filter((p) => !p.coleccionId).map(async (p) => [p.id, await urlDeMedio(store, p.medioImagenId)])));
+    const portadasCargadas = new Map(await Promise.all(normalizarColecciones(perfil.colecciones).map(async (c) => [c.medioPortadaId, await urlDeMedio(store, c.medioPortadaId)])));
     if (!vivo) return;
 
     // ----- ajustes del álbum -----
@@ -40,12 +187,14 @@ export function montar(contenedor) {
     const entradaTamano = el('input', { type: 'number', min: TAMANO_MIN, max: TAMANO_MAX, value: config.tamano, inputmode: 'numeric' });
     const entradaLeccion = el('input', { type: 'number', min: MONEDAS_LECCION_MIN, max: MONEDAS_LECCION_MAX, value: config.monedasPorLeccion, inputmode: 'numeric' });
     const entradaMonedas = el('input', { type: 'number', min: MONEDAS_MIN, max: MONEDAS_MAX, value: config.monedasPorAlbum, inputmode: 'numeric' });
-    const enJuego = new Set(config.codigos ?? [...CALCOMANIAS.map((c) => c.codigo), ...[...propias.keys()].map(codigoDePropia)]);
+    // las láminas de los álbumes cargados (con `coleccionId`) tienen su propio panel: aquí solo las sueltas
+    const propiasBase = [...propias.values()].filter((p) => !p.coleccionId);
+    const enJuego = new Set(config.codigos ?? [...CALCOMANIAS.map((c) => c.codigo), ...propiasBase.map((p) => codigoDePropia(p.id))]);
     const mensaje = el('p', { class: 'ayuda', role: 'status' });
 
     const todos = [
       ...CALCOMANIAS.map((c) => ({ codigo: c.codigo, nombre: c.nombre, url: rutaCalcomania(c.codigo) })),
-      ...[...propias.values()].map((p) => ({ codigo: codigoDePropia(p.id), nombre: p.nombre, url: miniaturasPropias.get(p.id), emoji: p.emoji })),
+      ...propiasBase.map((p) => ({ codigo: codigoDePropia(p.id), nombre: p.nombre, url: miniaturasPropias.get(p.id), emoji: p.emoji })),
     ];
     const casillas = new Map();
     const cuadricula = el(
@@ -142,7 +291,7 @@ export function montar(contenedor) {
       }
     }
 
-    const listaPropias = [...propias.values()].map((p) =>
+    const listaPropias = propiasBase.map((p) =>
       el(
         'li',
         { class: 'fila-contenido' },
@@ -164,6 +313,7 @@ export function montar(contenedor) {
         el('p', { class: 'ayuda' }, `Álbumes completos: ${datos.completos.length}. Cada sesión terminada da una calcomanía; al llenar el álbum el niño gana ${config.monedasPorAlbum} monedas de oro y empieza otro álbum vacío.`),
         el('div', { class: 'fila-contenido' }, crearCofre({ saldo: datos.saldo }), el('a', { class: 'boton secundario', href: '#/adulto/tienda' }, 'Ir a la tienda')),
       ),
+      panelAlbumesCargados({ store, perfil, propias: [...propias.values()], miniaturas: portadasCargadas, repintar: pintar, registrar: (url) => urlsTemporales.push(url) }),
       el(
         'div',
         { class: 'panel' },
@@ -207,6 +357,7 @@ export function montar(contenedor) {
   pintar().catch((error) => mostrarError(raiz, error));
   return () => {
     vivo = false;
+    for (const url of urlsTemporales) URL.revokeObjectURL(url);
     selector?.liberar();
     liberarUrls();
   };

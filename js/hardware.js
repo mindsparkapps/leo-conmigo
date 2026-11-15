@@ -179,6 +179,32 @@ export function elegirImagen({ camara = false } = {}) {
   });
 }
 
+/**
+ * Abre el selector para elegir VARIAS imágenes: una carpeta entera (`carpeta: true`, se leen todas las imágenes que
+ * contiene, también las de subcarpetas) o archivos sueltos. Devuelve [] si se cancela. Llamar desde un toque.
+ */
+export function elegirImagenes({ carpeta = false } = {}) {
+  return new Promise((resolver) => {
+    const entrada = document.createElement('input');
+    entrada.type = 'file';
+    entrada.accept = 'image/*';
+    entrada.multiple = true;
+    if (carpeta) entrada.setAttribute('webkitdirectory', '');
+    entrada.style.display = 'none';
+    entrada.addEventListener('change', () => {
+      const archivos = [...(entrada.files ?? [])].filter((f) => f.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|avif)$/i.test(f.name));
+      entrada.remove();
+      resolver(archivos.sort((a, b) => a.name.localeCompare(b.name, 'es', { numeric: true })));
+    });
+    entrada.addEventListener('cancel', () => {
+      entrada.remove();
+      resolver([]);
+    });
+    document.body.append(entrada);
+    entrada.click();
+  });
+}
+
 /** Abre el selector de archivos y devuelve el archivo elegido (null si se cancela). Llamar desde un toque. */
 export function elegirArchivo({ accept = '' } = {}) {
   return new Promise((resolver) => {

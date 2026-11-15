@@ -67,7 +67,9 @@ export const CODIGOS_CATALOGO = Object.freeze(CALCOMANIAS.map((c) => c.codigo));
  * @param album    perfil.album normalizado
  * @param propias  calcomanías propias vigentes ({ id })
  */
-export function codigosEnJuego(album, propias = []) {
+export function codigosEnJuego(album, todasLasPropias = []) {
+  // las láminas de un álbum cargado (con `coleccionId`) no entran aquí: salen solo de su propio álbum
+  const propias = todasLasPropias.filter((p) => !p.coleccionId);
   // los dibujos antiguos ya no existen para el juego ni para el libro
   const existentes = new Set([...CODIGOS_CATALOGO, ...propias.map((p) => codigoDePropia(p.id))]);
   const lista = album?.codigos ?? [...CODIGOS_CATALOGO, ...propias.map((p) => codigoDePropia(p.id))];

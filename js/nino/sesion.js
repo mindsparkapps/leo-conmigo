@@ -19,6 +19,9 @@ import { aplicarAutoajuste } from '../autoajuste.js';
 
 import { ACTIVIDADES } from '../actividades/indice.js';
 import { establecerPremio, lluviaDeEstrellas, terminarLeccion } from './premio.js';
+import { establecerEleccion } from './elegir.js';
+import { cargarColecciones } from '../colecciones.js';
+import { opcionesDeRecompensa } from '../core/colecciones.js';
 
 export const titulo = NOMBRE_APP;
 
@@ -206,6 +209,7 @@ async function iniciar({ vista, area, ir, sesion }) {
   async function finalizar() {
     sesion.finalizada = true;
     const fin = new Date();
+    let destino = '/nino/premio';
     try {
       await guardado;
       await store.guardar('sesiones', ctl.registro({ inicio, fin }));
@@ -215,13 +219,21 @@ async function iniciar({ vista, area, ir, sesion }) {
       } catch (error) {
         console.error('No se pudieron revisar los ajustes automáticos', error);
       }
-      // La calcomanía de hoy; si completa el álbum, también guarda sus monedas (fase 11)
-      await terminarLeccion(store, perfil, ajustes);
+      // Con varios álbumes cargados, el niño elige de cuál quiere su lámina (hasta 3 al azar); si hay uno solo, se le da directo
+      const { colecciones } = await cargarColecciones(store, perfil);
+      if (colecciones.length >= 2) {
+        establecerEleccion({ opciones: opcionesDeRecompensa(colecciones), ajustes });
+        destino = '/nino/elegir';
+      } else {
+        // La calcomanía de hoy; si completa el álbum, también guarda sus monedas (fase 11)
+        await terminarLeccion(store, perfil, ajustes);
+      }
     } catch (error) {
       console.error('No se pudo cerrar la sesión', error);
       establecerPremio({ codigo: 'estrella', ajustes }); // el niño igual recibe su premio
+      destino = '/nino/premio';
     }
-    if (sesion.vivo) ir('/nino/premio');
+    if (sesion.vivo) ir(destino);
   }
 
   // Si se sale a mitad (botón de la casa), se guarda lo que se alcanzó a hacer

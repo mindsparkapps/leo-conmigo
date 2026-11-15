@@ -35,9 +35,9 @@ function poligonos(aleatorio = Math.random) {
   };
 }
 
-function caras(abierto = false) {
+function caras(abierto = false, imagen = RUTA_PORTADA) {
   const { tira, cuerpo, borde, angulo } = poligonos();
-  const fondo = `url("${new URL(RUTA_PORTADA, document.baseURI).href}")`; // en la hoja de estilos la ruta sería relativa a css/
+  const fondo = `url("${new URL(imagen, document.baseURI).href}")`; // en la hoja de estilos la ruta sería relativa a css/
   const hacerCara = (clase, recorte) => {
     const cara = el('span', { class: `sobre-cara ${clase}`, 'aria-hidden': 'true' }, el('span', { class: 'sobre-brillo' }), el('span', { class: 'sobre-sello' }));
     cara.style.setProperty('--portada', fondo);
@@ -49,8 +49,8 @@ function caras(abierto = false) {
 }
 
 /** El sobre de la tienda: pequeño, brillante, con la cantidad de láminas. */
-export function crearSobreChico(cantidad) {
-  const { tira, cuerpo } = caras();
+export function crearSobreChico(cantidad, imagen = RUTA_PORTADA) {
+  const { tira, cuerpo } = caras(false, imagen);
   const sobre = el('span', { class: 'sobre-pack sobre-chico', 'aria-hidden': 'true' }, cuerpo, tira, el('span', { class: 'sobre-cantidad' }, `×${cantidad}`));
   return sobre;
 }
@@ -62,8 +62,8 @@ export function crearSobreChico(cantidad) {
  * @param opciones  { mensaje, acciones: nodos que aparecen al final, alAbrir }
  * @returns {() => void} quita la escena
  */
-export function presentarSobre(zona, dibujos, { mensaje, acciones = [], alAbrir = () => {} } = {}) {
-  const { tira, cuerpo } = caras();
+export function presentarSobre(zona, dibujos, { mensaje, acciones = [], alAbrir = () => {}, imagen = RUTA_PORTADA } = {}) {
+  const { tira, cuerpo } = caras(false, imagen);
   const laminas = el(
     'span',
     { class: 'sobre-laminas', 'aria-hidden': 'true' },

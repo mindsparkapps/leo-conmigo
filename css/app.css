@@ -188,11 +188,11 @@ body {
   stroke-dashoffset: 0;
   transition: stroke-dashoffset 3s linear;
 }
-/* Copia grande del candado abajo al centro mientras se sostiene (el dedo tapa el de la esquina) */
+/* Copia grande del candado al centro de la pantalla mientras se sostiene (el dedo tapa el de la esquina) */
 .candado-indicador {
   position: fixed;
   left: 50%;
-  bottom: max(24px, env(safe-area-inset-bottom));
+  top: 50%;
   z-index: 50;
   width: 120px;
   height: 120px;
@@ -200,7 +200,7 @@ body {
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 6px 24px rgb(0 0 0 / 0.18);
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   pointer-events: none;
 }
 .candado-indicador svg { width: 100%; height: 100%; display: block; }
@@ -504,6 +504,8 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 .calcomania-grande { width: clamp(180px, 45vmin, 320px); aspect-ratio: 1; animation: aparecer 0.7s ease-out; }
 @keyframes aparecer { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); } }
 
+.confeti { position: fixed; inset: 0; z-index: 60; overflow: hidden; pointer-events: none; }
+.confeti span { position: absolute; top: 0; display: block; }
 .estrellas { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .estrellas span { position: absolute; bottom: 28%; font-size: 2.2rem; opacity: 0; animation: subir 1.2s ease-out forwards; }
 @keyframes subir {
@@ -513,10 +515,18 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 }
 
 /* ===== Modo niño: sesión ===== */
-.sesion-nino { position: relative; align-items: stretch; justify-content: flex-start; gap: 0; padding: 0; }
-.area-ensayo { display: flex; flex: 1; flex-direction: column; }
+/* Alto fijo: la sesión nunca se desplaza, así las opciones se ven siempre completas */
+.sesion-nino {
+  position: relative; align-items: stretch; justify-content: flex-start; gap: 0; padding: 0; overflow: hidden;
+  flex: none; height: 100vh; height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+}
+.area-ensayo { display: flex; flex: 1; flex-direction: column; min-height: 0; }
 
-.zona-modelo { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; padding: 76px 16px 8px; }
+/* La pregunta (modelo) tiene su propia zona azulada con un borde que la separa de las respuestas */
+.zona-modelo {
+  display: flex; flex: 0 1 auto; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; padding: 76px 16px 12px;
+  min-height: 0; background: var(--azul-suave); border-bottom: 5px solid var(--azul); border-radius: 0 0 32px 32px;
+}
 .zona-opciones {
   display: grid;
   flex: 1;
@@ -599,7 +609,10 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
    Va después de las reglas base de .carta y .boton-audio: con igual especificidad gana la última. */
 @media (orientation: landscape) and (max-height: 520px) {
   .area-ensayo { flex-direction: row; align-items: center; }
-  .zona-modelo { flex: 0 0 38%; flex-direction: column; padding: 8px 12px; gap: 8px; }
+  .zona-modelo {
+    flex: 0 0 38%; flex-direction: column; padding: 8px 12px; gap: 8px; align-self: stretch;
+    border-bottom: 0; border-right: 5px solid var(--azul); border-radius: 0 32px 32px 0;
+  }
   .zona-opciones, .zona-opciones[data-forma="palabra"] {
     flex: 1;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -616,6 +629,27 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
   .carta-grande .carta-emoji { font-size: 16vh; }
   .boton-audio { width: 64px; height: 64px; padding: 12px; }
   .boton-audio-grande { width: 38vh; height: 38vh; padding: 9vh; }
+}
+
+/* Celular vertical: todo se mide con el alto de la pantalla para que las tres opciones quepan sin desplazar
+   (las filas de opciones se reparten el alto que sobra y las imágenes se encogen dentro de su carta) */
+@media (orientation: portrait) {
+  .zona-modelo { padding-top: 72px; padding-bottom: 10px; gap: 8px; }
+  .zona-opciones { min-height: 0; grid-auto-rows: minmax(0, 1fr); align-content: stretch; gap: 10px; padding: 12px; }
+  .carta { min-height: 0; padding: 6px; gap: 2px; overflow: hidden; }
+  .carta-foto, .carta-imagen .carta-foto { flex: 0 1 auto; min-height: 0; max-height: 100%; }
+  .carta-emoji, .carta-imagen .carta-emoji { font-size: min(clamp(3.5rem, 12vmin, 6rem), 9dvh); }
+  .zona-opciones .palabra-texto { font-size: min(clamp(3.5rem, 10vmin, 5.5rem), 8dvh); }
+  .carta-grande { min-height: 0; }
+  .carta-grande .carta-foto, .carta-grande.carta-imagen .carta-foto { max-height: 20dvh; }
+  .carta-grande .carta-emoji { font-size: min(clamp(5rem, 18vmin, 9rem), 16dvh); }
+  .carta-grande .palabra-texto { font-size: min(clamp(4rem, 13vmin, 7rem), 11dvh); }
+  .boton-audio-grande { width: min(clamp(140px, 30vmin, 220px), 20dvh); height: min(clamp(140px, 30vmin, 220px), 20dvh); padding: 22%; }
+}
+
+@media (orientation: portrait) {
+  .letra-grande .zona-opciones .palabra-texto { font-size: min(clamp(4.5rem, 13vmin, 7rem), 9dvh); }
+  .letra-grande .carta-grande .palabra-texto { font-size: min(clamp(5rem, 16vmin, 8.5rem), 12dvh); }
 }
 
 /* Ajustes del perfil que cambian cómo se ve */
@@ -1045,7 +1079,7 @@ img.calcomania-grande { border-width: 3px; border-radius: 24px; }
 @media (orientation: landscape) and (max-height: 520px) {
   .libro-nino { padding: 8px 8px 8px 84px; gap: 0; }
   .libro-nino .boton-casa-chico { top: 8px; left: 8px; width: 64px; }
-  .libro-zona { display: grid; grid-template-columns: minmax(0, 1fr) 190px; grid-template-rows: auto minmax(0, 1fr); gap: 4px 10px; align-items: stretch; }
+  .libro-zona:not(.eligiendo) { display: grid; grid-template-columns: minmax(0, 1fr) 190px; grid-template-rows: auto minmax(0, 1fr); gap: 4px 10px; align-items: stretch; }
   .libro-zona > .laminas-sueltas { grid-column: 1; grid-row: 1; min-height: 0; }
   .libro-zona > .libro-lienzo-zona { grid-column: 1; grid-row: 2; min-height: 0; }
   .libro-zona > .libro-controles { grid-column: 2; grid-row: 1 / span 2; justify-content: center; padding-top: 52px; gap: 8px; overflow-y: auto; }
@@ -1094,6 +1128,23 @@ img.calcomania-grande { border-width: 3px; border-radius: 24px; }
 .tienda-nino > .tienda-zona > .miniatura-grande { width: clamp(150px, 32vmin, 260px); height: clamp(150px, 32vmin, 260px); }
 .mensaje-premio { color: var(--verde); font-weight: 700; }
 .tienda-titulo { margin: 8px 0 0; font-size: 1.6rem; }
+/* Elegir un álbum: portadas grandes; el número de láminas por pegar va en un cuadrado verde translúcido al centro */
+.elegir-albumes { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: center; gap: 24px; width: 100%; }
+.album-tarjeta { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 8px; border: 0; background: transparent; color: var(--texto); font: inherit; cursor: pointer; touch-action: manipulation; }
+.album-portada { position: relative; display: block; width: clamp(130px, 28vmin, 220px); aspect-ratio: 3 / 4; border-radius: 14px; overflow: hidden; border: 4px solid #fff; box-shadow: 0 6px 16px rgb(0 0 0 / 0.3); background: var(--azul-oscuro); }
+.album-portada img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.album-faltan {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: grid; place-items: center;
+  min-width: 2.2em; height: 2.2em; padding: 0 0.3em; border-radius: 14px; background: rgb(43 125 81 / 0.78); border: 3px solid rgb(255 255 255 / 0.85);
+  color: #fff; font-size: clamp(1.8rem, 6vmin, 2.8rem); font-weight: 800; line-height: 1; text-shadow: 0 2px 4px rgb(0 0 0 / 0.4);
+}
+.album-nombre { font-size: 1.4rem; font-weight: 700; max-width: 14ch; overflow-wrap: anywhere; }
+.elegir-nino { gap: 24px; justify-content: center; }
+.libro-zona.eligiendo { overflow-y: auto; justify-content: flex-start; }
+.carga-previa { width: 90px; height: 90px; object-fit: cover; border-radius: 12px; border: 3px solid var(--borde-fuerte); background: #fff; }
+.libro-nino .libro-volver { left: 96px; }
+.libro-nino .libro-volver[hidden] { display: none; }
+@media (orientation: landscape) and (max-height: 520px) { .libro-nino .libro-volver { left: 8px; top: 80px; } }
 /* Vertical: una sola columna (sobre, láminas repetidas, premios). Los dos grupos se «disuelven» y el orden lo da `order` */
 .tienda-productos, .tienda-repetidas { display: contents; }
 .tienda-productos > :first-child { order: 1; }

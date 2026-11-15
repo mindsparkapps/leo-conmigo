@@ -312,8 +312,8 @@ export async function dibujarCaraDePagina({ store, libro, propias = [], indice }
 }
 
 /** La portada con «pegadas de total» al día. */
-export async function dibujarPortadaDeLibro(libro) {
-  return portada(libro, await cargarImagen(RUTA_PORTADA));
+export async function dibujarPortadaDeLibro(libro, urlPortada = RUTA_PORTADA) {
+  return portada(libro, await cargarImagen(urlPortada));
 }
 
 /**
@@ -322,8 +322,8 @@ export async function dibujarPortadaDeLibro(libro) {
  * @param libro    resultado de armarLibro()
  * @param propias  calcomanías propias vigentes
  */
-export async function dibujarCaras({ store, libro, propias = [] }) {
-  const caras = [await dibujarPortadaDeLibro(libro), interior()];
+export async function dibujarCaras({ store, libro, propias = [], urlPortada = RUTA_PORTADA }) {
+  const caras = [await dibujarPortadaDeLibro(libro, urlPortada), interior()];
   for (let i = 0; i < libro.paginas.length; i++) caras.push(await dibujarCaraDePagina({ store, libro, propias, indice: i }));
   if (caras.length % 2 !== 0) caras.push(carasVacias());
   return caras;

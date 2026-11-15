@@ -31,6 +31,7 @@ crearRouter({
   rutas: [
     { ruta: '/nino/sesion', cargar: () => import('./nino/sesion.js') },
     { ruta: '/nino/premio', cargar: () => import('./nino/premio.js') },
+    { ruta: '/nino/elegir', cargar: () => import('./nino/elegir.js') },
     { ruta: '/nino/tienda', cargar: () => import('./nino/tienda.js') },
     { ruta: '/nino/albumes', cargar: () => import('./nino/albumes.js') },
     { ruta: '/nino/libros', cargar: () => import('./nino/libros.js') },

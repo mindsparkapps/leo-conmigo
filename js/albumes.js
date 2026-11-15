@@ -3,6 +3,7 @@
 
 import { CODIGOS_CATALOGO, codigosEnJuego, elegirCalcomania } from './core/calcomanias.js';
 import { calcularAlbumes, crearPagoLeccion, normalizarAlbum, premiosDeAlbumPorCrear, saldo } from './core/album.js';
+import { listarColecciones } from './core/colecciones.js';
 import { crearCompraSobre, crearVenta, precioDeSobre, registroAVender, sacarSobre, valorDeVenta } from './core/sobres.js';
 
 /** Todo lo que hace falta para pintar el álbum, el cofre y la tienda de un niño. */
@@ -46,10 +47,24 @@ export async function pagarLeccion(store, perfil, { ahora = () => new Date().toI
 }
 
 /**
+ * Los códigos de un álbum cargado (`coleccionId`); sin él, los del álbum de la app (lo de siempre).
+ * Si el álbum pedido ya no existe, vuelve a los del álbum de la app.
+ */
+function codigosParaSacar(perfil, config, propias, coleccionId) {
+  if (coleccionId) {
+    const coleccion = listarColecciones({ perfil, propias }).find((c) => c.id === coleccionId);
+    if (coleccion) return coleccion.codigos;
+  }
+  const enJuego = codigosEnJuego(config, propias);
+  return enJuego.length ? enJuego : CODIGOS_CATALOGO;
+}
+
+/**
  * Compra un sobre: gasta las monedas y guarda sus láminas sueltas (pueden repetirse).
+ * @param coleccionId  de qué álbum cargado es el sobre (sin él, el álbum de la app)
  * @returns {{ comprado: false, faltan, precio } | { comprado: true, codigos, precio, saldo, album }}
  */
-export async function comprarSobre(store, perfil, { aleatorio = Math.random, ahora = () => new Date().toISOString() } = {}) {
+export async function comprarSobre(store, perfil, { aleatorio = Math.random, ahora = () => new Date().toISOString(), coleccionId = null } = {}) {
   const filtro = { perfilId: perfil.id };
   const config = normalizarAlbum(perfil.album);
   const precio = precioDeSobre(config);
@@ -61,8 +76,7 @@ export async function comprarSobre(store, perfil, { aleatorio = Math.random, aho
   const actual = saldo(movimientos);
   if (actual < precio) return { comprado: false, faltan: precio - actual, precio };
 
-  const enJuego = codigosEnJuego(config, propias);
-  const codigos = sacarSobre(enJuego.length ? enJuego : CODIGOS_CATALOGO, aleatorio);
+  const codigos = sacarSobre(codigosParaSacar(perfil, config, propias, coleccionId), aleatorio);
   const base = Date.parse(ahora());
   const nuevas = await store.guardarVarios(
     'calcomanias',
@@ -107,7 +121,7 @@ export async function reiniciarAlbumes(store, perfil) {
  * @returns {{ codigo, esNueva, album: null | { numero, codigos, monedas }, saldo }}
  *   `album` solo viene si ESTA calcomanía completó el álbum (para mostrar la celebración).
  */
-export async function ganarCalcomania(store, perfil, { aleatorio = Math.random, ahora = () => new Date().toISOString() } = {}) {
+export async function ganarCalcomania(store, perfil, { aleatorio = Math.random, ahora = () => new Date().toISOString(), coleccionId = null } = {}) {
   const filtro = { perfilId: perfil.id };
   const config = normalizarAlbum(perfil.album);
   const [calcomanias, propias, movimientos] = await Promise.all([
@@ -116,8 +130,11 @@ export async function ganarCalcomania(store, perfil, { aleatorio = Math.random, 
     store.listar('movimientos', filtro),
   ]);
   const { actual } = calcularAlbumes({ calcomanias, movimientos, tamano: config.tamano });
-  const enJuego = codigosEnJuego(config, propias);
-  const { codigo, esNueva } = elegirCalcomania(actual.codigos, aleatorio, enJuego.length ? enJuego : CODIGOS_CATALOGO);
+  // Se prefiere una lámina que el niño aún no tiene (ni suelta ni pegada) del álbum elegido
+  const delAlbum = codigosParaSacar(perfil, config, propias, coleccionId);
+  const tiene = new Set(calcomanias.filter((c) => !c.deleted).map((c) => c.codigo));
+  const sinTener = delAlbum.filter((c) => !tiene.has(c));
+  const { codigo, esNueva } = elegirCalcomania(actual.codigos, aleatorio, coleccionId && sinTener.length ? sinTener : delAlbum);
 
   const fecha = ahora();
   // `pegada: false`: la lámina aparece suelta sobre el libro y el niño la pega en su lugar (nino/albumes.js)
