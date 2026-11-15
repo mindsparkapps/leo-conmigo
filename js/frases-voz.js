@@ -37,7 +37,10 @@ const FRASES = [
 
 export const RUTAS_DE_FRASES = Object.freeze(FRASES.map(([, archivo]) => rutaDe(archivo)));
 
-const PORTEXTO = new Map(FRASES.map(([texto, archivo]) => [texto, rutaDe(archivo)]));
+/** Cada frase fija con su texto y la ruta de su mp3 (para revisarlas una por una en Ajustes). */
+export const LISTA_DE_FRASES = Object.freeze(FRASES.map(([texto, archivo]) => ({ texto, ruta: rutaDe(archivo) })));
+
+const PORTEXTO =new Map(FRASES.map(([texto, archivo]) => [texto, rutaDe(archivo)]));
 
 function rutaDe(archivo) {
   return `data/voces/frases/${archivo}.mp3`;

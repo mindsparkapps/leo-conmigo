@@ -15,6 +15,7 @@ import {
 } from '../core/etapas.js';
 import { hablarTexto, desbloquearAudio } from '../audio.js';
 import { vibrar } from '../hardware.js';
+import { crearRevisorVoces } from './revisor-voces.js';
 import { fijarSaltarLeccion, saltarLeccionActivo } from '../dev.js';
 
 export const titulo = 'Ajustes · Leo Conmigo';
@@ -325,6 +326,7 @@ async function pintar(raiz, estaVivo) {
     panelAuto,
     panelPantalla,
     panelSonido,
+    crearRevisorVoces(),
     panelDev,
     error,
     el('div', { class: 'acciones' }, valores, guardar),

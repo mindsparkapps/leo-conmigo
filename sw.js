@@ -273,6 +273,7 @@ const PRECACHE = [
   'js/ui/grafico-semanal.js',
   'js/adulto/progreso.js',
   'js/adulto/ajustes.js',
+  'js/adulto/revisor-voces.js',
   'js/adulto/respaldo.js',
   'js/nino/sesion.js',
   'js/nino/premio.js',

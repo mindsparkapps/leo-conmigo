@@ -1331,3 +1331,9 @@ a.boton-respuesta { text-decoration: none; font-size: 2.4rem; }
   position: absolute; top: -10%; bottom: -10%; left: 0; width: 55%;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85), transparent); transform: translateX(-130%) skewX(-20deg);
 }
+
+/* Revisor de voces (Ajustes) */
+.revisor-voces input[type="range"] { width: 100%; }
+.revisor-actual { font-size: 1.2rem; font-weight: 700; margin: 0.5rem 0; }
+.revisor-malas { padding-left: 1.2rem; }
+.revisor-malas li { margin: 0.3rem 0; }
