@@ -190,9 +190,11 @@ export function analizar(respuestas, { hoy = new Date(), dias = DIAS_VENTANA } =
   const rs = respuestasAnalizables(respuestas, { hoy, dias });
   const palabras = metricasPorPalabra(rs, { hoy });
   const confiables = palabras.filter((p) => p.confiable);
-  const masDificiles = confiables.filter((p) => p.indice > 0).sort(porMasDificil).slice(0, TAMANO_LISTA);
+  const todasDificiles = confiables.filter((p) => p.indice > 0).sort(porMasDificil);
+  const masDificiles = todasDificiles.slice(0, TAMANO_LISTA);
   const idsDificiles = new Set(masDificiles.map((p) => p.elementoId));
-  const masFaciles = confiables.filter((p) => !idsDificiles.has(p.elementoId)).sort(porMasFacil).slice(0, TAMANO_LISTA);
+  const todasFaciles = confiables.filter((p) => !idsDificiles.has(p.elementoId)).sort(porMasFacil);
+  const masFaciles = todasFaciles.slice(0, TAMANO_LISTA);
   const paraRepetirMas = palabras
     .filter((p) => (p.confiable && p.indice >= INDICE_PARA_REPETIR) || p.tendencia === 'empeora' || p.falloRepasoReciente)
     .sort(porMasDificil);
@@ -203,6 +205,8 @@ export function analizar(respuestas, { hoy = new Date(), dias = DIAS_VENTANA } =
     palabras,
     masDificiles,
     masFaciles,
+    todasDificiles, // las listas completas (la pantalla las pagina)
+    todasFaciles,
     paraRepetirMas,
     confusiones: confusionesFrecuentes(respuestas, { hoy, dias }),
     porActividad,

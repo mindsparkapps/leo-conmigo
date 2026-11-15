@@ -11,6 +11,8 @@ import {
   resumenGeneral, tablaDePalabras, volverAPracticar,
 } from '../core/estadisticas.js';
 import { UMBRAL_ETAPA_2, etapasDesbloqueadas } from '../core/etapas.js';
+import { paginar } from '../core/listas.js';
+import { crearPaginacion } from '../ui/paginacion.js';
 
 export const titulo = 'Progreso · Leo Conmigo';
 
@@ -40,7 +42,7 @@ const dia = (clave) => {
   return new Date(a, m - 1, d).toLocaleDateString('es', { day: 'numeric', month: 'short' }).replace('.', '');
 };
 
-async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null } = {}) {
+async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null, pagina = 1 } = {}) {
   const store = await obtenerStore();
   const perfil = await perfilActivo();
   if (!perfil) {
@@ -154,8 +156,9 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null } = {})
     (f) => filtro === 'todas' || (filtro === 'leida' ? f.estado === 'leida' || f.estado === 'completa' || f.estado === 'aprendida' : f.estado === filtro),
   );
 
+  const info = paginar(visibles, pagina, 20);
   const cuerpo = el('tbody', {});
-  for (const fila of visibles) {
+  for (const fila of info.items) {
     const { palabra } = fila;
     const detalle = el('tr', { class: 'fila-detalle', hidden: abierta !== palabra.id });
     const boton = el('button', {
@@ -200,7 +203,7 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null } = {})
       sabe.disabled = true;
       try {
         await store.guardarVarios('progresos', marcarDominada({ perfilId: perfil.id, elementoId: palabra.id, existentes: progresos }));
-        repintar({ filtro, abierta: palabra.id });
+        repintar({ filtro, abierta: palabra.id, pagina });
       } catch (e) {
         fallar(e);
         sabe.disabled = false;
@@ -212,7 +215,7 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null } = {})
       reiniciar.disabled = true;
       try {
         for (const id of idsDeProgresoDe(progresos, palabra.id)) await store.borrar('progresos', id);
-        repintar({ filtro, abierta: palabra.id });
+        repintar({ filtro, abierta: palabra.id, pagina });
       } catch (e) {
         fallar(e);
         reiniciar.disabled = false;
@@ -223,7 +226,7 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null } = {})
       repracticar.disabled = true;
       try {
         await store.guardarVarios('progresos', volverAPracticar({ elementoId: palabra.id, existentes: progresos }));
-        repintar({ filtro, abierta: palabra.id });
+        repintar({ filtro, abierta: palabra.id, pagina });
       } catch (e) {
         fallar(e);
         repracticar.disabled = false;
@@ -269,6 +272,7 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null } = {})
     visibles.length
       ? el('div', { class: 'tabla-contenedor' }, tabla)
       : el('p', { class: 'ayuda' }, palabras.length ? 'No hay palabras en este grupo.' : 'Aún no hay palabras. Agrégalas en «Vocabulario».'),
+    crearPaginacion(info, (p) => repintar({ filtro, pagina: p })),
     el('p', { class: 'ayuda leyenda' }, '✓ dominada · 3/5 = en práctica (aciertos sin ayuda / ensayos) · · = aún no empieza. L1 palabra igual con imagen, L2 sin imagen, L3 de la imagen a la palabra, L4 leer, L5 escuchar.'),
     aviso,
   );

@@ -601,7 +601,8 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
   cursor: pointer;
   touch-action: manipulation;
 }
-.boton-audio svg { width: 100%; height: 100%; }
+/* el svg ocupa todo el botón: con place-items:center el porcentaje se quedaba en 0 y el icono no se veía */
+.boton-audio svg { display: block; width: 100%; height: 100%; justify-self: stretch; align-self: stretch; }
 .boton-audio-grande { width: clamp(140px, 30vmin, 220px); height: clamp(140px, 30vmin, 220px); padding: 34px; }
 
 /* Celular acostado (poco alto): el modelo pasa a la izquierda y las opciones a la derecha, para que
@@ -694,6 +695,17 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 .fila-analisis:focus-visible { outline: 3px solid var(--azul); outline-offset: 2px; }
 .barra-indice { display: block; width: 100%; max-width: 260px; height: 10px; border-radius: 999px; background: var(--azul-suave); overflow: hidden; }
 .barra-indice-relleno { display: block; height: 100%; border-radius: 999px; background: var(--azul); }
+/* La barra del índice (solo en la pantalla del adulto) va de verde a rojo según cuánto le cuesta */
+.barra-indice { background: #e6edf3; }
+.barra-indice-relleno.indice-verde { background: #3aa655; }
+.barra-indice-relleno.indice-amarillo { background: #e3b505; }
+.barra-indice-relleno.indice-naranja { background: #ef8a17; }
+.barra-indice-relleno.indice-rojo { background: #d64545; }
+.paginacion { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin: 12px 0 4px; }
+.paginacion-texto { font-size: 0.95rem; color: var(--texto-suave); }
+.barra-herramientas { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; margin: 8px 0; }
+.barra-herramientas label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
+.fila-sin-agregar { opacity: 0.85; }
 .detalle-analisis { display: grid; gap: 10px; padding: 0 12px 12px; }
 .casilla { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 700; }
 .casilla input { width: 24px; height: 24px; }
@@ -1140,11 +1152,12 @@ img.calcomania-grande { border-width: 3px; border-radius: 24px; }
   color: #fff; font-size: clamp(1.8rem, 6vmin, 2.8rem); font-weight: 800; line-height: 1; text-shadow: 0 2px 4px rgb(0 0 0 / 0.4);
 }
 /* Los sobres de la tienda: flotan y se agrandan al pasar el ratón (en pantallas táctiles flotan siempre); al tocarlos se aplastan y se estiran */
-.sobre-carta { transition: scale 0.25s ease-out; }
-@media (hover: hover) { .sobre-carta:hover, .sobre-carta:focus-visible { scale: 1.1; animation: album-flota 2.4s ease-in-out infinite; } }
-@media (hover: none) { .sobre-carta { animation: album-flota 3.2s ease-in-out infinite; } }
-.sobre-carta.aplastar { scale: 1.1; animation: album-aplasta 0.65s ease-in-out both; transform-origin: 50% 100%; }
-@media (prefers-reduced-motion: reduce) { .sobre-carta, .sobre-carta:hover { animation: none; transition: none; } }
+/* Solo el sobre se mueve; la caja con el nombre y el precio queda quieta */
+.sobre-carta .sobre-chico { transition: scale 0.25s ease-out; }
+@media (hover: hover) { .sobre-carta:hover .sobre-chico, .sobre-carta:focus-visible .sobre-chico { scale: 1.1; animation: album-flota 2.4s ease-in-out infinite; } }
+@media (hover: none) { .sobre-carta .sobre-chico { animation: album-flota 3.2s ease-in-out infinite; } }
+.sobre-carta.aplastar .sobre-chico { scale: 1.1; animation: album-aplasta 0.65s ease-in-out both; transform-origin: 50% 100%; }
+@media (prefers-reduced-motion: reduce) { .sobre-carta .sobre-chico, .sobre-carta:hover .sobre-chico { animation: none; transition: none; } }
 .cofre-compacto { flex-direction: column; gap: 4px; }
 .icono-nodo { display: inline-block; }
 .icono-boton { width: 1.2em; height: 1.2em; vertical-align: -0.2em; }

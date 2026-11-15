@@ -3,7 +3,7 @@
 
 import { CODIGOS_CATALOGO, codigosEnJuego, elegirCalcomania } from './core/calcomanias.js';
 import { calcularAlbumes, crearPagoLeccion, normalizarAlbum, premiosDeAlbumPorCrear, saldo } from './core/album.js';
-import { listarColecciones } from './core/colecciones.js';
+import { ID_BASE, coleccionCompleta, listarColecciones } from './core/colecciones.js';
 import { crearCompraSobre, crearVenta, precioDeSobre, registroAVender, sacarSobre, valorDeVenta } from './core/sobres.js';
 
 /** Todo lo que hace falta para pintar el álbum, el cofre y la tienda de un niño. */
@@ -77,6 +77,9 @@ export async function comprarSobre(store, perfil, { aleatorio = Math.random, aho
     store.listar('movimientos', filtro),
   ]);
   const actual = saldo(movimientos);
+  // un álbum con todas sus láminas pegadas ya no vende sobres
+  const album = listarColecciones({ perfil, propias }).find((c) => c.id === (coleccionId ?? ID_BASE));
+  if (album && coleccionCompleta(album, calcomanias)) return { comprado: false, completo: true, faltan: 0, precio };
   if (actual < precio) return { comprado: false, faltan: precio - actual, precio };
 
   const codigos = sacarSobre(codigosParaSacar(perfil, config, propias, coleccionId), aleatorio);

@@ -20,7 +20,7 @@ export function crearTarjetaAlbum({ url, nombre, faltan = null, flota = false, i
     'span',
     { class: 'album-portada' },
     el('img', { src: url, alt: '', draggable: 'false' }),
-    faltan === null ? null : el('span', { class: 'album-faltan', 'aria-hidden': 'true' }, String(faltan)),
+    faltan ? el('span', { class: 'album-faltan', 'aria-hidden': 'true' }, String(faltan)) : null, // con 0 láminas por pegar no se dibuja el cuadro
   );
   const etiqueta = faltan === null
     ? nombre

@@ -11,8 +11,31 @@ import {
   armarPalabrasDelAsistente, agruparPorCategoria, clavePalabra, mover, nombreDeCategoria, ordenadas,
 } from '../core/vocabulario.js';
 import { tablaDePalabras } from '../core/estadisticas.js';
+import { ordenarVocabulario, paginar } from '../core/listas.js';
+import { crearPaginacion } from '../ui/paginacion.js';
 
 export const titulo = 'Vocabulario · Leo Conmigo';
+
+const TAMANO_PAGINA = 20;
+const ORDENES = [
+  ['aprendizaje', 'Orden de aprendizaje'],
+  ['alfabetico', 'Abecedario (A–Z)'],
+  ['uso', 'Más usadas en español'],
+];
+const vista = { orden: 'aprendizaje', pagina: 1 }; // se conserva mientras se pinta de nuevo
+
+let frecuenciasCache = null;
+/** Puesto de cada palabra de la lista inicial en la frecuencia de uso del español (1 = la más usada). */
+async function cargarFrecuencias() {
+  if (frecuenciasCache) return frecuenciasCache;
+  try {
+    const r = await fetch('data/frecuencia.json');
+    frecuenciasCache = r.ok ? await r.json() : {};
+  } catch {
+    frecuenciasCache = {};
+  }
+  return frecuenciasCache;
+}
 
 const NOMBRE_ESTADO = { nueva: 'Nueva', practica: 'En práctica', leida: 'Leída', completa: 'Completa', aprendida: 'Aprendida' };
 
@@ -49,8 +72,21 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
   const palabras = ordenadas(await store.listar('palabras', { perfilId: perfil.id }));
   const progresos = await store.listar('progresos', { perfilId: perfil.id });
   const estadoDe = new Map(tablaDePalabras({ palabras, progresos }).map((f) => [f.palabra.id, f.estado]));
+  const catalogo = await cargarCatalogo().catch(() => []);
+  const frecuencias = await cargarFrecuencias();
+  const existentes = new Set(palabras.map((p) => clavePalabra(p.texto)));
+  const sinAgregar = catalogo.filter((e) => !existentes.has(clavePalabra(e.texto)));
+  if (!estaVivo()) return;
+
+  // La lista muestra todas: las del niño y las de la lista inicial que aún no agregó. Se ordena y se pagina.
+  const filas = ordenarVocabulario([
+    ...palabras.map((p) => ({ texto: p.texto, palabra: p })),
+    ...sinAgregar.map((e) => ({ texto: e.texto, entrada: e })),
+  ], vista.orden, frecuencias);
+  const info = paginar(filas, vista.pagina, TAMANO_PAGINA);
+  vista.pagina = info.pagina;
   const urls = new Map();
-  for (const p of palabras) urls.set(p.id, await urlDeMedio(store, p.medioImagenId));
+  for (const { palabra: p } of info.items) if (p) urls.set(p.id, await urlDeMedio(store, p.medioImagenId));
   if (!estaVivo()) return;
 
   const repintar = (opciones) => pintar(raiz, estaVivo, opciones).catch((error) => mostrarError(raiz, error));
@@ -63,7 +99,25 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
 
   // ---- lista ----
   const lista = el('ul', { class: 'lista-filas' });
-  palabras.forEach((p, i) => {
+  const ordenAprendizaje = vista.orden === 'aprendizaje';
+  for (const fila of info.items) {
+    if (fila.entrada) {
+      const e = fila.entrada;
+      lista.append(el('li', { class: 'fila-palabra fila-sin-agregar' },
+        crearMiniatura({ url: null, emoji: e.emoji, texto: e.texto }),
+        el('div', { class: 'fila-texto' },
+          el('strong', {}, e.texto),
+          el('span', { class: 'ayuda' }, `${(e.silabas ?? []).join('-')} · ${nombreDeCategoria(e.categoria)}`),
+          el('span', { class: 'insignias' }, el('span', { class: 'insignia apagada' }, 'Sin agregar')),
+        ),
+        el('div', { class: 'acciones-fila' },
+          el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Agregar ${e.texto}`, onclick: () => agregarDeLista(e) }, 'Agregar'),
+        ),
+      ));
+      continue;
+    }
+    const p = fila.palabra;
+    const i = palabras.indexOf(p);
     const silabas = (p.silabas ?? []).join('-');
     lista.append(
       el(
@@ -102,14 +156,15 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
             type: 'button',
             class: 'boton secundario chico',
             'aria-label': `Subir ${p.texto}`,
-            disabled: i === 0,
+            disabled: i === 0 || !ordenAprendizaje,
+            title: ordenAprendizaje ? null : 'Para cambiar el orden de aprendizaje, ordena por «Orden de aprendizaje»',
             onclick: () => reordenar(p, -1),
           }, '▲'),
           el('button', {
             type: 'button',
             class: 'boton secundario chico',
             'aria-label': `Bajar ${p.texto}`,
-            disabled: i === palabras.length - 1,
+            disabled: i === palabras.length - 1 || !ordenAprendizaje,
             onclick: () => reordenar(p, 1),
           }, '▼'),
           el('a', { class: 'boton secundario chico', href: `#/adulto/palabra/${p.id}`, 'aria-label': `Editar ${p.texto}` }, 'Editar'),
@@ -122,7 +177,18 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
         ),
       ),
     );
-  });
+  }
+
+  async function agregarDeLista(entrada) {
+    try {
+      const { palabras: nuevas } = armarPalabrasDelAsistente({ perfilId: perfil.id, nino: {}, catalogo: [entrada], existentes: palabras });
+      await ponerVocesIniciales(store, nuevas, catalogo);
+      await store.guardarVarios('palabras', nuevas);
+      repintar({ catalogoAbierto: panelCatalogo.open });
+    } catch (e) {
+      fallar(e);
+    }
+  }
 
   async function reordenar(palabra, delta) {
     try {
@@ -144,6 +210,10 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
       fallar(e);
     }
   }
+
+  const selOrden = el('select', { class: 'selector', 'aria-label': 'Ordenar las palabras' },
+    ORDENES.map(([valor, nombre]) => el('option', { value: valor, selected: valor === vista.orden }, nombre)));
+  selOrden.addEventListener('change', () => { vista.orden = selOrden.value; vista.pagina = 1; repintar({ catalogoAbierto: panelCatalogo.open }); });
 
   // ---- agregar de la lista inicial ----
   const panelCatalogo = el('details', { class: 'panel' });
@@ -212,8 +282,12 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
     el('p', { class: 'ayuda' }, `Palabras de ${perfil.nombre}. El niño las va aprendiendo en este orden, de arriba hacia abajo.`),
     el('div', { class: 'acciones acciones-inicio' }, el('a', { class: 'boton', href: '#/adulto/palabra/nueva' }, '+ Agregar palabra')),
     avisoError,
-    palabras.length
-      ? el('div', { class: 'panel' }, el('p', { class: 'ayuda' }, `${palabras.length} palabra${palabras.length === 1 ? '' : 's'}`), lista)
+    filas.length
+      ? el('div', { class: 'panel' },
+        el('div', { class: 'barra-herramientas' }, el('label', {}, 'Ordenar por', selOrden)),
+        el('p', { class: 'ayuda' }, `${palabras.length} del niño${sinAgregar.length ? ` · ${sinAgregar.length} de la lista inicial sin agregar` : ''}`),
+        lista,
+        crearPaginacion(info, (p) => { vista.pagina = p; repintar({ catalogoAbierto: panelCatalogo.open }); }))
       : el('div', { class: 'panel' }, el('p', {}, 'Aún no hay palabras. Agrega una o elige de la lista inicial.')),
     panelCatalogo,
   );

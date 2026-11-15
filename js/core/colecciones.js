@@ -92,6 +92,11 @@ export function laminasPorPegar(coleccion, calcomanias) {
   return sueltas.size;
 }
 
+/** ¿Ya tiene pegadas todas las láminas del álbum? Entonces no se le venden más sobres de ese álbum. */
+export function coleccionCompleta(coleccion, calcomanias) {
+  return Boolean(coleccion?.codigos?.length) && faltantesPorPegar(coleccion, calcomanias) === 0;
+}
+
 /** Hasta `max` álbumes distintos al azar para que el niño elija de cuál recibe su lámina. */
 export function opcionesDeRecompensa(colecciones, aleatorio = Math.random, max = MAX_OPCIONES_RECOMPENSA) {
   const mezcladas = [...colecciones];

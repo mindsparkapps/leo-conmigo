@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ID_BASE, faltantesPorPegar, laminasPorPegar, laminasDeColeccion, listarColecciones, normalizarColecciones, nuevaColeccion, opcionesDeRecompensa } from '../js/core/colecciones.js';
+import { ID_BASE, coleccionCompleta, faltantesPorPegar, laminasPorPegar, laminasDeColeccion, listarColecciones, normalizarColecciones, nuevaColeccion, opcionesDeRecompensa } from '../js/core/colecciones.js';
 import { codigosEnJuego } from '../js/core/calcomanias.js';
 
 const propia = (id, coleccionId) => ({ id, nombre: id, coleccionId });
@@ -64,6 +64,14 @@ test('laminasPorPegar cuenta solo las sueltas del álbum, no las que faltan gana
   ];
   assert.equal(laminasPorPegar(coleccion, calcomanias), 1);
   assert.equal(laminasPorPegar(coleccion, []), 0);
+});
+
+test('coleccionCompleta: solo con todas las láminas pegadas', () => {
+  const coleccion = { codigos: ['propia:a', 'propia:b'] };
+  assert.equal(coleccionCompleta(coleccion, [{ codigo: 'propia:a' }, { codigo: 'propia:b' }]), true);
+  assert.equal(coleccionCompleta(coleccion, [{ codigo: 'propia:a' }, { codigo: 'propia:b', pegada: false }]), false);
+  assert.equal(coleccionCompleta(coleccion, [{ codigo: 'propia:a' }]), false);
+  assert.equal(coleccionCompleta({ codigos: [] }, []), false);
 });
 
 test('el álbum de la app toma nombre y portada de perfil.base', () => {

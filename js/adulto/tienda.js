@@ -9,6 +9,8 @@ import { crearCofre } from '../ui/moneda.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { borrarMedio, guardarMedio, liberarUrls, urlDeMedio } from '../medios.js';
 import { cargarMonedas } from '../albumes.js';
+import { crearPaginacion } from '../ui/paginacion.js';
+import { filtrarMovimientos, paginar } from '../core/listas.js';
 import { PRECIO_MAX, PRECIO_MIN, canjesPendientes, crearRegalo, nuevoPremio } from '../core/album.js';
 
 export const titulo = 'Tienda y monedas · Leo Conmigo';
@@ -27,6 +29,7 @@ export function montar(contenedor) {
   let vivo = true;
   let selector = null;
   let editandoId = null; // id del premio que se está editando (null = agregar uno nuevo)
+  const filtros = { tipo: 'todos', signo: 'todos', desde: '', hasta: '', texto: '', pagina: 1, abierto: false }; // se conservan al repintar
 
   async function pintar() {
     const store = await obtenerStore();
@@ -41,7 +44,6 @@ export function montar(contenedor) {
     const premiosPorId = new Map(premios.map((p) => [p.id, p]));
     const urls = new Map(await Promise.all(premios.map(async (p) => [p.id, await urlDeMedio(store, p.medioImagenId)])));
     const pendientes = canjesPendientes(datos.movimientos);
-    const historial = [...datos.movimientos].filter((m) => !m.deleted).sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 40);
     if (!vivo) return;
 
     const accion = (fn, mensajeEl) => async () => {
@@ -146,18 +148,52 @@ export function montar(contenedor) {
     );
 
     // ----- historial -----
-    const filasHistorial = historial.map((m) =>
-      el('li', { class: 'fila-movimiento' },
-        el('span', {}, `${fechaCorta(m.fecha)} · ${TIPOS[m.tipo] ?? m.tipo}${m.nota ? `: ${m.nota}` : ''}${m.estado ? ` (${ESTADOS[m.estado] ?? m.estado})` : ''}`),
-        el('strong', {}, `${m.cantidad > 0 ? '+' : ''}${m.cantidad}`),
-      ),
-    );
+    // Filtros (tipo, ganadas/gastadas, fechas, texto) y páginas de 15 movimientos
+    const historialCaja = el('div');
+    const f = filtros;
+    const selTipo = el('select', { class: 'selector', 'aria-label': 'Tipo de movimiento' },
+      el('option', { value: 'todos' }, 'Todos los tipos'),
+      Object.entries(TIPOS).map(([valor, nombre]) => el('option', { value: valor, selected: f.tipo === valor }, nombre)));
+    const selSigno = el('select', { class: 'selector', 'aria-label': 'Ganadas o gastadas' },
+      [['todos', 'Ganadas y gastadas'], ['ganadas', 'Solo ganadas (+)'], ['gastadas', 'Solo gastadas (−)']].map(([valor, nombre]) => el('option', { value: valor, selected: f.signo === valor }, nombre)));
+    const entDesde = el('input', { type: 'date', value: f.desde });
+    const entHasta = el('input', { type: 'date', value: f.hasta });
+    const entTexto = el('input', { type: 'search', placeholder: 'Buscar en la nota', value: f.texto, autocomplete: 'off' });
+    const pintarHistorial = () => {
+      const filtrados = filtrarMovimientos(datos.movimientos, f);
+      const info = paginar(filtrados, f.pagina, 15);
+      f.pagina = info.pagina;
+      const total = filtrados.reduce((s, m) => s + (m.estado === 'anulado' ? 0 : m.cantidad), 0);
+      historialCaja.replaceChildren(
+        el('p', { class: 'ayuda' }, `${filtrados.length} movimiento${filtrados.length === 1 ? '' : 's'}${filtrados.length ? ` · suman ${total > 0 ? '+' : ''}${total}` : ''}`),
+        info.items.length
+          ? el('ul', { class: 'lista-simple' }, info.items.map((m) =>
+            el('li', { class: 'fila-movimiento' },
+              el('span', {}, `${fechaCorta(m.fecha)} · ${TIPOS[m.tipo] ?? m.tipo}${m.nota ? `: ${m.nota}` : ''}${m.estado ? ` (${ESTADOS[m.estado] ?? m.estado})` : ''}`),
+              el('strong', {}, `${m.cantidad > 0 ? '+' : ''}${m.cantidad}`),
+            )))
+          : el('p', { class: 'ayuda' }, datos.movimientos.length ? 'Ningún movimiento coincide con el filtro.' : 'Todavía no hay movimientos.'),
+        crearPaginacion(info, (p) => { f.pagina = p; pintarHistorial(); }),
+      );
+    };
+    const alFiltrar = () => {
+      Object.assign(f, { tipo: selTipo.value, signo: selSigno.value, desde: entDesde.value, hasta: entHasta.value, texto: entTexto.value, pagina: 1 });
+      pintarHistorial();
+    };
+    for (const control of [selTipo, selSigno, entDesde, entHasta]) control.addEventListener('change', alFiltrar);
+    entTexto.addEventListener('input', alFiltrar);
+    const limpiar = el('button', { type: 'button', class: 'boton secundario chico', onclick: () => {
+      Object.assign(f, { tipo: 'todos', signo: 'todos', desde: '', hasta: '', texto: '', pagina: 1 });
+      selTipo.value = 'todos'; selSigno.value = 'todos'; entDesde.value = ''; entHasta.value = ''; entTexto.value = '';
+      pintarHistorial();
+    } }, 'Quitar filtros');
+    pintarHistorial();
 
     raiz.replaceChildren(
       cabecera('Tienda y monedas'),
       el('div', { class: 'panel' },
         el('h2', {}, 'Monedas del niño'),
-        el('div', { class: 'fila-contenido' }, crearCofre({ saldo: datos.saldo }), el('a', { class: 'boton secundario', href: '#/adulto/album' }, 'Álbum')),
+        el('div', { class: 'fila-contenido' }, crearCofre({ saldo: datos.saldo, compacto: true }), el('a', { class: 'boton secundario', href: '#/adulto/album' }, 'Álbum')),
         el('p', { class: 'ayuda' }, 'El niño gana monedas al completar un álbum; nunca por acertar ni se le quitan por fallar. Las gasta en la tienda.'),
         el('div', { class: 'fila' }, campo('Cantidad', entradaCantidad, 'Para corregir puede ser negativa'), campo('Nota', entradaNota, 'Obligatoria al corregir')),
         el('div', { class: 'acciones' },
@@ -185,8 +221,15 @@ export function montar(contenedor) {
         ),
       ),
       el('div', { class: 'panel' },
-        el('details', {}, el('summary', {}, 'Historial de monedas'),
-          filasHistorial.length ? el('ul', { class: 'lista-simple' }, filasHistorial) : el('p', { class: 'ayuda' }, 'Todavía no hay movimientos.'),
+        el('details', { open: filtros.abierto, ontoggle: (e) => { filtros.abierto = e.currentTarget.open; } }, el('summary', {}, 'Historial de monedas'),
+          el('div', { class: 'barra-herramientas' },
+            el('label', {}, 'Tipo', selTipo),
+            el('label', {}, 'Monedas', selSigno),
+            el('label', {}, 'Desde', entDesde),
+            el('label', {}, 'Hasta', entHasta),
+            el('label', {}, 'Buscar', entTexto),
+            limpiar),
+          historialCaja,
         ),
       ),
     );

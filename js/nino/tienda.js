@@ -17,6 +17,7 @@ import { mapaDePropias, nodoDeCalcomania } from '../ui/calcomania.js';
 import { LAMINAS_POR_SOBRE, precioDeSobre, repetidas, valorDeVenta } from '../core/sobres.js';
 import { lanzarMonedas } from '../ui/monedas-vuelo.js';
 import { cargarColecciones, urlDeSobre } from '../colecciones.js';
+import { coleccionCompleta } from '../core/colecciones.js';
 import { COLORES_CAJAS_PREDETERMINADOS, coloresDeCajas, fijarColoresDeCajas, saltarLeccionActivo } from '../dev.js';
 import { crearCanje, crearRegalo, faltan, premiosVisibles, puedeCanjear } from '../core/album.js';
 import { normalizarAjustes } from '../core/modelos.js';
@@ -174,7 +175,9 @@ async function iniciar(zona, estaVivo) {
     const alcanzaSobre = datos.saldo >= precioSobre;
     // Un sobre por álbum (el de la app y cada álbum cargado), cada uno con su imagen
     const { colecciones } = await cargarColecciones(store, perfil);
-    const sobres = await Promise.all(colecciones.map(async (coleccion) => {
+    // un álbum con todas sus láminas pegadas ya no vende sobres
+    const vendibles = colecciones.filter((c) => !coleccionCompleta(c, datos.calcomanias));
+    const sobres = await Promise.all(vendibles.map(async (coleccion) => {
       const nombreSobre = coleccion.esBase ? 'Sobre de láminas' : `Sobre: ${coleccion.nombre}`;
       return el(
         'button',
@@ -255,7 +258,7 @@ async function iniciar(zona, estaVivo) {
         aviso ? el('p', { class: 'mensaje-nino mensaje-premio', role: 'status' }, aviso) : null,
         // Productos (sobre y premios) a la izquierda y láminas repetidas a la derecha cuando la pantalla es ancha (CSS)
         el('div', { class: 'tienda-productos' },
-          el('div', { class: 'tienda-grilla' }, sobres),
+          sobres.length ? el('div', { class: 'tienda-grilla' }, sobres) : el('p', { class: 'mensaje-nino' }, '¡Completaste todos tus álbumes!'),
           premios.length ? el('h2', { class: 'tienda-titulo' }, 'Premios') : null,
           premios.length ? el('div', { class: 'tienda-grilla' }, cartas) : el('p', { class: 'mensaje-nino' }, 'Todavía no hay premios.'),
         ),

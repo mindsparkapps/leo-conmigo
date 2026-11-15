@@ -13,8 +13,12 @@ import { VERSION } from '../config.js';
 import { copiarTexto, descargarArchivo } from '../hardware.js';
 import { analizar, construirExportacion, nombreDeArchivoAnalisis, resumenParaIA, MIN_ENSAYOS } from '../core/analisis.js';
 import { idsDeProgresoDe, marcarDominada } from '../core/estadisticas.js';
+import { colorDeIndice, paginar } from '../core/listas.js';
+import { crearPaginacion } from '../ui/paginacion.js';
 
 export const titulo = 'Qué le cuesta · Leo Conmigo';
+
+const paginasLista = { dificiles: 1, faciles: 1, repetir: 1 }; // página de cada lista, se conserva al repintar
 
 const FLECHAS = { mejora: ['↑', 'mejora'], igual: ['→', 'sin cambios'], empeora: ['↓', 'empeora'] };
 const segundos = (ms) => (ms == null ? '—' : `${(ms / 1000).toFixed(1).replace('.', ',')} s`);
@@ -93,7 +97,7 @@ async function pintar(raiz, estaVivo, { abierta = null, ocultar = false } = {}) 
         el(
           'span',
           { class: 'barra-indice', role: 'img', 'aria-label': `Dificultad ${p.indice} de 100` },
-          el('span', { class: 'barra-indice-relleno', style: `width:${Math.max(p.indice, 3)}%` }),
+          el('span', { class: `barra-indice-relleno indice-${colorDeIndice(p.indice)}`, style: `width:${Math.max(p.indice, 3)}%` }),
         ),
         el(
           'span',
@@ -165,8 +169,14 @@ async function pintar(raiz, estaVivo, { abierta = null, ocultar = false } = {}) 
 
   const tarjeta = (titulo, ayuda, contenido) =>
     el('div', { class: 'panel' }, el('h2', {}, titulo), ayuda ? el('p', { class: 'ayuda' }, ayuda) : null, contenido);
-  const listaDe = (items, vacio) =>
-    items.length ? el('ul', { class: 'lista-filas' }, items.map(filaPalabra)) : el('p', { class: 'ayuda' }, vacio);
+  // Cada lista se pagina por separado (10 palabras por página)
+  const listaDe = (items, vacio, clave) => {
+    if (!items.length) return el('p', { class: 'ayuda' }, vacio);
+    const info = paginar(items, paginasLista[clave], 10);
+    paginasLista[clave] = info.pagina;
+    return el('div', {}, el('ul', { class: 'lista-filas' }, info.items.map(filaPalabra)),
+      crearPaginacion(info, (p) => { paginasLista[clave] = p; repintar({}); }));
+  };
 
   // ---- sin datos suficientes ----
   const piezas = [cabecera('Qué le cuesta')];
@@ -217,9 +227,9 @@ async function pintar(raiz, estaVivo, { abierta = null, ocultar = false } = {}) 
       : el('p', { class: 'ayuda' }, `Ninguna actividad tiene aún ${MIN_ENSAYOS} ensayos.`);
 
     piezas.push(
-      tarjeta('Le cuestan más', 'Las palabras con mayor índice de dificultad. Toca una para ver sus últimos ensayos.', listaDe(analisis.masDificiles, 'Ninguna palabra le está costando: todas le salen bien.')),
-      tarjeta('Le salen fácil', null, listaDe(analisis.masFaciles, 'Aún no hay palabras que se distingan por lo fáciles.')),
-      tarjeta('Para repetir más', 'Índice de 50 o más, o que va empeorando, o que falló un repaso esta semana.', listaDe(analisis.paraRepetirMas, 'Nada que repetir de más por ahora.')),
+      tarjeta('Le cuestan más', 'Las palabras con mayor índice de dificultad. Toca una para ver sus últimos ensayos.', listaDe(analisis.todasDificiles, 'Ninguna palabra le está costando: todas le salen bien.', 'dificiles')),
+      tarjeta('Le salen fácil', null, listaDe(analisis.todasFaciles, 'Aún no hay palabras que se distingan por lo fáciles.', 'faciles')),
+      tarjeta('Para repetir más', 'Índice de 50 o más, o que va empeorando, o que falló un repaso esta semana.', listaDe(analisis.paraRepetirMas, 'Nada que repetir de más por ahora.', 'repetir')),
       tarjeta('Se confunde entre…', 'Pide la primera palabra y toca la segunda.', confusiones),
       tarjeta('Actividad más difícil', null, actividades),
       analisis.porHora.length
@@ -241,7 +251,7 @@ async function pintar(raiz, estaVivo, { abierta = null, ocultar = false } = {}) 
       el(
         'ul',
         { class: 'lista-ayuda' },
-        el('li', {}, el('strong', {}, 'Índice (barra): '), 'de 0 (le sale solo) a 100 (le cuesta mucho). Mezcla los aciertos sin ayuda, lo que tarda comparado con su propio promedio y cuántas veces pide oír otra vez.'),
+        el('li', {}, el('strong', {}, 'Índice (barra): '), 'de 0 (le sale solo) a 100 (le cuesta mucho). La barra pasa de verde a amarillo, naranja y rojo según cuánto le cuesta. Mezcla los aciertos sin ayuda, lo que tarda comparado con su propio promedio y cuántas veces pide oír otra vez.'),
         el('li', {}, el('strong', {}, 'Sin ayuda: '), 'porcentaje de ensayos que acertó a la primera.'),
         el('li', {}, el('strong', {}, 'Tarda: '), 'tiempo típico en acertar a la primera, sin contar los ensayos en que se distrajo (más de 1 minuto).'),
         el('li', {}, el('strong', {}, 'Flecha: '), 'sus últimos 5 ensayos comparados con los 5 anteriores.'),
