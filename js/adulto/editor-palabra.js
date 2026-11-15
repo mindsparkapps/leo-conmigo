@@ -19,6 +19,9 @@ import {
   CATEGORIAS, MAX_LARGO_PALABRA, TIPOS, parsearSilabas, siguienteOrden, silabasForman, validarTexto,
 } from '../core/vocabulario.js';
 
+// El emoji del micrófono no se dibuja en todos los equipos: se usa un dibujo propio
+const SVG_MICROFONO = '<svg class="icono-boton" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="2" width="6" height="12" rx="3" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
 export const titulo = 'Palabra · Leo Conmigo';
 
 const ATRAS = '#/adulto/vocabulario';
@@ -389,7 +392,12 @@ async function iniciar(raiz, id, ir, limpiezas, estaVivo) {
   const estadoVoz = el('p', { class: 'ayuda', role: 'status' });
   const errorVoz = el('p', { class: 'error-texto', role: 'alert', hidden: true });
   const infoVozSintetica = el('p', { class: 'ayuda' });
-  const botonGrabar = el('button', { type: 'button', class: 'boton' }, '🎙️ Grabar mi voz');
+  const botonGrabar = el('button', { type: 'button', class: 'boton' });
+  const ponerTextoGrabar = (grabando) => {
+    if (grabando) botonGrabar.textContent = '⏹ Detener';
+    else botonGrabar.innerHTML = `${SVG_MICROFONO} Grabar mi voz`;
+  };
+  ponerTextoGrabar(false);
   const botonEscuchar = el('button', { type: 'button', class: 'boton secundario chico' }, '▶ Escuchar mi grabación');
   const botonBorrar = el('button', { type: 'button', class: 'boton secundario chico' }, 'Borrar grabación');
   const botonSintetica = el('button', { type: 'button', class: 'boton secundario chico' }, '🔊 Escuchar la voz sintética');
@@ -411,7 +419,7 @@ async function iniciar(raiz, id, ir, limpiezas, estaVivo) {
     const g = grabadora;
     grabadora = null;
     clearInterval(reloj);
-    botonGrabar.textContent = '🎙️ Grabar mi voz';
+    ponerTextoGrabar(false);
     try {
       const r = await g.detener();
       if (!r || r.blob.size < 500 || r.ms < 300) {
@@ -442,7 +450,7 @@ async function iniciar(raiz, id, ir, limpiezas, estaVivo) {
       return;
     }
     botonGrabar.disabled = false;
-    botonGrabar.textContent = '⏹ Detener';
+    ponerTextoGrabar(true);
     inicioGrabacion = Date.now();
     grabadora.iniciar(() => { terminarGrabacion(); });
     const actualizar = () => {

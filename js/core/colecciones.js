@@ -29,6 +29,18 @@ export function normalizarColecciones(lista) {
   return salida;
 }
 
+/**
+ * Lo que el adulto cambió del álbum de la app (las láminas de GTA 6), en `perfil.base`: nombre y las dos portadas.
+ * Sin cambios, el álbum conserva su nombre y su portada de siempre.
+ */
+export function normalizarBase(base) {
+  return {
+    nombre: String(base?.nombre ?? '').trim(),
+    medioPortadaId: base?.medioPortadaId ?? null,
+    medioSobreId: base?.medioSobreId ?? null,
+  };
+}
+
 export function nuevaColeccion({ nombre, medioPortadaId = null, medioSobreId = null }) {
   const limpio = String(nombre ?? '').trim();
   if (!limpio) throw new Error('El álbum necesita un nombre');
@@ -47,12 +59,13 @@ export const laminasDeColeccion = (propias, id) => propias.filter((p) => !p.dele
 export function listarColecciones({ perfil, propias = [] }) {
   const vigentes = propias.filter((p) => !p.deleted);
   const base = codigosEnJuego(perfil?.album, vigentes);
+  const ajustesBase = normalizarBase(perfil?.base);
   const lista = [{
     id: ID_BASE,
-    nombre: NOMBRE_BASE,
+    nombre: ajustesBase.nombre || NOMBRE_BASE,
     codigos: base.length ? base : [...CODIGOS_CATALOGO],
-    medioPortadaId: null,
-    medioSobreId: null,
+    medioPortadaId: ajustesBase.medioPortadaId,
+    medioSobreId: ajustesBase.medioSobreId,
     esBase: true,
   }];
   for (const c of normalizarColecciones(perfil?.colecciones)) {
@@ -67,6 +80,15 @@ export function faltantesPorPegar(coleccion, calcomanias) {
   const pegadas = new Set(calcomanias.filter((c) => !c.deleted && c.pegada !== false).map((c) => c.codigo));
   const codigos = [...new Set(coleccion.codigos)];
   return codigos.filter((c) => !pegadas.has(c)).length;
+}
+
+/** Cuántas láminas de un álbum tiene el niño sueltas, listas para pegar ahora mismo (las que le faltan por ganar no cuentan). */
+export function laminasPorPegar(coleccion, calcomanias) {
+  const delAlbum = new Set(coleccion.codigos);
+  const vivas = calcomanias.filter((c) => !c.deleted);
+  const pegadas = new Set(vivas.filter((c) => c.pegada !== false).map((c) => c.codigo));
+  const sueltas = new Set(vivas.filter((c) => c.pegada === false && delAlbum.has(c.codigo) && !pegadas.has(c.codigo)).map((c) => c.codigo));
+  return sueltas.size;
 }
 
 /** Hasta `max` álbumes distintos al azar para que el niño elija de cuál recibe su lámina. */

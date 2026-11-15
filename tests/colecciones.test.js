@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ID_BASE, faltantesPorPegar, laminasDeColeccion, listarColecciones, normalizarColecciones, nuevaColeccion, opcionesDeRecompensa } from '../js/core/colecciones.js';
+import { ID_BASE, faltantesPorPegar, laminasPorPegar, laminasDeColeccion, listarColecciones, normalizarColecciones, nuevaColeccion, opcionesDeRecompensa } from '../js/core/colecciones.js';
 import { codigosEnJuego } from '../js/core/calcomanias.js';
 
 const propia = (id, coleccionId) => ({ id, nombre: id, coleccionId });
@@ -51,6 +51,26 @@ test('faltantesPorPegar cuenta lo que no está pegado (sueltas incluidas)', () =
   ];
   assert.equal(faltantesPorPegar(coleccion, calcomanias), 2);
   assert.equal(faltantesPorPegar(coleccion, [{ codigo: 'propia:a' }, { codigo: 'propia:b' }, { codigo: 'propia:c' }]), 0); // sin el campo = pegada
+});
+
+test('laminasPorPegar cuenta solo las sueltas del álbum, no las que faltan ganar', () => {
+  const coleccion = { codigos: ['propia:a', 'propia:b', 'propia:c'] };
+  const calcomanias = [
+    { codigo: 'propia:a', pegada: true },
+    { codigo: 'propia:b', pegada: false },
+    { codigo: 'propia:b', pegada: false }, // repetida: cuenta una
+    { codigo: 'propia:z', pegada: false }, // de otro álbum
+    { codigo: 'propia:c', pegada: false, deleted: true },
+  ];
+  assert.equal(laminasPorPegar(coleccion, calcomanias), 1);
+  assert.equal(laminasPorPegar(coleccion, []), 0);
+});
+
+test('el álbum de la app toma nombre y portada de perfil.base', () => {
+  const lista = listarColecciones({ perfil: { base: { nombre: ' GTA ', medioPortadaId: 'm1' } }, propias: [] });
+  assert.equal(lista[0].nombre, 'GTA');
+  assert.equal(lista[0].medioPortadaId, 'm1');
+  assert.equal(lista[0].medioSobreId, null);
 });
 
 test('opcionesDeRecompensa: hasta 3 distintos, o los que haya', () => {

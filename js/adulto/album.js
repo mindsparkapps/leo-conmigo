@@ -12,13 +12,123 @@ import { borrarMedio, guardarMedio, liberarUrls, urlDeMedio } from '../medios.js
 import { cargarMonedas, reiniciarAlbumes } from '../albumes.js';
 import { MONEDAS_LECCION_MAX, MONEDAS_LECCION_MIN, MONEDAS_MAX, MONEDAS_MIN, TAMANO_MAX, TAMANO_MIN, crearRegalo, normalizarAlbum } from '../core/album.js';
 import { CALCOMANIAS, codigoDePropia, rutaCalcomania } from '../core/calcomanias.js';
-import { laminasDeColeccion, normalizarColecciones, nuevaColeccion } from '../core/colecciones.js';
+import { laminasDeColeccion, listarColecciones, normalizarBase, normalizarColecciones, nuevaColeccion } from '../core/colecciones.js';
 import { elegirImagenes } from '../hardware.js';
 import { prepararImagen } from '../imagenes.js';
+import { RUTA_PORTADA } from '../ui/laminas.js';
 
 export const titulo = 'Álbum y monedas · Leo Conmigo';
 
 const sinExtension = (nombre) => nombre.replace(/\.[^.]+$/, '');
+
+/** El álbum que se está editando (sobrevive a repintar la pantalla). */
+let editandoId = null;
+
+/**
+ * Editor de un álbum (el de la app, con las láminas de GTA 6, o uno cargado): cambiar su nombre, la imagen de su
+ * portada y la de sus sobres, ver todas sus láminas y quitar las que se quiera.
+ * En el álbum de la app «quitar» la saca del juego (se puede volver a poner en «Calcomanías en juego»).
+ */
+function editorDeAlbum({ store, perfil, coleccion, propias, repintar, registrar }) {
+  const esBase = coleccion.esBase;
+  const entradaNombre = el('input', { type: 'text', maxlength: 40, autocomplete: 'off', value: coleccion.nombre });
+  const estado = el('p', { class: 'ayuda', role: 'status' });
+  const previaPortada = el('img', { class: 'carga-previa', alt: '' });
+  const previaSobre = el('img', { class: 'carga-previa', alt: '' });
+  const rejilla = el('div', { class: 'editor-album-laminas' });
+
+  // guarda el cambio en el perfil: en `perfil.base` (álbum de la app) o dentro de `perfil.colecciones`
+  async function guardarCambio(cambios) {
+    if (esBase) {
+      await store.guardar('perfiles', { ...perfil, base: { ...normalizarBase(perfil.base), ...cambios } });
+    } else {
+      const lista = normalizarColecciones(perfil.colecciones).map((c) => (c.id === coleccion.id ? { ...c, ...cambios } : c));
+      await store.guardar('perfiles', { ...perfil, colecciones: lista });
+    }
+  }
+  async function guardarNombre() {
+    const nombre = entradaNombre.value.trim();
+    if (!nombre) { estado.textContent = 'Ponle un nombre al álbum.'; return; }
+    try {
+      await guardarCambio({ nombre });
+      await repintar();
+    } catch (error) {
+      estado.textContent = describirError(error);
+    }
+  }
+  async function cambiarImagen(campo) {
+    const [archivo] = await elegirImagenes({ carpeta: false });
+    if (!archivo) return;
+    try {
+      estado.textContent = 'Preparando la imagen…';
+      const { blob, mime } = await prepararImagen(archivo, { lado: 1024, conservarProporcion: true });
+      const medio = await guardarMedio(store, { tipo: 'imagen', blob, mime, origen: 'foto' });
+      const otro = campo === 'medioPortadaId' ? coleccion.medioSobreId : coleccion.medioPortadaId;
+      const viejo = coleccion[campo];
+      await guardarCambio({ [campo]: medio.id });
+      if (viejo && viejo !== otro) await borrarMedio(store, viejo);
+      await repintar();
+    } catch (error) {
+      estado.textContent = describirError(error);
+    }
+  }
+  async function quitarLamina(lamina) {
+    if (coleccion.codigos.length <= 1) {
+      estado.textContent = esBase ? 'El álbum necesita al menos una lámina.' : 'Es la última lámina: para quitarla borra el álbum entero con «Quitar».';
+      return;
+    }
+    const aviso = esBase
+      ? `¿Sacar «${lamina.nombre}» del álbum? Podrás volver a ponerla en «Calcomanías en juego».`
+      : `¿Quitar la lámina «${lamina.nombre}»? Si el niño ya la ganó, desaparece de su álbum.`;
+    if (!window.confirm(aviso)) return;
+    try {
+      if (esBase) {
+        const codigos = coleccion.codigos.filter((c) => c !== lamina.codigo);
+        await store.guardar('perfiles', { ...perfil, album: normalizarAlbum({ ...perfil.album, codigos }) });
+      } else {
+        const propia = propias.find((p) => codigoDePropia(p.id) === lamina.codigo);
+        for (const c of (await store.listar('calcomanias', { perfilId: perfil.id })).filter((x) => x.codigo === lamina.codigo)) await store.borrar('calcomanias', c.id);
+        if (propia) {
+          await store.borrar('calcomaniasPropias', propia.id);
+          await borrarMedio(store, propia.medioImagenId);
+        }
+      }
+      await repintar();
+    } catch (error) {
+      estado.textContent = describirError(error);
+    }
+  }
+
+  // las imágenes se leen aparte para que el editor aparezca de una vez
+  (async () => {
+    previaPortada.src = (await urlDeMedio(store, coleccion.medioPortadaId)) ?? RUTA_PORTADA;
+    previaSobre.src = (await urlDeMedio(store, coleccion.medioSobreId)) ?? previaPortada.src;
+    const porCodigo = new Map(propias.map((p) => [codigoDePropia(p.id), p]));
+    const nodos = [];
+    for (const codigo of coleccion.codigos) {
+      const propia = porCodigo.get(codigo);
+      const nombre = propia ? propia.nombre : (CALCOMANIAS.find((c) => c.codigo === codigo)?.nombre ?? codigo);
+      const url = propia ? await urlDeMedio(store, propia.medioImagenId) : rutaCalcomania(codigo);
+      nodos.push(el('div', { class: 'editor-album-lamina' },
+        url ? el('img', { src: url, alt: '', loading: 'lazy' }) : el('span', { class: 'calcomania-emoji' }, propia?.emoji ?? '★'),
+        el('span', {}, nombre),
+        el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Quitar la lámina ${nombre}`, onclick: () => quitarLamina({ codigo, nombre }) }, 'Quitar')));
+    }
+    rejilla.replaceChildren(...nodos);
+  })().catch((error) => { estado.textContent = describirError(error); });
+
+  return el('div', { class: 'editor-album' },
+    el('h3', {}, `Editar «${coleccion.nombre}»`),
+    campo('Nombre del álbum', entradaNombre),
+    el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton chico', onclick: guardarNombre }, 'Guardar el nombre')),
+    el('div', { class: 'fila' }, campo('Portada del álbum', previaPortada), el('button', { type: 'button', class: 'boton secundario chico', onclick: () => cambiarImagen('medioPortadaId') }, 'Cambiar la portada')),
+    el('div', { class: 'fila' }, campo('Imagen de los sobres', previaSobre), el('button', { type: 'button', class: 'boton secundario chico', onclick: () => cambiarImagen('medioSobreId') }, 'Cambiar el sobre')),
+    el('h3', {}, `Láminas (${coleccion.codigos.length})`),
+    rejilla,
+    estado,
+    el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton secundario chico', onclick: () => { editandoId = null; repintar(); } }, 'Cerrar el editor')),
+  );
+}
 
 /**
  * Panel «Álbumes cargados»: cargar una carpeta de imágenes como un álbum nuevo (el adulto elige cuál es la portada del
@@ -135,21 +245,35 @@ function panelAlbumesCargados({ store, perfil, propias, miniaturas, repintar, re
     }
   }
 
-  const lista = colecciones.map((c) =>
+  // ----- editar un álbum: nombre, portada, imagen del sobre y sus láminas (se pueden quitar una por una) -----
+  const todos = listarColecciones({ perfil, propias });
+  const editor = el('div', { hidden: true });
+  const abrirEditor = (coleccion) => {
+    editandoId = coleccion.id;
+    editor.hidden = false;
+    editor.replaceChildren(editorDeAlbum({ store, perfil, coleccion, propias, repintar, registrar }));
+  };
+
+  const lista = todos.map((c) =>
     el(
       'li',
       { class: 'fila-contenido' },
-      crearMiniatura({ url: miniaturas.get(c.medioPortadaId), texto: c.nombre }),
-      el('div', { class: 'fila-texto' }, el('strong', {}, c.nombre), el('span', { class: 'ayuda' }, `${laminasDeColeccion(propias, c.id).length} láminas`)),
-      el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Quitar el álbum ${c.nombre}`, onclick: () => quitar(c) }, 'Quitar'),
+      crearMiniatura({ url: miniaturas.get(c.medioPortadaId) ?? (c.esBase ? RUTA_PORTADA : null), texto: c.nombre }),
+      el('div', { class: 'fila-texto' }, el('strong', {}, c.nombre), el('span', { class: 'ayuda' }, `${c.codigos.length} láminas${c.esBase ? ' · el álbum de la app' : ''}`)),
+      el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Editar el álbum ${c.nombre}`, onclick: () => abrirEditor(c) }, 'Editar'),
+      c.esBase ? null : el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Quitar el álbum ${c.nombre}`, onclick: () => quitar(c) }, 'Quitar'),
     ));
+  const abierto = todos.find((c) => c.id === editandoId);
+  if (abierto) abrirEditor(abierto);
 
   return el(
     'div',
     { class: 'panel' },
-    el('h2', {}, 'Álbumes cargados'),
+    el('h2', {}, 'Álbumes'),
     el('p', { class: 'ayuda' }, 'Carga una carpeta de imágenes como un álbum nuevo: tú eliges cuál es la portada del álbum y cuál la de los sobres, y todas las demás son láminas. El niño elige de cuál álbum quiere su premio (hasta 3 al azar) y la tienda tiene un sobre de cada álbum.'),
-    lista.length ? el('ul', { class: 'lista-simple' }, lista) : el('p', { class: 'ayuda' }, 'Todavía no hay álbumes cargados (siempre está el álbum de la app).'),
+    el('ul', { class: 'lista-simple' }, lista),
+    editor,
+    el('h3', {}, 'Cargar un álbum nuevo'),
     campo('Nombre del álbum', nombre),
     el('div', { class: 'acciones' },
       el('button', { type: 'button', class: 'boton secundario', onclick: () => elegir(true) }, 'Elegir una carpeta'),
@@ -179,7 +303,7 @@ export function montar(contenedor) {
     const propias = mapaDePropias(datos.propias);
     const actualesNodos = (await Promise.all(datos.actual.codigos.map((c) => nodoDeCalcomania(store, c, propias)))).filter(Boolean);
     const miniaturasPropias = new Map(await Promise.all([...propias.values()].filter((p) => !p.coleccionId).map(async (p) => [p.id, await urlDeMedio(store, p.medioImagenId)])));
-    const portadasCargadas = new Map(await Promise.all(normalizarColecciones(perfil.colecciones).map(async (c) => [c.medioPortadaId, await urlDeMedio(store, c.medioPortadaId)])));
+    const portadasCargadas = new Map(await Promise.all([normalizarBase(perfil.base), ...normalizarColecciones(perfil.colecciones)].map(async (c) => [c.medioPortadaId, await urlDeMedio(store, c.medioPortadaId)])));
     if (!vivo) return;
 
     // ----- ajustes del álbum -----

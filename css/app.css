@@ -1138,6 +1138,28 @@ img.calcomania-grande { border-width: 3px; border-radius: 24px; }
   min-width: 2.2em; height: 2.2em; padding: 0 0.3em; border-radius: 14px; background: rgb(43 125 81 / 0.78); border: 3px solid rgb(255 255 255 / 0.85);
   color: #fff; font-size: clamp(1.8rem, 6vmin, 2.8rem); font-weight: 800; line-height: 1; text-shadow: 0 2px 4px rgb(0 0 0 / 0.4);
 }
+.icono-boton { width: 1.2em; height: 1.2em; vertical-align: -0.2em; }
+/* Editor de un álbum (modo adulto): sus láminas, cada una con su botón para quitarla */
+.editor-album { margin-top: 12px; padding: 12px; border: 2px solid var(--borde-fuerte); border-radius: var(--radio); background: var(--tarjeta); }
+.editor-album-laminas { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; margin: 10px 0; }
+.editor-album-lamina { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 0.8rem; text-align: center; }
+.editor-album-lamina img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 8px; border: 2px solid var(--borde); background: #fff; }
+.editor-album-lamina .calcomania-emoji { font-size: 2.4rem; }
+/* Al pasar el ratón la portada se agranda; al tocarla se aplasta y se estira antes de abrir el álbum */
+.album-portada { transition: scale 0.25s ease-out; }
+@media (hover: hover) { .album-tarjeta:hover .album-portada, .album-tarjeta:focus-visible .album-portada { scale: 1.12; } }
+.album-portada.aplastar { scale: 1.12; animation: album-aplasta 0.65s ease-in-out both; transform-origin: 50% 100%; }
+@keyframes album-aplasta {
+  0% { transform: scale(1, 1); }
+  25% { transform: scale(1.22, 0.74); }
+  50% { transform: scale(0.84, 1.24); }
+  75% { transform: scale(1.1, 0.92); }
+  100% { transform: scale(1, 1); }
+}
+/* Las tarjetas del premio flotan (con `translate`, que no pisa el zoom ni el aplastar) */
+.album-tarjeta.flota { animation: album-flota 3.2s ease-in-out infinite; animation-delay: calc(var(--i, 0) * -0.9s); }
+@keyframes album-flota { 0%, 100% { translate: 0 0; } 50% { translate: 0 -10px; } }
+@media (prefers-reduced-motion: reduce) { .album-tarjeta.flota { animation: none; } .album-portada { transition: none; } }
 .album-nombre { font-size: 1.4rem; font-weight: 700; max-width: 14ch; overflow-wrap: anywhere; }
 .elegir-nino { gap: 24px; justify-content: center; }
 .libro-zona.eligiendo { overflow-y: auto; justify-content: flex-start; }

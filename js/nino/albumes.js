@@ -10,7 +10,7 @@ import { deshabilitarAdulto } from '../acceso.js';
 import { NOMBRE_APP } from '../config.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { cargarColecciones, urlDePortada } from '../colecciones.js';
-import { faltantesPorPegar } from '../core/colecciones.js';
+import { laminasPorPegar } from '../core/colecciones.js';
 import { crearTarjetaAlbum } from '../ui/tarjeta-album.js';
 import { liberarUrls } from '../medios.js';
 import { cargarMonedas } from '../albumes.js';
@@ -45,7 +45,7 @@ export function montar(contenedor, { ir }) {
   const cargando = el('div', { class: 'libro-cargando', role: 'status' }, el('span', { class: 'libro-cargando-giro', 'aria-hidden': 'true' }), el('p', { class: 'mensaje-nino' }, 'Preparando tu álbum…'));
   contenedor.append(el('section', { class: 'vista-nino libro-nino' }, zona, cargando, casa, volver));
 
-  const estado = { vivo: true, libro: null, sueltas: null, alSelector: null };
+  const estado = { vivo: true, libro: null, sueltas: null, alSelector: null, cargando };
   iniciar(zona, estado, volver)
     .catch((error) => {
       console.error(error);
@@ -87,12 +87,16 @@ async function iniciar(zona, estado, volver) {
     limpiarLibro(estado);
     volver.hidden = colecciones.length < 2;
     zona.classList.remove('eligiendo');
-    zona.replaceChildren(el('p', { class: 'mensaje-nino' }, 'Preparando tu álbum…'));
+    // El cargador (giro + mensaje) tapa la pantalla mientras el álbum se prepara, para que se vea que no está trabado
+    zona.parentElement?.append(estado.cargando);
+    zona.replaceChildren();
     try {
       await pintar(zona, estado, coleccion);
     } catch (error) {
       console.error(error);
       zona.replaceChildren(el('p', { class: 'mensaje-nino' }, 'Algo no funcionó. Toca la casa para volver.'));
+    } finally {
+      estado.cargando.remove();
     }
   };
   const elegir = async () => {
@@ -102,7 +106,7 @@ async function iniciar(zona, estado, volver) {
     const tarjetas = await Promise.all(colecciones.map(async (coleccion) => crearTarjetaAlbum({
       url: await urlDePortada(store, coleccion),
       nombre: coleccion.nombre,
-      faltan: faltantesPorPegar(coleccion, calcomanias),
+      faltan: laminasPorPegar(coleccion, calcomanias),
       alTocar: () => abrir(coleccion),
     })));
     if (!estado.vivo) return;
