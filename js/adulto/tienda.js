@@ -160,7 +160,7 @@ export function montar(contenedor) {
     const entHasta = el('input', { type: 'date', value: f.hasta });
     const entTexto = el('input', { type: 'search', placeholder: 'Buscar en la nota', value: f.texto, autocomplete: 'off' });
     const pintarHistorial = () => {
-      const filtrados = filtrarMovimientos(datos.movimientos, f);
+      const filtrados = filtrarMovimientos(datos.movimientos, { ...f, nombres: TIPOS });
       const info = paginar(filtrados, f.pagina, 15);
       f.pagina = info.pagina;
       const total = filtrados.reduce((s, m) => s + (m.estado === 'anulado' ? 0 : m.cantidad), 0);

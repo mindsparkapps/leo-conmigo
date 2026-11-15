@@ -44,6 +44,7 @@ export function montar(contenedor, { ir }) {
     if (!vivo || !perfil) return;
     const tarjetas = await Promise.all(opciones.map(async (coleccion, indice) => crearTarjetaAlbum({
       url: await urlDePortada(store, coleccion),
+      color: coleccion.colorPortada,
       nombre: coleccion.nombre,
       flota: true,
       indice,

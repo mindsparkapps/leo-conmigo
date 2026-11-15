@@ -13,7 +13,7 @@ test('normalizarColecciones descarta lo inválido y los ids repetidos', () => {
     { nombre: 'sin id' },
     null,
   ]);
-  assert.deepEqual(lista, [{ id: 'a', nombre: 'Animales', medioPortadaId: null, medioSobreId: null }]);
+  assert.deepEqual(lista, [{ id: 'a', nombre: 'Animales', medioPortadaId: null, medioSobreId: null, colorPortada: null }]);
   assert.deepEqual(normalizarColecciones(undefined), []);
 });
 
@@ -64,6 +64,11 @@ test('laminasPorPegar cuenta solo las sueltas del álbum, no las que faltan gana
   ];
   assert.equal(laminasPorPegar(coleccion, calcomanias), 1);
   assert.equal(laminasPorPegar(coleccion, []), 0);
+});
+
+test('colorPortada solo acepta #rrggbb', () => {
+  assert.equal(normalizarColecciones([{ id: 'a', colorPortada: '#AABBCC' }])[0].colorPortada, '#aabbcc');
+  assert.equal(normalizarColecciones([{ id: 'a', colorPortada: 'rojo' }])[0].colorPortada, null);
 });
 
 test('coleccionCompleta: solo con todas las láminas pegadas', () => {

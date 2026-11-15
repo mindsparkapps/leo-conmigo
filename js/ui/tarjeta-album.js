@@ -15,10 +15,10 @@ export const MS_APLASTAR = 650;
  * @param flota    la tarjeta flota suavemente; `indice` desfasa el vaivén de cada una
  * @param alTocar  () => void
  */
-export function crearTarjetaAlbum({ url, nombre, faltan = null, flota = false, indice = 0, alTocar }) {
+export function crearTarjetaAlbum({ url, color = null, nombre, faltan = null, flota = false, indice = 0, alTocar }) {
   const portada = el(
     'span',
-    { class: 'album-portada' },
+    { class: color ? 'album-portada con-color' : 'album-portada', style: color ? `background:${color}` : null },
     el('img', { src: url, alt: '', draggable: 'false' }),
     faltan ? el('span', { class: 'album-faltan', 'aria-hidden': 'true' }, String(faltan)) : null, // con 0 láminas por pegar no se dibuja el cuadro
   );

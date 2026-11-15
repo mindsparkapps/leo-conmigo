@@ -9,7 +9,7 @@ import { deshabilitarAdulto } from '../acceso.js';
 import { NOMBRE_APP } from '../config.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { liberarUrls, urlDeMedio } from '../medios.js';
-import { decirFrase, decirPalabra, desbloquearAudio, detener, hablarTexto } from '../audio.js';
+import { decirFrase, decirPalabra, decirTexto, desbloquearAudio, detener, hablarTexto } from '../audio.js';
 import { vibrar } from '../hardware.js';
 import { esSegundoDedo } from '../actividades/comun.js';
 import { normalizarAjustes } from '../core/modelos.js';
@@ -282,7 +282,8 @@ async function pintarLibro({ vista, ir, estado, store, perfilId, libro, frasesPo
     const decirPregunta = () => {
       if (!ajustes.sonido) return;
       desbloquearAudio();
-      hablarTexto(q.texto, { velocidad });
+      // la pregunta con los trozos de voz que existen; voz sintética solo para las palabras sin clip
+      decirTexto(q.texto, { palabras: [...palabrasPorId.values()], obtenerMedio: (id) => store.obtener('medios', id), velocidad });
     };
 
     const cartas = new Map();

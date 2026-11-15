@@ -57,6 +57,16 @@ function editorDeAlbum({ store, perfil, coleccion, propias, repintar, registrar 
       estado.textContent = describirError(error);
     }
   }
+  // color de fondo de la tapa: con un color, la portada se ve entera y el color rellena lo que la imagen no cubre
+  const entradaColor = el('input', { type: 'color', value: coleccion.colorPortada ?? '#1f5f82', 'aria-label': 'Color de fondo de la tapa' });
+  async function guardarColor(color) {
+    try {
+      await guardarCambio({ colorPortada: color });
+      await repintar();
+    } catch (error) {
+      estado.textContent = describirError(error);
+    }
+  }
   async function cambiarImagen(campo) {
     const [archivo] = await elegirImagenes({ carpeta: false });
     if (!archivo) return;
@@ -147,6 +157,10 @@ function editorDeAlbum({ store, perfil, coleccion, propias, repintar, registrar 
     campo('Nombre del álbum', entradaNombre),
     el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton chico', onclick: guardarNombre }, 'Guardar el nombre')),
     el('div', { class: 'fila' }, campo('Portada del álbum', previaPortada), el('button', { type: 'button', class: 'boton secundario chico', onclick: () => cambiarImagen('medioPortadaId') }, 'Cambiar la portada')),
+    el('div', { class: 'fila' },
+      campo('Color de fondo de la tapa', entradaColor, 'Para cuando la imagen de la portada no la llena: se ve la portada entera y este color rellena el resto.'),
+      el('button', { type: 'button', class: 'boton secundario chico', onclick: () => guardarColor(entradaColor.value) }, 'Usar este color'),
+      coleccion.colorPortada ? el('button', { type: 'button', class: 'boton secundario chico', onclick: () => guardarColor(null) }, 'Quitar el color') : null),
     el('div', { class: 'fila' }, campo('Imagen de los sobres', previaSobre), el('button', { type: 'button', class: 'boton secundario chico', onclick: () => cambiarImagen('medioSobreId') }, 'Cambiar el sobre')),
     el('h3', {}, `Láminas (${coleccion.codigos.length})`),
     rejilla,

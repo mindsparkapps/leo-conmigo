@@ -105,6 +105,7 @@ async function iniciar(zona, estado, volver) {
     const calcomanias = await store.listar('calcomanias', { perfilId: perfil.id });
     const tarjetas = await Promise.all(colecciones.map(async (coleccion) => crearTarjetaAlbum({
       url: await urlDePortada(store, coleccion),
+      color: coleccion.colorPortada,
       nombre: coleccion.nombre,
       faltan: laminasPorPegar(coleccion, calcomanias),
       alTocar: () => abrir(coleccion),
@@ -152,7 +153,7 @@ async function pintar(zona, estado, coleccion) {
     if (!controlador) return;
     const lugar = lugarDeLamina(libro, codigo);
     controlador.actualizarCara(caraDePagina(lugar.pagina), await dibujarCaraDePagina({ store, libro, propias, indice: lugar.pagina }));
-    controlador.actualizarCara(0, await dibujarPortadaDeLibro(libro, urlPortada));
+    controlador.actualizarCara(0, await dibujarPortadaDeLibro(libro, urlPortada, coleccion.colorPortada));
   }
 
   const lienzo = el('div', { class: 'libro-lienzo-zona', role: 'img', 'aria-label': `Mi álbum: ${libro.pegadas} de ${libro.total} láminas pegadas` });
@@ -162,7 +163,7 @@ async function pintar(zona, estado, coleccion) {
   try {
     const { crearLibro3D } = await import('../ui/libro3d.js');
     if (!estado.vivo) return;
-    const caras = await dibujarCaras({ store, libro, propias, urlPortada });
+    const caras = await dibujarCaras({ store, libro, propias, urlPortada, colorPortada: coleccion.colorPortada });
     if (!estado.vivo) return;
 
     const atras = flecha('libro-atras', 'Página anterior', ICONO_ATRAS, () => controlador?.pasar(-1));
@@ -289,7 +290,7 @@ async function pintar(zona, estado, coleccion) {
     zona.querySelector('.libro-controles')?.remove();
     for (const codigo of sueltas) await pegar(codigo, null);
     ({ libro, sueltas } = calcular());
-    const caras = await dibujarCaras({ store, libro, propias, urlPortada });
+    const caras = await dibujarCaras({ store, libro, propias, urlPortada, colorPortada: coleccion.colorPortada });
     if (!estado.vivo) return;
     lienzo.replaceChildren(...caras.slice(2).map((c) => { c.classList.add('libro-cara-plana'); return c; }));
     lienzo.classList.add('libro-plano');

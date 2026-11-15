@@ -183,6 +183,74 @@ export function decirPalabra(palabra, opciones = {}) {
   return decirPalabraInterno(palabra, opciones);
 }
 
+let clipsDisponibles = null;
+/** Nombres de los clips de voz de data/voces/ (sin tildes ni «.mp3»). */
+async function cargarClips() {
+  if (clipsDisponibles) return clipsDisponibles;
+  try {
+    const r = await fetch('data/voces/indice.json');
+    clipsDisponibles = new Set(r.ok ? await r.json() : []);
+  } catch {
+    clipsDisponibles = new Set();
+  }
+  return clipsDisponibles;
+}
+const claveDeClip = (palabra) => String(palabra).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+/**
+ * Parte un texto en trozos que se dicen con la mejor voz que haya para cada uno: la grabación del adulto (si la palabra
+ * es del niño y la tiene), el clip de voz de la app (data/voces/) y, solo para lo que no tiene clip, la voz sintética
+ * (las palabras seguidas sin clip se dicen juntas, para que la frase suene natural).
+ * @returns {{ tipo: 'grabada'|'clip'|'sintetica', texto: string, palabra?: object, ruta?: string }[]}
+ */
+export function trocearTexto(texto, { palabras = [], clips = new Set() } = {}) {
+  const dePalabra = new Map(palabras.filter((p) => p.medioAudioId).map((p) => [claveDeClip(p.texto), p]));
+  const trozos = [];
+  for (const token of String(texto ?? '').match(/[\p{L}\p{N}]+/gu) ?? []) {
+    const clave = claveDeClip(token);
+    let trozo;
+    if (dePalabra.has(clave)) trozo = { tipo: 'grabada', texto: token, palabra: dePalabra.get(clave) };
+    else if (clips.has(clave)) trozo = { tipo: 'clip', texto: token, ruta: `data/voces/${clave}.mp3` };
+    else {
+      const ultimo = trozos.at(-1);
+      if (ultimo?.tipo === 'sintetica') ultimo.texto += ` ${token}`;
+      else trozos.push({ tipo: 'sintetica', texto: token });
+      continue;
+    }
+    trozos.push(trozo);
+  }
+  return trozos;
+}
+
+/**
+ * Dice un texto (p. ej. la pregunta de un cuento) con los trozos de voz que existan y voz sintética solo para el resto.
+ * Si algo corta el sonido en medio, deja de seguir.
+ */
+export async function decirTexto(texto, { palabras = [], obtenerMedio, velocidad = 1, pausaMs = 40 } = {}) {
+  detener();
+  const mia = generacion;
+  const trozos = trocearTexto(texto, { palabras, clips: await cargarClips() });
+  if (!trozos.length) return false;
+  for (const t of trozos) {
+    if (mia !== generacion) return false;
+    let dicho = false;
+    if (t.tipo === 'grabada' && obtenerMedio) {
+      const medio = await obtenerMedio(t.palabra.medioAudioId);
+      dicho = Boolean(medio?.blob) && (await reproducirBlobInterno(medio.blob, { velocidad }));
+    } else if (t.tipo === 'clip') {
+      try {
+        const r = await fetch(t.ruta);
+        dicho = r.ok && (await reproducirBlobInterno(await r.blob(), { velocidad }));
+      } catch { /* sin el archivo: voz sintética */ }
+    }
+    if (mia !== generacion) return false;
+    if (!dicho) await hablarTextoInterno(t.texto, { velocidad });
+    if (mia !== generacion) return false;
+    await new Promise((r) => setTimeout(r, pausaMs));
+  }
+  return true;
+}
+
 /**
  * Dice una frase palabra por palabra (con la voz grabada de cada una si existe). `alPalabra(i)` avisa
  * qué palabra suena, para resaltarla; al terminar o al cortarse avisa `alPalabra(-1)`.

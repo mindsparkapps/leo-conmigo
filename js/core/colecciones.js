@@ -12,6 +12,9 @@ export const ID_BASE = 'base';
 export const NOMBRE_BASE = 'Mi álbum';
 export const MAX_OPCIONES_RECOMPENSA = 3;
 
+/** Un color «#rrggbb» válido para el fondo de la tapa, o null (la tapa azul de siempre). */
+export const colorDePortada = (c) => (typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c) ? c.toLowerCase() : null);
+
 /** La lista de álbumes cargados del perfil, sin datos inválidos ni ids repetidos. */
 export function normalizarColecciones(lista) {
   const vistos = new Set();
@@ -24,6 +27,7 @@ export function normalizarColecciones(lista) {
       nombre: String(c.nombre ?? '').trim() || 'Álbum',
       medioPortadaId: c.medioPortadaId ?? null,
       medioSobreId: c.medioSobreId ?? null,
+      colorPortada: colorDePortada(c.colorPortada),
     });
   }
   return salida;
@@ -38,6 +42,7 @@ export function normalizarBase(base) {
     nombre: String(base?.nombre ?? '').trim(),
     medioPortadaId: base?.medioPortadaId ?? null,
     medioSobreId: base?.medioSobreId ?? null,
+    colorPortada: colorDePortada(base?.colorPortada),
     quitado: base?.quitado === true,
   };
 }
@@ -70,6 +75,7 @@ export function listarColecciones({ perfil, propias = [] }) {
     codigos: base.length ? base : [...CODIGOS_CATALOGO],
     medioPortadaId: ajustesBase.medioPortadaId,
     medioSobreId: ajustesBase.medioSobreId,
+    colorPortada: ajustesBase.colorPortada,
     esBase: true,
   });
   for (const { c, codigos } of cargadas) lista.push({ ...c, codigos, esBase: false });

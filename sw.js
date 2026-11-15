@@ -32,6 +32,8 @@ const PRECACHE = [
   'js/ui/candado.js',
   'data/vocabulario-inicial.json',
   'data/frecuencia.json',
+  'data/regiones.json',
+  'data/voces/indice.json',
   'data/voces/mama.mp3',
   'data/voces/papa.mp3',
   'data/voces/tata.mp3',

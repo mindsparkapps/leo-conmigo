@@ -11,7 +11,7 @@ import {
   armarPalabrasDelAsistente, agruparPorCategoria, clavePalabra, mover, nombreDeCategoria, ordenadas,
 } from '../core/vocabulario.js';
 import { tablaDePalabras } from '../core/estadisticas.js';
-import { ordenarVocabulario, paginar } from '../core/listas.js';
+import { filtrarPorRegion, letrasDeLista, ordenarVocabulario, paginar } from '../core/listas.js';
 import { crearPaginacion } from '../ui/paginacion.js';
 
 export const titulo = 'Vocabulario · Leo Conmigo';
@@ -22,20 +22,23 @@ const ORDENES = [
   ['alfabetico', 'Abecedario (A–Z)'],
   ['uso', 'Más usadas en español'],
 ];
-const vista = { orden: 'aprendizaje', pagina: 1 }; // se conserva mientras se pinta de nuevo
+const vista = { orden: 'aprendizaje', pagina: 1, region: 'todas' }; // se conserva mientras se pinta de nuevo
 
-let frecuenciasCache = null;
-/** Puesto de cada palabra de la lista inicial en la frecuencia de uso del español (1 = la más usada). */
-async function cargarFrecuencias() {
-  if (frecuenciasCache) return frecuenciasCache;
+const cacheJson = new Map();
+async function cargarJson(ruta) {
+  if (cacheJson.has(ruta)) return cacheJson.get(ruta);
+  let datos = {};
   try {
-    const r = await fetch('data/frecuencia.json');
-    frecuenciasCache = r.ok ? await r.json() : {};
-  } catch {
-    frecuenciasCache = {};
-  }
-  return frecuenciasCache;
+    const r = await fetch(ruta);
+    if (r.ok) datos = await r.json();
+  } catch { /* sin el archivo: sin datos */ }
+  cacheJson.set(ruta, datos);
+  return datos;
 }
+/** Puesto de cada palabra de la lista inicial en la frecuencia de uso del español (1 = la más usada). */
+const cargarFrecuencias = () => cargarJson('data/frecuencia.json');
+/** Palabras propias de una región: { Chile: ['polera', …], … }. */
+const cargarRegiones = () => cargarJson('data/regiones.json');
 
 const NOMBRE_ESTADO = { nueva: 'Nueva', practica: 'En práctica', leida: 'Leída', completa: 'Completa', aprendida: 'Aprendida' };
 
@@ -79,10 +82,12 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
   if (!estaVivo()) return;
 
   // La lista muestra todas: las del niño y las de la lista inicial que aún no agregó. Se ordena y se pagina.
-  const filas = ordenarVocabulario([
+  const regiones = await cargarRegiones();
+  if (vista.region !== 'todas' && vista.region !== 'general' && !regiones[vista.region]) vista.region = 'todas';
+  const filas = filtrarPorRegion(ordenarVocabulario([
     ...palabras.map((p) => ({ texto: p.texto, palabra: p })),
     ...sinAgregar.map((e) => ({ texto: e.texto, entrada: e })),
-  ], vista.orden, frecuencias);
+  ], vista.orden, frecuencias), vista.region, regiones);
   const info = paginar(filas, vista.pagina, TAMANO_PAGINA);
   vista.pagina = info.pagina;
   const urls = new Map();
@@ -214,6 +219,21 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
   const selOrden = el('select', { class: 'selector', 'aria-label': 'Ordenar las palabras' },
     ORDENES.map(([valor, nombre]) => el('option', { value: valor, selected: valor === vista.orden }, nombre)));
   selOrden.addEventListener('change', () => { vista.orden = selOrden.value; vista.pagina = 1; repintar({ catalogoAbierto: panelCatalogo.open }); });
+  const selRegion = el('select', { class: 'selector', 'aria-label': 'Palabras de una región' },
+    el('option', { value: 'todas', selected: vista.region === 'todas' }, 'Todas las palabras'),
+    el('option', { value: 'general', selected: vista.region === 'general' }, 'Sin región (de todo el español)'),
+    Object.keys(regiones).map((nombre) => el('option', { value: nombre, selected: vista.region === nombre }, `Solo de ${nombre}`)));
+  selRegion.addEventListener('change', () => { vista.region = selRegion.value; vista.pagina = 1; repintar({ catalogoAbierto: panelCatalogo.open }); });
+  // en orden alfabético, un botón por cada letra para saltar a donde empieza
+  const cajaLetras = vista.orden === 'alfabetico'
+    ? el('nav', { class: 'letras-salto', 'aria-label': 'Ir a la letra' },
+      letrasDeLista(filas).map(({ letra, indice }) => el('button', {
+        type: 'button',
+        class: Math.floor(indice / TAMANO_PAGINA) + 1 === vista.pagina ? 'boton secundario chico letra actual' : 'boton secundario chico letra',
+        'aria-label': `Palabras con ${letra}`,
+        onclick: () => { vista.pagina = Math.floor(indice / TAMANO_PAGINA) + 1; repintar({ catalogoAbierto: panelCatalogo.open }); },
+      }, letra)))
+    : null;
 
   // ---- agregar de la lista inicial ----
   const panelCatalogo = el('details', { class: 'panel' });
@@ -282,11 +302,12 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
     el('p', { class: 'ayuda' }, `Palabras de ${perfil.nombre}. El niño las va aprendiendo en este orden, de arriba hacia abajo.`),
     el('div', { class: 'acciones acciones-inicio' }, el('a', { class: 'boton', href: '#/adulto/palabra/nueva' }, '+ Agregar palabra')),
     avisoError,
-    filas.length
+    filas.length || vista.region !== 'todas'
       ? el('div', { class: 'panel' },
-        el('div', { class: 'barra-herramientas' }, el('label', {}, 'Ordenar por', selOrden)),
+        el('div', { class: 'barra-herramientas' }, el('label', {}, 'Ordenar por', selOrden), el('label', {}, 'Región', selRegion)),
+        cajaLetras,
         el('p', { class: 'ayuda' }, `${palabras.length} del niño${sinAgregar.length ? ` · ${sinAgregar.length} de la lista inicial sin agregar` : ''}`),
-        lista,
+        filas.length ? lista : el('p', { class: 'ayuda' }, 'No hay palabras para esa región.'),
         crearPaginacion(info, (p) => { vista.pagina = p; repintar({ catalogoAbierto: panelCatalogo.open }); }))
       : el('div', { class: 'panel' }, el('p', {}, 'Aún no hay palabras. Agrega una o elige de la lista inicial.')),
     panelCatalogo,

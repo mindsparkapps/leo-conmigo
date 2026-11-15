@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { colorDeIndice, filtrarMovimientos, ordenarVocabulario, paginar } from '../js/core/listas.js';
+import { colorDeIndice, filtrarMovimientos, filtrarPorRegion, letrasDeLista, ordenarVocabulario, paginar } from '../js/core/listas.js';
+import { trocearTexto } from '../js/audio.js';
 
 test('paginar parte la lista y ajusta la página al rango', () => {
   const lista = Array.from({ length: 25 }, (_, i) => i);
@@ -29,6 +30,10 @@ test('filtrarMovimientos filtra por tipo, signo, fechas y nota, lo nuevo primero
   assert.deepEqual(filtrarMovimientos(movs, { signo: 'gastadas' }).map((m) => m.id), [2]);
   assert.deepEqual(filtrarMovimientos(movs, { desde: '2026-11-02', hasta: '2026-11-03' }).map((m) => m.id), [2]);
   assert.deepEqual(filtrarMovimientos(movs, { texto: 'repetida' }).map((m) => m.id), [3]);
+  // también se busca en el nombre del tipo que se ve en la lista, sin importar tildes ni mayúsculas
+  const nombres = { album: 'Álbum completo', sobre: 'Sobre de láminas', venta: 'Venta de repetida' };
+  assert.deepEqual(filtrarMovimientos(movs, { texto: 'album COMPLETO', nombres }).map((m) => m.id), [1]);
+  assert.deepEqual(filtrarMovimientos(movs, { texto: 'sobre de laminas', nombres }).map((m) => m.id), [2]);
 });
 
 test('ordenarVocabulario: aprendizaje, alfabético y por uso', () => {
@@ -37,6 +42,29 @@ test('ordenarVocabulario: aprendizaje, alfabético y por uso', () => {
   assert.deepEqual(ordenarVocabulario(filas, 'alfabetico').map((f) => f.texto), ['árbol', 'casa', 'rareza', 'zapato']);
   const uso = ordenarVocabulario(filas, 'uso', { casa: 10, zapato: 500, árbol: 900 });
   assert.deepEqual(uso.map((f) => f.texto), ['casa', 'zapato', 'árbol', 'rareza']);
+});
+
+test('letrasDeLista da cada letra con su primera posición', () => {
+  const filas = [{ texto: 'árbol' }, { texto: 'agua' }, { texto: 'casa' }, { texto: 'ñandú' }, { texto: 'nube' }];
+  assert.deepEqual(letrasDeLista(filas), [{ letra: 'A', indice: 0 }, { letra: 'C', indice: 2 }, { letra: 'N', indice: 3 }]);
+});
+
+test('filtrarPorRegion: una región, las generales o todas', () => {
+  const filas = [{ texto: 'polera' }, { texto: 'casa' }, { texto: 'Palta' }];
+  const regiones = { Chile: ['polera', 'palta'], Argentina: ['palta'] };
+  assert.deepEqual(filtrarPorRegion(filas, 'todas', regiones).length, 3);
+  assert.deepEqual(filtrarPorRegion(filas, 'Chile', regiones).map((f) => f.texto), ['polera', 'Palta']);
+  assert.deepEqual(filtrarPorRegion(filas, 'Argentina', regiones).map((f) => f.texto), ['Palta']);
+  assert.deepEqual(filtrarPorRegion(filas, 'general', regiones).map((f) => f.texto), ['casa']);
+});
+
+test('trocearTexto usa clips y junta lo demás para la voz sintética', () => {
+  const clips = new Set(['bebe', 'leche']);
+  const t = trocearTexto('¿Quién bebe leche hoy?', { clips });
+  assert.deepEqual(t.map((x) => [x.tipo, x.texto]), [['sintetica', 'Quién'], ['clip', 'bebe'], ['clip', 'leche'], ['sintetica', 'hoy']]);
+  assert.equal(t[1].ruta, 'data/voces/bebe.mp3');
+  const propia = trocearTexto('mamá', { palabras: [{ texto: 'mamá', medioAudioId: 'm1' }], clips });
+  assert.equal(propia[0].tipo, 'grabada');
 });
 
 test('colorDeIndice va de verde a rojo', () => {

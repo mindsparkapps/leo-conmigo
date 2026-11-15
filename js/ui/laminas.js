@@ -194,14 +194,16 @@ function estrella(ctx, cx, cy, radio, relleno) {
 /** Imagen de la portada del álbum (data/laminas/portada.jpg = GTA6_032). */
 export const RUTA_PORTADA = 'data/laminas/portada.jpg';
 
-function portada(_libro, imagen) {
+function portada(_libro, imagen, color = null) {
   const lienzo = lienzoNuevo();
   const ctx = contexto(lienzo);
-  // fondo de tapa y, encima, la imagen a pantalla completa (recortada al centro)
-  ctx.fillStyle = '#1f5f82';
+  // fondo de tapa y, encima, la imagen. Sin color: a pantalla completa (recortada al centro).
+  // Con un color elegido por el adulto: la imagen entera (sin recortar) y el color rellena lo que no cubre.
+  ctx.fillStyle = color ?? '#1f5f82';
   ctx.fillRect(0, 0, ANCHO_CARA, ALTO_CARA);
   if (imagen) {
-    const k = Math.max(ANCHO_CARA / imagen.naturalWidth, ALTO_CARA / imagen.naturalHeight);
+    const ajuste = color ? Math.min : Math.max;
+    const k = ajuste(ANCHO_CARA / imagen.naturalWidth, ALTO_CARA / imagen.naturalHeight);
     const w = imagen.naturalWidth * k;
     const h = imagen.naturalHeight * k;
     ctx.drawImage(imagen, (ANCHO_CARA - w) / 2, (ALTO_CARA - h) / 2, w, h);
@@ -217,10 +219,10 @@ function portada(_libro, imagen) {
 }
 
 /** Reverso de la portada: es el interior de la tapa, del mismo azul que ella. */
-function interior() {
+function interior(color = null) {
   const lienzo = lienzoNuevo();
   const ctx = contexto(lienzo);
-  ctx.fillStyle = '#1f5f82';
+  ctx.fillStyle = color ?? '#1f5f82';
   ctx.fillRect(0, 0, ANCHO_CARA, ALTO_CARA);
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
   ctx.lineWidth = 6;
@@ -312,8 +314,8 @@ export async function dibujarCaraDePagina({ store, libro, propias = [], indice }
 }
 
 /** La portada con «pegadas de total» al día. */
-export async function dibujarPortadaDeLibro(libro, urlPortada = RUTA_PORTADA) {
-  return portada(libro, await cargarImagen(urlPortada));
+export async function dibujarPortadaDeLibro(libro, urlPortada = RUTA_PORTADA, color = null) {
+  return portada(libro, await cargarImagen(urlPortada), color);
 }
 
 /**
@@ -322,8 +324,8 @@ export async function dibujarPortadaDeLibro(libro, urlPortada = RUTA_PORTADA) {
  * @param libro    resultado de armarLibro()
  * @param propias  calcomanías propias vigentes
  */
-export async function dibujarCaras({ store, libro, propias = [], urlPortada = RUTA_PORTADA }) {
-  const caras = [await dibujarPortadaDeLibro(libro, urlPortada), interior()];
+export async function dibujarCaras({ store, libro, propias = [], urlPortada = RUTA_PORTADA, colorPortada = null }) {
+  const caras = [await dibujarPortadaDeLibro(libro, urlPortada, colorPortada), interior(colorPortada)];
   for (let i = 0; i < libro.paginas.length; i++) caras.push(await dibujarCaraDePagina({ store, libro, propias, indice: i }));
   if (caras.length % 2 !== 0) caras.push(carasVacias());
   return caras;

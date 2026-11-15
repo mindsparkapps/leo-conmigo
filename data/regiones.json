@@ -1,0 +1,10 @@
+{
+  "Chile": ["polera", "polerón", "palta", "chancho", "frutilla", "durazno", "tata", "nene", "nena", "micro", "plata", "plátano", "bebida", "fideos", "papas", "jugo", "auto", "celular", "torta", "panza", "calcetín", "chaqueta"],
+  "Argentina": ["palta", "chancho", "frutilla", "durazno", "nene", "nena", "micro", "plata", "fideos", "papas", "jugo", "auto", "celular", "torta", "panza"],
+  "Uruguay": ["palta", "chancho", "frutilla", "durazno", "nene", "nena", "plata", "fideos", "papas", "jugo", "auto", "torta", "panza"],
+  "México": ["tata", "plátano", "durazno", "papas", "jugo", "celular", "panza", "calcetín"],
+  "Perú": ["palta", "chancho", "durazno", "plata", "plátano", "papas", "jugo", "auto", "celular", "torta", "panza"],
+  "Colombia": ["plata", "papas", "jugo", "celular"],
+  "Bolivia": ["polera", "palta", "chancho", "frutilla", "papas", "jugo"],
+  "España": ["plátano", "calcetín", "chaqueta"]
+}
