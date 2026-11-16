@@ -13,7 +13,10 @@ const PAUSA_ENTRE_AUDIOS_MS = 600;
 const FRASES_DEL_TRAMO = new Set(['Te faltan monedas', '¡Has ganado tus monedas!', '¡Completaste tu álbum! ¡Has ganado tus monedas!', '¿Cuál es una persona?', '¿Cuál es una parte del cuerpo?', '¿Cuál es una comida?', '¿Cuál es algo de la casa?', '¿Cuál es un animal?', '¿Cuál es un juguete o una cosa?', '¿Quién bebe leche?', '¿Qué come el gato?', '¿Qué tiene el perro?', '¿Quién duerme?', '¿Quién juega?', '¿Quién bebe agua?']);
 
 function leerMalas() {
-  try { return JSON.parse(localStorage.getItem(CLAVE_MALAS) ?? '[]'); } catch { return []; }
+  try {
+    // Antes se guardaba solo el texto; ahora cada marca lleva también su mp3 y su número en la lista completa
+    return JSON.parse(localStorage.getItem(CLAVE_MALAS) ?? '[]').map((m) => (typeof m === 'string' ? { texto: m } : m));
+  } catch { return []; }
 }
 function guardarMalas(lista) {
   try { localStorage.setItem(CLAVE_MALAS, JSON.stringify(lista)); } catch { /* sin almacenamiento: queda solo en pantalla */ }
@@ -57,6 +60,9 @@ export function crearRevisorVoces() {
   let temporizador = null;
   let arrastrando = false;
   let malas = leerMalas();
+  let numeros = new Map(); // ruta -> número de la grabación en la lista completa
+  let totalGlobal = 0;
+  let aislado = null; // audio de «Reproducir» de una marcada
 
   const preparar = el('button', { type: 'button', class: 'boton' }, 'Probar todas las anteriores');
   const prepararTramo = el('button', { type: 'button', class: 'boton secundario' }, 'Probar el siguiente tramo (frases y sílabas)');
@@ -74,17 +80,29 @@ export function crearRevisorVoces() {
   const bloqueMalas = el('div', {}, el('h3', {}, 'Las que suenan mal'), listaMalas, el('div', { class: 'acciones' }, copiar, vaciar));
 
   const etiqueta = (x) => `${x.tipo === 'frase' ? 'Frase' : x.tipo === 'sílaba' ? 'Sílaba' : 'Palabra'}: ${x.texto}`;
-  const esMala = (x) => malas.includes(etiqueta(x));
+  const esMala = (x) => malas.some((m) => m.texto === etiqueta(x));
+  const textoMala = (m) => `${m.numero ? `N.º ${m.numero} de ${totalGlobal || '…'} · ` : ''}${m.texto}`;
 
   function pintarMalas() {
     listaMalas.replaceChildren(
       ...malas.map((m) => {
-        const quitar = el('button', { type: 'button', class: 'boton secundario', 'aria-label': `Quitar ${m}` }, 'Quitar');
+        const oir = el('button', { type: 'button', class: 'boton secundario', 'aria-label': `Reproducir ${m.texto}`, disabled: !m.ruta || undefined }, 'Reproducir');
+        oir.addEventListener('click', () => reproducirAislada(m.ruta));
+        const quitar = el('button', { type: 'button', class: 'boton secundario', 'aria-label': `Quitar ${m.texto}` }, 'Quitar');
         quitar.addEventListener('click', () => { malas = malas.filter((x) => x !== m); guardarMalas(malas); pintarMalas(); pintarActual(); });
-        return el('li', {}, el('span', {}, m), ' ', quitar);
+        return el('li', {}, el('span', {}, textoMala(m)), ' ', oir, ' ', quitar);
       }),
     );
     bloqueMalas.hidden = malas.length === 0;
+  }
+
+  /** Reproduce una sola grabación, aparte de la lista (la lista queda en pausa). */
+  function reproducirAislada(rutaMp3) {
+    if (!rutaMp3) return;
+    if (audio && !audio.paused) { audio.pause(); pausar.textContent = 'Seguir'; }
+    if (aislado) { aislado.pause(); aislado = null; }
+    aislado = new Audio(rutaMp3);
+    aislado.play().catch(() => { estado.textContent = 'El navegador bloqueó el sonido.'; });
   }
 
   function pintarActual() {
@@ -110,6 +128,7 @@ export function crearRevisorVoces() {
   /** Reproduce el audio `indice` desde `segundo`. */
   function reproducir(indice, segundo = 0) {
     detener();
+    if (aislado) { aislado.pause(); aislado = null; }
     if (indice >= items.length) {
       actual = items.length - 1;
       estado.textContent = 'Terminó la lista.';
@@ -157,13 +176,13 @@ export function crearRevisorVoces() {
     const x = items[actual];
     if (!x) return;
     const e = etiqueta(x);
-    malas = esMala(x) ? malas.filter((m) => m !== e) : [...malas, e];
+    malas = esMala(x) ? malas.filter((m) => m.texto !== e) : [...malas, { texto: e, ruta: x.ruta, numero: numeros.get(x.ruta) ?? null }];
     guardarMalas(malas);
     pintarMalas();
     pintarActual();
   });
   copiar.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(malas.join('\n')); estado.textContent = 'Lista copiada.'; } catch { estado.textContent = 'No se pudo copiar: anótalas a mano.'; }
+    try { await navigator.clipboard.writeText(malas.map(textoMala).join('\n')); estado.textContent = 'Lista copiada.'; } catch { estado.textContent = 'No se pudo copiar: anótalas a mano.'; }
   });
   vaciar.addEventListener('click', () => { malas = []; guardarMalas(malas); pintarMalas(); pintarActual(); });
 
@@ -174,6 +193,16 @@ export function crearRevisorVoces() {
     estado.textContent = 'Preparando la lista…';
     try {
       items = await cargarLista(modo);
+      const completa = modo === 'todas' ? items : await cargarLista('todas');
+      numeros = new Map(completa.map((x, i) => [x.ruta, i + 1]));
+      totalGlobal = completa.length;
+      // Las marcas viejas (solo texto) se completan buscando la grabación por su etiqueta
+      malas = malas.map((m) => {
+        const x = m.ruta ? null : completa.find((y) => etiqueta(y) === m.texto);
+        return { ...m, ruta: m.ruta ?? x?.ruta, numero: m.numero ?? numeros.get(m.ruta ?? x?.ruta) ?? null };
+      });
+      guardarMalas(malas);
+      pintarMalas();
       const duraciones = [];
       for (let i = 0; i < items.length; i += 20) {
         duraciones.push(...(await Promise.all(items.slice(i, i + 20).map((x) => duracionDe(x.ruta)))));
