@@ -12,7 +12,7 @@ import { crearDrive, ErrorDrive } from './drive.js';
 import { crearSincronizador } from './sync.js';
 import { ErrorSync } from './core/sync.js';
 import { obtenerStore } from './contexto.js';
-import { adultoHabilitado } from './acceso.js';
+import { adultoHabilitado, esAlumno } from './acceso.js';
 import { crearAulas, ErrorAula } from './aulas.js';
 import { VERSION } from './config.js';
 
@@ -64,6 +64,9 @@ export function observarNube(oyente) {
 
 export const nubeConfigurada = () => auth.configurado();
 
+/** La cuenta de Google de esta app (la comparte el dispositivo del alumno, js/nube-alumno.js). */
+export const autenticacion = auth;
+
 async function obtenerSincronizador() {
   if (sincronizador) return sincronizador;
   const store = await obtenerStore();
@@ -74,6 +77,7 @@ async function obtenerSincronizador() {
 
 /** Recalcula la fase en reposo (sin sincronizar) según la cuenta, la conexión y lo pendiente. */
 export async function refrescarEstado() {
+  if (esAlumno()) return; // el dispositivo del alumno solo usa el aula (js/nube-alumno.js), nunca la sincronización personal
   if (estado.fase === FASES.SINCRONIZANDO) return;
   const cuenta = auth.cuenta();
   if (!auth.configurado()) { publicar({ fase: FASES.SIN_CONFIGURAR, email: '', pendientes: 0 }); return; }
@@ -184,7 +188,7 @@ export async function sincronizarAulas() {
 /** Cada 60 s: si el alumno escribió algo en su carpeta, se trae. */
 async function revisarAlumnos() {
   try {
-    if (document.hidden || !navigator.onLine || !auth.configurado() || !auth.cuenta().vinculada || !auth.tienePermisoAulas()) return;
+    if (esAlumno() || document.hidden || !navigator.onLine || !auth.configurado() || !auth.cuenta().vinculada || !auth.tienePermisoAulas()) return;
     if (location.hash.startsWith('#/nino/sesion')) return;
     if (!(auth.tokenVigente() || adultoHabilitado())) return;
     const aulas = await obtenerAulas();
@@ -203,6 +207,7 @@ async function revisarAlumnos() {
 
 /** Sincroniza ahora: primero lo personal y después cada aula. Devuelve el resumen personal, o null si no se pudo. */
 export async function sincronizarAhora() {
+  if (esAlumno()) return null;
   const resumen = await sincronizarPersonal();
   await sincronizarAulas();
   return resumen;
@@ -260,7 +265,7 @@ function puedeSincronizarSola() {
 }
 
 async function revisar({ forzar = false } = {}) {
-  if (document.hidden) return;
+  if (document.hidden || esAlumno()) return;
   if (!puedeSincronizarSola()) { await refrescarEstado(); return; }
   const store = await obtenerStore();
   const hayPendientes = (await store.pendientesSync()).length > 0;

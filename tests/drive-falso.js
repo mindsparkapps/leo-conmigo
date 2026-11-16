@@ -304,6 +304,28 @@ export function crearNubeFalsa() {
       const c = this.cuenta(email);
       return { obtenerToken: c.obtenerToken, fetchFn: c.fetch };
     },
+    /** El estado completo como texto plano (para compartirlo entre dos páginas de origen distinto en las pruebas del navegador). */
+    exportar() {
+      const aBase64 = (bytes) => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(s); };
+      return {
+        archivos: [...estado.archivos.values()].map((a) => ({ ...a, bytes: a.bytes ? aBase64(a.bytes) : null })),
+        permisos: [...estado.permisos], tokens: [...estado.tokens], contador, avisos: estado.avisos,
+      };
+    },
+    /** Carga un estado exportado (los tokens ya conocidos aquí se conservan). */
+    importar(datos) {
+      if (!datos?.archivos) return;
+      estado.archivos.clear();
+      for (const a of datos.archivos) {
+        const bin = a.bytes ? atob(a.bytes) : null;
+        estado.archivos.set(a.id, { ...a, bytes: bin ? Uint8Array.from(bin, (c) => c.charCodeAt(0)) : null });
+      }
+      estado.permisos.clear();
+      for (const [k, v] of datos.permisos) estado.permisos.set(k, v);
+      for (const [k, v] of datos.tokens) estado.tokens.set(k, v);
+      contador = Math.max(contador, datos.contador ?? 0);
+      estado.avisos = datos.avisos ?? [];
+    },
     archivo: (id) => estado.archivos.get(id),
     hijos: (padreId) => [...estado.archivos.values()].filter((a) => a.parents?.[0] === padreId),
     porNombre: (nombre, padreId) => [...estado.archivos.values()].find((a) => a.name === nombre && (padreId === undefined || a.parents?.[0] === padreId)),

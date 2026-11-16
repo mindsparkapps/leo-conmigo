@@ -14,6 +14,7 @@ import { crearDriveAulas, crearDriveCarpeta, esCorreo, ErrorDrive } from './driv
 import { vistaDePerfil } from './store-perfil.js';
 import { crearSincronizadorDeAula } from './sync-aula.js';
 import { ARCHIVO_AULA, estadoDeAlumnos, nuevaAula, validarAula } from './core/aula.js';
+import { estaDesvinculado, firmaDelAdulto } from './core/dispositivo-alumno.js';
 
 const MIME_JSON = 'application/json';
 const NOMBRE_TRABAJO = 'Leo Conmigo';
@@ -73,6 +74,8 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
       .filter((a) => a.name.endsWith('.json') && invitados.has(minuscula(a.owners?.[0]?.emailAddress)))
       .map((a) => `${a.id}:${a.modifiedTime}`).sort().join('|');
   }
+
+  const firmasAdulto = new Map(); // (alumno) perfilId -> firma de lo que había del adulto la última vez
 
   return {
     drive,
@@ -192,6 +195,12 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
 
     // ---------------- el alumno ----------------
 
+    /** (alumno) ¿Cambió `adulto.json` o `aula.json` desde la última sincronización? Una sola llamada de lista. */
+    async huboCambiosDelAdulto(aula) {
+      const archivos = await clienteCarpeta(aula.carpetaId).listar();
+      return firmaDelAdulto(archivos, aula.dueno) !== firmasAdulto.get(aula.perfilId);
+    },
+
     /** Las aulas que me compartieron: [{ carpetaId, carpetaAlumnoId, perfilId, nombre, dueno }]. */
     async buscarMiAula() {
       const salida = [];
@@ -217,7 +226,8 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
       const aulaJson = await carpetaAula.leerJson(archivoAula.id);
       const error = validarAula(aulaJson, { perfilId: aula.perfilId });
       if (error) throw new ErrorAula(error);
-      if (aulaJson.desvinculados.includes(idDispositivo)) return { desvinculado: true, aula: aulaJson };
+      if (estaDesvinculado(aulaJson, idDispositivo)) return { desvinculado: true, aula: aulaJson };
+      const firma = firmaDelAdulto(await carpetaAula.listar(), aula.dueno); // antes de sincronizar: si el adulto cambia algo mientras tanto, se vuelve a bajar
 
       const conocidos = new Set((await store.leerMeta(`aula:${aula.perfilId}:idsMediosConocidos`, [])) ?? []);
       const sincronizador = crearSincronizadorDeAula({
@@ -232,7 +242,9 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
         ahora,
         alProgreso,
       });
-      return { ...(await sincronizador.sincronizar()), aula: aulaJson, desvinculado: false };
+      const resumen = await sincronizador.sincronizar();
+      firmasAdulto.set(aula.perfilId, firma);
+      return { ...resumen, aula: aulaJson, desvinculado: false };
     },
   };
 }

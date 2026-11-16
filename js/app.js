@@ -3,6 +3,7 @@ import { iniciarPWA } from './pwa.js';
 import { adultoHabilitado } from './acceso.js';
 import { pedirAlmacenamientoPersistente } from './hardware.js';
 import { iniciarNube } from './nube.js';
+import { iniciarNubeAlumno } from './nube-alumno.js';
 
 import { aplicarFondo } from './ui/fondo.js';
 import { iniciarSaldo } from './ui/saldo.js';
@@ -14,7 +15,8 @@ aplicarColoresDeCajas();
 iniciarBotones(); // squash and stretch, destello y sonido en todos los botones
 iniciarSaldo(); // el total de monedas, arriba a la derecha en las pantallas del niño
 iniciarPWA();
-iniciarNube(); // sincroniza en segundo plano si hay una cuenta de Google vinculada
+iniciarNube(); // sincroniza en segundo plano si hay una cuenta de Google vinculada (no hace nada en un dispositivo de alumno)
+iniciarNubeAlumno(); // en un dispositivo de alumno: sincroniza el aula (no hace nada en el del adulto)
 pedirAlmacenamientoPersistente(); // que el navegador no borre las fotos, voces y progreso
 
 const adulto = (ruta, modulo) => ({

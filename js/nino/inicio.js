@@ -4,9 +4,10 @@
 import { el } from '../ui/dom.js';
 import { crearCandado } from '../ui/candado.js';
 import { crearMiniatura } from '../ui/miniatura.js';
-import { habilitarAdulto, deshabilitarAdulto } from '../acceso.js';
+import { habilitarAdulto, deshabilitarAdulto, esAlumno } from '../acceso.js';
 import { NOMBRE_APP, TEXTO_VERSION } from '../config.js';
-import { observar, instalar } from '../pwa.js';
+import { pintarPrimerUso } from './primer-uso.js';
+import { alTocarJugar } from '../nube-alumno.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { urlDeMedio, liberarUrls } from '../medios.js';
 import { desbloquearAudio } from '../audio.js';
@@ -41,8 +42,8 @@ export function montar(contenedor, { ir }) {
   let vivo = true;
   pintar(vista, ir, () => vivo).catch((error) => {
     console.error(error);
-    vista.prepend(el('h1', { class: 'titulo-nino' }, NOMBRE_APP), el('p', { class: 'mensaje-nino' }, 'Algo no funcionó. Un adulto puede tocar el candado.'));
-    if (!vista.querySelector('.candado')) vista.append(crearCandado({ alDesbloquear: () => entrarAdulto(ir) }));
+    vista.prepend(el('h1', { class: 'titulo-nino' }, NOMBRE_APP), el('p', { class: 'mensaje-nino' }, esAlumno() ? 'Algo no funcionó. Vuelve a abrir la aplicación.' : 'Algo no funcionó. Un adulto puede tocar el candado.'));
+    if (!esAlumno() && !vista.querySelector('.candado')) vista.append(crearCandado({ alDesbloquear: () => entrarAdulto(ir) }));
   });
   return () => {
     vivo = false;
@@ -72,26 +73,8 @@ async function pintar(vista, ir, estaVivo) {
   if (!estaVivo()) return;
 
   if (!perfil) {
-    vista.append(crearCandado({ alDesbloquear: () => entrarAdulto(ir) }));
-    // Primera pantalla en un dispositivo nuevo: aquí el adulto puede instalar la app y ver la versión
-    const instalacion = el('p', { class: 'instalar-inicio' });
-    let dejar = null;
-    dejar = observar((estado) => {
-      if (dejar && !instalacion.isConnected) { dejar(); return; }
-      instalacion.replaceChildren(
-        ...(estado.puedeInstalar
-          ? [el('button', { type: 'button', class: 'boton', onclick: () => instalar() }, 'Instalar en este dispositivo')]
-          : estado.instalada
-            ? []
-            : [el('span', { class: 'ayuda' }, 'Para instalarla: en Android/Chrome abre el menú ⋮ y elige «Instalar aplicación»; en iPhone o iPad usa Compartir → «Agregar a pantalla de inicio».')]),
-      );
-    });
-    vista.prepend(
-      el('h1', { class: 'titulo-nino' }, NOMBRE_APP),
-      el('p', { class: 'mensaje-nino' }, 'Un adulto debe preparar la aplicación.'),
-      instalacion,
-      el('p', { class: 'version-app' }, TEXTO_VERSION),
-    );
+    // Primera pantalla en un dispositivo nuevo: «Soy el adulto» o «Este dispositivo es de un alumno» (fase 18)
+    pintarPrimerUso(vista, { ir, estaVivo });
     return;
   }
 
@@ -137,14 +120,17 @@ async function pintar(vista, ir, estaVivo) {
             console.error('No se pudo saltar la lección', error);
           }
         }
-        : irA('/nino/sesion'),
+        : () => {
+          alTocarJugar(); // alumno: renueva el token al tocar ▶, sin hacer esperar al niño
+          irA('/nino/sesion')();
+        },
       desactivado: !hayQuePracticar && !saltarLeccionActivo(),
     }),
     botonMenu({ clase: 'menu-tienda', etiqueta: 'Tienda', icono: ICONO_TIENDA, alTocar: irA('/nino/tienda') }),
     botonMenu({ clase: 'menu-album', etiqueta: 'Álbum', icono: ICONO_ALBUM, alTocar: irA('/nino/albumes') }),
     hayLibros ? botonMenu({ clase: 'menu-libro', etiqueta: 'Libros', icono: ICONO_LIBRO, alTocar: irA('/nino/libros') }) : null,
-    // Config lleva al modo adulto: sigue protegido (mantener 3 s y resolver la suma)
-    crearCandado({ alDesbloquear: () => entrarAdulto(ir), etiqueta: 'Config' }),
+    // Config lleva al modo adulto: sigue protegido (mantener 3 s y resolver la suma). El alumno no tiene modo adulto: no hay candado.
+    esAlumno() ? null : crearCandado({ alDesbloquear: () => entrarAdulto(ir), etiqueta: 'Config' }),
   );
 
   vista.prepend(

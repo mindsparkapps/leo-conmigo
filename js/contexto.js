@@ -2,6 +2,7 @@
 
 import { abrirStore } from './store.js';
 import { completarVocesIniciales } from './medios.js';
+import { esAlumno } from './acceso.js';
 
 const META_PERFIL = 'perfilActivoId';
 let promesaStore = null;
@@ -29,7 +30,8 @@ export function obtenerStore() {
 export async function perfilActivo() {
   const store = await obtenerStore();
   const perfil = await elegirPerfil(store);
-  if (perfil && !vocesRevisadas.has(perfil.id)) {
+  // El alumno recibe las voces del adulto: no completa palabras por su cuenta (son del adulto y no las publica)
+  if (perfil && !esAlumno() && !vocesRevisadas.has(perfil.id)) {
     vocesRevisadas.add(perfil.id);
     await completarVocesIniciales(store, perfil.id);
   }

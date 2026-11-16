@@ -17,10 +17,50 @@ mimetypes.add_type('image/svg+xml', '.svg')
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 
+# «Nube» compartida para probar con DOS orígenes (adulto en localhost, alumno en 127.0.0.1): el navegador no deja que
+# se hablen entre sí, así que cada página guarda aquí el estado de su Drive simulado (tests/drive-falso.js) y lo
+# vuelve a leer antes de cada petición. GET /__nube/estado lo lee, POST lo guarda y DELETE lo borra.
+ESTADO_NUBE = {'datos': b'{}'}
+
+
 class Manejador(server.SimpleHTTPRequestHandler):
     def end_headers(self):
         self.send_header('Cache-Control', 'no-store')
         super().end_headers()
+
+    def _nube(self):
+        return self.path.split('?')[0] == '/__nube/estado'
+
+    def _responder(self, codigo, cuerpo=b''):
+        self.send_response(codigo)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(cuerpo)))
+        self.end_headers()
+        self.wfile.write(cuerpo)
+
+    def do_GET(self):
+        if self._nube():
+            self._responder(200, ESTADO_NUBE['datos'])
+        else:
+            super().do_GET()
+
+    def do_POST(self):
+        if not self._nube():
+            self.send_error(404)
+            return
+        ESTADO_NUBE['datos'] = self.rfile.read(int(self.headers.get('Content-Length', 0)))
+        self._responder(200, b'{}')
+
+    def do_DELETE(self):
+        if not self._nube():
+            self.send_error(404)
+            return
+        ESTADO_NUBE['datos'] = b'{}'
+        self._responder(200, b'{}')
+
+    def log_message(self, formato, *args):
+        if '/__nube/' not in str(args[0] if args else ''):
+            super().log_message(formato, *args)
 
 
 if __name__ == '__main__':
