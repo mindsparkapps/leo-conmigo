@@ -1,6 +1,7 @@
 // Reproducción de voz: grabación del adulto (prioridad) o voz sintética es-CL (respaldo).
 
 import { rutaDeFrase } from './frases-voz.js';
+import { rutaDeSilaba } from './silabas-voz.js';
 
 const PREFERIDAS = ['es-CL', 'es-419', 'es-US', 'es-MX', 'es-ES'];
 const normalizarLang = (lang) => String(lang ?? '').replace('_', '-').toLowerCase();
@@ -90,7 +91,7 @@ export function detener() {
 async function hablarTextoInterno(texto, { velocidad = 1 } = {}) {
   if (!String(texto ?? '').trim()) return false;
   // Las frases fijas de la app (consignas, felicitaciones, tienda, álbum) tienen su grabación
-  const ruta = rutaDeFrase(texto);
+  const ruta = rutaDeFrase(texto) ?? rutaDeSilaba(texto);
   if (ruta) {
     try {
       const respuesta = await fetch(ruta);
@@ -229,6 +230,8 @@ export function trocearTexto(texto, { palabras = [], clips = new Set() } = {}) {
 export async function decirTexto(texto, { palabras = [], obtenerMedio, velocidad = 1, pausaMs = 40 } = {}) {
   detener();
   const mia = generacion;
+  // Una frase fija con grabación (p. ej. una pregunta de cuento) suena entera, no palabra por palabra
+  if (rutaDeFrase(texto)) return hablarTextoInterno(texto, { velocidad });
   const trozos = trocearTexto(texto, { palabras, clips: await cargarClips() });
   if (!trozos.length) return false;
   for (const t of trozos) {

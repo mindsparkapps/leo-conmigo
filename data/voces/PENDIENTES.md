@@ -70,13 +70,13 @@ Las palabras de la lista ampliada (`data/voces/lista-ampliada.json`) se agregan 
 
 **juguetes:** [x] mapa · [x] carta · [x] diario · [x] revista · [x] cartel · [x] letra · [x] número · [x] tablero · [x] naipes · [x] dado · [x] trompo · [x] cometa · [x] autito · [x] camioneta · [x] barco · [x] cohete
 
-## Frases pendientes (hoy suenan con voz sintética)
+## Frases
 
-- [ ] Te faltan N monedas (distintos montos)
-- [ ] Ganaste N monedas (montos distintos de 10 y 13)
-- [ ] Preguntas «¿Cuál es…?» de la etapa 0 (P3)
-- [ ] Las 6 preguntas de los cuentos
-- [ ] Sílabas sueltas de la actividad S1
-- [ ] Nombres de premios que crea el adulto (no se pueden fijar de antemano)
+- [x] Te faltan monedas, ¡Has ganado tus monedas! y ¡Completaste tu álbum! ¡Has ganado tus monedas! (genéricas: sirven para cualquier monto)
+- [x] Las 6 preguntas «¿Cuál es…?» de la etapa 0 (P3)
+- [x] Las 6 preguntas de los cuentos iniciales
+- [x] Sílabas sueltas de la actividad S1 (265, en data/voces/silabas/ y js/silabas-voz.js)
+- [ ] Nombres de premios que crea el adulto: no se pueden fijar de antemano (siguen con voz sintética; el monto y el nombre se ven en pantalla)
+- [ ] Preguntas de cuentos nuevos que escriba el adulto (voz sintética salvo que sean una de las grabadas)
 
-Frases ya hechas (25): ver `js/frases-voz.js`.
+Frases fijas: ver `js/frases-voz.js`. Al agregar una nueva, genérala con scripts de scratchpad (generar por API, language_code es).

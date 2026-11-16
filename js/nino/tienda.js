@@ -19,7 +19,7 @@ import { lanzarMonedas } from '../ui/monedas-vuelo.js';
 import { cargarColecciones, urlDeSobre } from '../colecciones.js';
 import { coleccionCompleta } from '../core/colecciones.js';
 import { COLORES_CAJAS_PREDETERMINADOS, coloresDeCajas, fijarColoresDeCajas, saltarLeccionActivo } from '../dev.js';
-import { crearCanje, crearRegalo, faltan, premiosVisibles, puedeCanjear } from '../core/album.js';
+import { crearCanje, crearRegalo, premiosVisibles, puedeCanjear } from '../core/album.js';
 import { normalizarAjustes } from '../core/modelos.js';
 
 export const titulo = NOMBRE_APP;
@@ -160,7 +160,7 @@ async function iniciar(zona, estaVivo) {
             onclick: () => {
               if (ocupado || !toqueValido()) return;
               if (alcanza) confirmar(premio);
-              else decir(`${premio.nombre}. Te faltan ${textoMonedas(faltan(datos.saldo, premio))}`, { siempre: true });
+              else decir('Te faltan monedas', { siempre: true }); // frase fija con voz: el monto se ve en pantalla
             },
           },
           await imagenDe(premio),
@@ -199,7 +199,7 @@ async function iniciar(zona, estaVivo) {
                 if (estaVivo()) comprar(coleccion);
               }, MS_APLASTAR);
             }
-            else decir(`${nombreSobre}. Te faltan ${textoMonedas(precioSobre - datos.saldo)}`, { siempre: true });
+            else decir('Te faltan monedas', { siempre: true });
           },
         },
         crearSobreChico(LAMINAS_POR_SOBRE, await urlDeSobre(store, coleccion)),
@@ -237,7 +237,7 @@ async function iniciar(zona, estaVivo) {
                 }
                 if (r.vendida) {
                   aviso = `¡Vendida! Ganaste ${textoMonedas(r.valor)}.`;
-                  decir(`Ganaste ${textoMonedas(r.valor)}`);
+                  decir('¡Has ganado tus monedas!');
                   animarVenta(item, caja, item.closest('.repetidas-caja'), r).catch((error) => console.error(error));
                 }
                 await lista();

@@ -30,8 +30,24 @@ const FRASES = [
   ['¡Tus láminas nuevas! Pégalas en el álbum', 'tus-laminas-nuevas'],
   ['Arrastra el dedo por arriba del sobre para abrirlo', 'arrastra-el-dedo'],
   ['¡Es tuyo! Pídeselo a un adulto', 'es-tuyo'],
-  ['¡Completaste tu álbum! ¡Ganaste 10 monedas!', 'completaste-tu-album'],
-  ['Ganaste 13 monedas', 'ganaste-13-monedas'],
+  // Frases genéricas: sin el monto, que se ve en pantalla (así sirven para cualquier cantidad de monedas)
+  ['Te faltan monedas', 'te-faltan-monedas'],
+  ['¡Has ganado tus monedas!', 'has-ganado-tus-monedas'],
+  ['¡Completaste tu álbum! ¡Has ganado tus monedas!', 'completaste-tu-album-has-ganado'],
+  // preguntas de «clasificar» (P3, PREGUNTAS_CATEGORIA de core/vocabulario.js)
+  ['¿Cuál es una persona?', 'cual-es-una-persona'],
+  ['¿Cuál es una parte del cuerpo?', 'cual-es-una-parte-del-cuerpo'],
+  ['¿Cuál es una comida?', 'cual-es-una-comida'],
+  ['¿Cuál es algo de la casa?', 'cual-es-algo-de-la-casa'],
+  ['¿Cuál es un animal?', 'cual-es-un-animal'],
+  ['¿Cuál es un juguete o una cosa?', 'cual-es-un-juguete-o-una-cosa'],
+  // preguntas de los cuentos de data/cuentos-iniciales.json
+  ['¿Quién bebe leche?', 'quien-bebe-leche'],
+  ['¿Qué come el gato?', 'que-come-el-gato'],
+  ['¿Qué tiene el perro?', 'que-tiene-el-perro'],
+  ['¿Quién duerme?', 'quien-duerme'],
+  ['¿Quién juega?', 'quien-juega'],
+  ['¿Quién bebe agua?', 'quien-bebe-agua'],
   ['¡Lo lograste! Elige un álbum', 'lo-lograste-elige-un-album'],
 ];
 

@@ -76,7 +76,7 @@ export function montar(contenedor, { ir }) {
   if (ajustes.intensidadCelebracion === 'normal') lluviaDeEstrellas(vista);
   if (celebra && ajustes.sonido) {
     desbloquearAudio();
-    hablarTexto(album ? `¡Completaste tu álbum! ¡Ganaste ${album.monedas} monedas!` : '¡Lo lograste!', { velocidad: ajustes.velocidadVoz });
+    hablarTexto(album ? '¡Completaste tu álbum! ¡Has ganado tus monedas!' : '¡Lo lograste!', { velocidad: ajustes.velocidadVoz });
   }
   if (celebra && ajustes.vibracion) vibrar([40, 60, 40]);
 

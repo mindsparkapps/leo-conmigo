@@ -4,11 +4,13 @@
 
 import { el } from '../ui/dom.js';
 import { LISTA_DE_FRASES } from '../frases-voz.js';
+import { LISTA_DE_SILABAS } from '../silabas-voz.js';
 
 const CLAVE_MALAS = 'leo_voces_malas';
 const PAUSA_ENTRE_AUDIOS_MS = 600;
-// El último tramo generado (el botón «siguiente tramo»; se actualiza en cada tanda nueva)
-const TRAMO_NUEVO = ['zapatilla', 'guante', 'bufanda', 'pijama', 'falda', 'camisa', 'cuento', 'canción', 'música', 'foto', 'dinero', 'columpio', 'tobogán', 'bloques', 'casco', 'cumpleaños', 'fiesta', 'navidad', 'viento', 'cinturón', 'marrón', 'rosado', 'morado', 'gris', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'cero', 'farmacia', 'panadería', 'almacén', 'supermercado', 'correo', 'banco', 'ambulancia', 'taxi', 'paradero', 'semáforo', 'ascensor', 'mercado', 'feria', 'menú', 'receta', 'mensaje', 'besos', 'abrazo', 'rabia', 'mezcla', 'hierve', 'fríe', 'hornea', 'pela', 'bate', 'agrega', 'revuelve', 'sirve', 'veinte', 'cien', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo', 'semana', 'mes', 'año', 'verano', 'invierno', 'otoño', 'primavera', 'sala', 'comedor', 'pasillo', 'cuarto', 'estufa', 'lavamanos', 'peineta', 'pañal', 'servilleta', 'mantel', 'mapa', 'carta', 'diario', 'revista', 'cartel', 'letra', 'número', 'tablero', 'naipes', 'dado', 'trompo', 'cometa', 'autito', 'camioneta', 'barco', 'cohete'];
+// El último tramo generado (el botón «siguiente tramo»; se actualiza en cada tanda nueva): las frases genéricas
+// nuevas y las sílabas sueltas
+const FRASES_DEL_TRAMO = new Set(['Te faltan monedas', '¡Has ganado tus monedas!', '¡Completaste tu álbum! ¡Has ganado tus monedas!', '¿Cuál es una persona?', '¿Cuál es una parte del cuerpo?', '¿Cuál es una comida?', '¿Cuál es algo de la casa?', '¿Cuál es un animal?', '¿Cuál es un juguete o una cosa?', '¿Quién bebe leche?', '¿Qué come el gato?', '¿Qué tiene el perro?', '¿Quién duerme?', '¿Quién juega?', '¿Quién bebe agua?']);
 
 function leerMalas() {
   try { return JSON.parse(localStorage.getItem(CLAVE_MALAS) ?? '[]'); } catch { return []; }
@@ -34,15 +36,16 @@ function duracionDe(ruta) {
   });
 }
 
-/** Todas las grabaciones (frases y palabras) o, con modo «tramo», solo las del último tramo. */
+/** Todas las grabaciones (frases, palabras y sílabas) o, con modo «tramo», solo las del último tramo. */
 async function cargarLista(modo = 'todas') {
   const respuesta = await fetch('data/vocabulario-inicial.json');
   if (!respuesta.ok) throw new Error('No se pudo leer el catálogo de palabras.');
   const catalogo = await respuesta.json();
   const palabras = catalogo.filter((p) => p.voz).map((p) => ({ texto: p.texto, ruta: p.voz, tipo: 'palabra' }));
-  if (modo === 'tramo') return palabras.filter((p) => TRAMO_NUEVO.includes(p.texto));
   const frases = LISTA_DE_FRASES.map((f) => ({ texto: f.texto, ruta: f.ruta, tipo: 'frase' }));
-  return [...frases, ...palabras];
+  const silabas = LISTA_DE_SILABAS.map((x) => ({ texto: x.texto, ruta: x.ruta, tipo: 'sílaba' }));
+  if (modo === 'tramo') return [...frases.filter((f) => FRASES_DEL_TRAMO.has(f.texto)), ...silabas];
+  return [...frases, ...palabras, ...silabas];
 }
 
 export function crearRevisorVoces() {
@@ -56,7 +59,7 @@ export function crearRevisorVoces() {
   let malas = leerMalas();
 
   const preparar = el('button', { type: 'button', class: 'boton' }, 'Probar todas las anteriores');
-  const prepararTramo = el('button', { type: 'button', class: 'boton secundario' }, `Probar el siguiente tramo (${TRAMO_NUEVO.length} palabras)`);
+  const prepararTramo = el('button', { type: 'button', class: 'boton secundario' }, 'Probar el siguiente tramo (frases y sílabas)');
   const estado = el('p', { class: 'ayuda', role: 'status' });
   const actualTexto = el('p', { class: 'revisor-actual', 'aria-live': 'polite' }, '');
   const barra = el('input', { type: 'range', min: '0', max: '0', step: '0.1', value: '0', 'aria-label': 'Posición en la lista de voces', disabled: true });
@@ -70,7 +73,7 @@ export function crearRevisorVoces() {
   const vaciar = el('button', { type: 'button', class: 'boton secundario' }, 'Vaciar la lista');
   const bloqueMalas = el('div', {}, el('h3', {}, 'Las que suenan mal'), listaMalas, el('div', { class: 'acciones' }, copiar, vaciar));
 
-  const etiqueta = (x) => `${x.tipo === 'frase' ? 'Frase' : 'Palabra'}: ${x.texto}`;
+  const etiqueta = (x) => `${x.tipo === 'frase' ? 'Frase' : x.tipo === 'sílaba' ? 'Sílaba' : 'Palabra'}: ${x.texto}`;
   const esMala = (x) => malas.includes(etiqueta(x));
 
   function pintarMalas() {
