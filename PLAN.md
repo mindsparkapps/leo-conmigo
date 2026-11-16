@@ -674,6 +674,135 @@ Por palabra (y por frase), con sus respuestas de los **últimos 60 días**, sin 
 
 ---
 
+## Ampliación 3 — Fases 15 a 19: alumnos con su propia cuenta (pedida el 2026-11-15, aprobada por el usuario el 2026-11-16)
+
+> **Para Sonnet:** lee antes §7 (fase 7: sincronización), `js/sync.js`, `js/core/sync.js`, `js/drive.js`, `js/auth.js`, `js/nube.js` y la guía [docs/google-cloud.md](docs/google-cloud.md). Igual que en las fases anteriores: una fase a la vez, con su lista de aceptación, `graphify update .` y un commit. **La seguridad de las carpetas (ver «Quién puede tocar qué») no se negocia**: si algo del código choca con ella, gana ella; si no sabes cómo cumplirla, pregunta.
+
+### Qué pidió el usuario
+- Instalar la app en el dispositivo de un **alumno**, que entra con **su propia cuenta de Gmail** y queda como estudiante: **no puede ver ninguna configuración** y **nunca sale del modo alumno**.
+- Ese dispositivo **baja todo lo necesario** (fotos, voces, pictogramas, láminas, portadas) para funcionar sin conexión.
+- Desde **su celular**, el adulto configura la versión del alumno (palabras, frases, libros, álbumes, tienda, ajustes, etapas, fondo: todo lo que ve el niño) y **ve sus estadísticas**.
+- El alumno aparece **solo** en una sección **«Alumnos habilitados»** al conectarse por primera vez.
+- Si el adulto sube algo nuevo (p. ej. un álbum), el dispositivo del alumno **lo detecta y lo baja**.
+- **El alumno solo puede escribir sus propios archivos**: no puede modificar el contenido del adulto ni ver datos de otros niños ni del resto del Drive del adulto.
+
+### La idea (cambia poco la estructura actual)
+Hoy cada adulto sincroniza **todo** su almacén con `data.json` en la carpeta oculta `appDataFolder` de **su** Drive. Esa carpeta no se puede compartir con otra cuenta, así que se agrega un segundo lugar de sincronización, **el «aula»**, en carpetas normales del Drive del adulto:
+
+```
+Mi unidad (del adulto)
+└── Leo Conmigo/                         carpeta de trabajo · propiedad leoConmigo='trabajo' · NO se comparte con nadie
+    ├── Alumno · Pedro/                  un aula por perfil · leoConmigo='aula', perfilId · compartida como LECTOR con el Gmail del alumno
+    │   ├── aula.json                    lo escribe el adulto (perfil, dueño, apariencia, dispositivos desvinculados)
+    │   ├── adulto.json                  lo escribe el adulto: los registros de ESE perfil (mismo formato que data.json)
+    │   ├── medio-<id>.<ext>             fotos y audios de ese perfil (los sube el adulto)
+    │   └── del-alumno/                  leoConmigo='del-alumno' · el alumno es EDITOR solo aquí
+    │       ├── alumno.json              lo escribe el alumno: sus sesiones, respuestas, progreso, monedas…
+    │       └── dispositivo-<id>.json    uno por dispositivo del alumno (correo, versión, última sincronización)
+    └── Alumno · Sofía/                  otra aula, compartida solo con el Gmail de Sofía
+```
+
+- **Cada lado escribe solo su archivo y lee el del otro.** La fusión es la de siempre (registro por registro, gana el `updatedAt` más reciente, borrados suaves, «gana lo local si cambió mientras se sincronizaba»), con dos agregados: qué almacenes acepta cada lado del otro y qué almacenes publica.
+- **El perfil tiene el mismo `id` en los dos lados**, y las sesiones y respuestas del alumno llegan al almacén del adulto como si se hubieran jugado ahí: **Progreso, Análisis y Álbum del adulto funcionan sin cambios** (no se recalcula nada aparte; se siguen usando `core/estadisticas.js`, `core/analisis.js` y `core/album.js`).
+- La sincronización personal del adulto (`appDataFolder` + `data.json`) **sigue igual**. En el dispositivo del alumno **no** se usa: su única nube es el aula.
+
+### Quién puede tocar qué (obligatorio)
+La protección la da **Drive** (los permisos de cada carpeta), no solo la app: aunque alguien usara la cuenta del alumno fuera de la app, no podría hacer más que esto.
+
+| Carpeta / archivo | Adulto (dueño) | Alumno invitado | Cualquier otra persona |
+|---|---|---|---|
+| `Leo Conmigo/` (trabajo) y el resto del Drive del adulto | todo | **no la ve** (nunca se comparte) | no la ve |
+| `Alumno · <su niño>/`: `aula.json`, `adulto.json`, `medio-*` | todo | **solo lectura** | no la ve |
+| `Alumno · <su niño>/del-alumno/` | todo | **editor** (crea y cambia sus archivos) | no la ve |
+| Aulas de otros niños | todo | **no las ve** | no la ve |
+
+Reglas para la implementación:
+- El aula se comparte con `role: 'reader'` y solo la subcarpeta `del-alumno/` con `role: 'writer'`. **Nunca** `type: 'anyone'` (nada de «cualquiera con el enlace»), nunca `domain`, nunca `writer` en el aula ni en la carpeta de trabajo, y siempre con `emailAddress` exacto.
+- Al crear el aula se comprueba con `permissions.list` que la carpeta de trabajo **no** tenga permisos aparte del dueño; si los tiene (alguien la compartió a mano), se avisa al adulto y no se habilitan alumnos hasta que la deje privada.
+- En cada sincronización el adulto revisa los permisos de cada aula: si aparece un permiso que la app no puso (otro correo, `anyone`, un `writer` en la carpeta del aula), lo muestra en «Alumnos» como **«Permiso extraño»** con un botón para quitarlo. No lo quita solo.
+- **Del archivo del alumno, el adulto acepta solo** los almacenes `ALMACENES_DEL_ALUMNO` (ver la tabla siguiente), **solo** registros con `perfilId` de esa aula (y en `perfiles`, solo el registro de ese perfil), y valida el formato antes de fusionar. Cualquier otra cosa se descarta y se cuenta en un aviso. `medios` del alumno nunca se aceptan.
+- El adulto solo lee archivos de `del-alumno/` cuyo dueño (`owners[0].emailAddress`) sea un correo invitado a esa aula.
+- El alumno nunca escribe fuera de `del-alumno/` (si la API lo deja por un error de permisos, la app igual no lo hace: todas las escrituras del alumno pasan por un cliente de Drive atado a esa subcarpeta).
+
+### Decisiones tomadas
+| Tema | Decisión |
+|---|---|
+| Permiso de Google | El aula necesita el alcance `https://www.googleapis.com/auth/drive` (el mismo que ya pide ZenBan con el cliente «MindSpark»). `drive.file` no sirve: con él el alumno no ve una carpeta creada por otra cuenta sin Google Picker. **Se pide aparte y solo cuando hace falta** (al abrir «Alumnos» la primera vez o al configurar un dispositivo de alumno), con `include_granted_scopes`; quien no usa alumnos sigue solo con `drive.appdata`. |
+| Modo Prueba / producción | Lo configura el usuario siguiendo [docs/google-cloud.md](docs/google-cloud.md) (publicar la app para que Google no rechace a los alumnos). La app muestra un mensaje claro si Google rechaza la cuenta (`access_denied`: «Esta cuenta no tiene permiso para usar la app; revisa *Público* en Google Cloud»). |
+| Alumnos por perfil | Un aula por perfil; se pueden invitar **varios correos** (p. ej. la tablet y el celular del niño con cuentas distintas). Un dispositivo de alumno tiene **un solo** perfil. |
+| Qué publica y acepta cada lado | **Solo del adulto** (`ALMACENES_SOLO_ADULTO`): `palabras`, `frases`, `libros`, `calcomaniasPropias`, `premios`, `medios`. El alumno los acepta del adulto y nunca los publica. **De los dos** (`ALMACENES_DEL_ALUMNO`): `perfiles` (ajustes, etapa, álbumes cargados), `progresos`, `niveles`, `sesiones`, `respuestas`, `calcomanias`, `movimientos`; gana el `updatedAt` más reciente. |
+| Apariencia | El fondo (`ui/fondo.js`, hoy en `localStorage` de cada equipo) viaja en `aula.json` y el alumno lo aplica. Los colores de desarrollo (`dev.js`) no viajan. |
+| Registro del alumno | Automático: al entrar con su Gmail y encontrar un aula compartida con él, el dispositivo escribe su `dispositivo-<id>.json` y el adulto lo ve como **«Conectado»**. Antes figura como **«Invitado, aún no entra»**. |
+| Novedades | El alumno revisa cada **60 s** (con conexión, token vigente y sin sesión del niño en curso) si cambió `adulto.json` o `aula.json` (`modifiedTime`, una sola llamada de lista) y, si cambió, sincroniza y baja lo nuevo. **No se le avisa al niño** (pantalla tranquila, §2.8): lo nuevo aparece en su lugar (un álbum nuevo, en Álbumes). |
+| Nunca sale del modo alumno | En el dispositivo del alumno **no hay modo adulto**: el candado no se muestra, y cualquier ruta `#/adulto/*` (o el candado, si se llegara a él) **lleva a la pantalla principal del niño** (`#/nino`: ▶, álbum, tienda, libros). No hay pantalla de estado ni de desvincular en el dispositivo. |
+| Desvincular un dispositivo | Solo desde el celular del adulto, en «Alumnos»: **Desvincular** agrega su `idDispositivo` a `aula.json`. En su siguiente sincronización ese dispositivo borra sus datos locales y vuelve a la pantalla de primer uso. También sirve desinstalar la app o borrar sus datos en el navegador. |
+| Token en el dispositivo del alumno | La regla de la fase 7 prohíbe abrir ventanas de Google en modo niño. Excepción solo para el alumno: si el token venció, se renueva en silencio **al tocar ▶** (es un toque, así que el navegador permite la ventana, que se cierra sola). La sesión empieza igual, sin esperar; la sincronización corre al volver al inicio o al premio. Si la renovación silenciosa falla y lleva **más de 24 h** sin sincronizar, el siguiente toque de ▶ abre la ventana de Google con el correo del alumno ya puesto (lo resuelve quien acompañe al niño); si se cierra, la sesión sigue sin conexión. El adulto ve en «Alumnos» hace cuánto sincronizó cada dispositivo. |
+| Dispositivo con datos | Solo se convierte en dispositivo de alumno si no tiene perfiles; si tiene, se ofrece borrar los datos del dispositivo (con confirmación que dice que no se puede deshacer). |
+| Quitar acceso | En «Alumnos», **Quitar acceso** borra los permisos de ese correo en el aula y en `del-alumno/` (los datos ya traídos al adulto se quedan). El dispositivo del alumno sigue funcionando sin conexión con lo que tiene. |
+
+### Fase 15 — Núcleo puro del aula (sin red ni DOM)
+- **`core/aula.js`** (nuevo, puro, con pruebas):
+  - `ALMACENES_SOLO_ADULTO`, `ALMACENES_DEL_ALUMNO`, `publicaRol(rol)` y `aceptaDe(rolLocal, rolRemoto)` → qué almacenes escribe cada lado y cuáles acepta del otro (rol `'adulto'` o `'alumno'`).
+  - `filtrarEntrantes({ almacenes, perfilId, aceptados })` → `{ almacenes, descartados }`: deja solo los almacenes aceptados y los registros de ese perfil (en `perfiles`, solo el suyo); cuenta lo descartado.
+  - `mediosDelPerfil({ perfil, registros })`: ids de medios que usa el perfil. Reutiliza `mediosDeRegistro` de `core/borrar-perfil.js` **y además** recorre lo anidado que hoy no mira: `perfil.colecciones[].medioPortadaId / medioSobreId`, `perfil.fotoMedioId`, premios, calcomanías propias. (Si `borrarPerfil` también olvida esos medios, arreglarlo en la misma fase y avisarlo.)
+  - Formatos y validación de `aula.json` (`{ formato: 'leo-conmigo-aula', version: 1, perfilId, nombre, dueno: { email }, apariencia: { fondo }, desvinculados: [idDispositivo], actualizado }`), de `adulto.json` / `alumno.json` (mismo formato que `data.json` de `core/sync.js`, con `perfilId` y `rol`) y de `dispositivo-<id>.json` (`{ formato: 'leo-conmigo-dispositivo', version: 1, idDispositivo, email, nombre, versionApp, primeraConexion, ultimaSync }`).
+  - `estadoDeAlumnos({ invitados, permisos, dispositivos, ahora })` → por correo: `'invitado' | 'conectado' | 'sin acceso'`, sus dispositivos, hace cuánto sincronizó cada uno, y `permisosExtranos` (los que la app no puso, según la tabla de seguridad).
+- **`core/sync.js`:** sin cambiar lo de hoy, una función pura que une **tres** fuentes: `fusionarConAjeno({ locales, propios, ajenos })` (lo de aquí, mi archivo en Drive, el archivo del otro lado ya filtrado) → qué escribir aquí y qué publicar en mi archivo. Lo de hoy (`fusionarAlmacen`) queda idéntico: las pruebas actuales siguen pasando sin tocarlas.
+- **Acepta si:** pruebas de las listas de almacenes, `filtrarEntrantes` (registro de otro perfil, otro perfil en `perfiles`, almacén de solo adulto enviado por el alumno, `medios` del alumno → todo descartado), `mediosDelPerfil` (incluidas portadas y sobres), validaciones (formato ajeno, versión más nueva, perfil que no coincide), `estadoDeAlumnos` (incluido un permiso `anyone` y un `writer` en el aula como extraños) y `fusionarConAjeno` con borrados y conflictos. `npm test` en verde.
+
+### Fase 16 — Drive en carpetas compartidas y sincronización del aula
+- **`auth.js`:** `ALCANCES_AULA` (los de hoy + `drive`) y `pedirPermisoAulas()` (ventana con `scope` + `include_granted_scopes`, desde un toque); `tienePermisoAulas()` revisa con `google.accounts.oauth2.hasGrantedAllScopes` (el usuario puede desmarcar la casilla: avisarlo con claridad). `renovarAlTocar({ interactiva })` para el alumno (ver «Token»). Mensaje propio para `access_denied` (cuenta rechazada por Google: ver «Modo Prueba / producción»).
+- **`drive.js`:** `crearDriveCarpeta({ obtenerToken, carpetaId })` con **la misma interfaz** que usa el sincronizador (`listar` con `modifiedTime` y `owners`, `leerJson`, `leerBlob`, `crear`, `actualizar`, `borrar`), atada a **una** carpeta (`'<carpetaId>' in parents`, y `crear` siempre con `parents: [carpetaId]`). Más: `buscarCarpeta({ propiedad, padre })`, `crearCarpeta(nombre, { padre, propiedades })`, `buscarAulasCompartidasConmigo()` (carpetas con la propiedad pública `leoConmigo = 'aula'` y `sharedWithMe`), `compartir(carpetaId, email, rol)` (solo `'reader'` o `'writer'`, `type: 'user'`, con aviso por correo y un mensaje corto; cualquier otro valor lanza error), `permisos(carpetaId)`, `quitarPermiso(carpetaId, permisoId)`. Un 403/404 de una carpeta = «sin acceso al aula» (error propio).
+- **`store-perfil.js`** (nuevo, `js/`): `vistaDePerfil(store, perfilId, { idsMediosConocidos })`: solo ve los registros del perfil (`perfiles` → el suyo; `medios` → los de `mediosDelPerfil` **más** los ya sincronizados alguna vez, guardados en meta, para que un medio borrado no «resucite»); `importar` **rechaza** registros de otro perfil; la meta lleva prefijo `aula:<perfilId>:`; `pendientesSync` filtra la cola por los registros del perfil y `limpiarCola` no la toca (la cola es de la sincronización personal).
+- **`sync-aula.js`** (nuevo, `js/`): `crearSincronizadorDeAula({ store, rol, aula, carpetaAula, carpetaAlumno })`, armado con las mismas piezas y protecciones que `js/sync.js` (una ejecución a la vez, primero los medios y al final el JSON, gana lo local si cambió durante la sincronización, nunca pisa un JSON que no entiende). Adulto: lee `del-alumno/alumno.json` (filtrado), escribe `adulto.json` y sube medios al aula. Alumno: lee `adulto.json`, baja medios del aula, escribe solo en `del-alumno/` (`alumno.json` y su `dispositivo-<id>.json`). `js/sync.js` no cambia.
+- **`aulas.js`** (nuevo, `js/`): `asegurarCarpetaDeTrabajo()` (busca o crea `Leo Conmigo/` y comprueba que sea privada), `crearAula(store, perfil)` (carpeta del aula + `del-alumno/` + `aula.json`; guarda `{ perfilId, carpetaId, carpetaAlumnoId, invitados: [] }` en `meta` `aulas`), `invitar(perfilId, email)` (lector en el aula + editor en `del-alumno/`), `quitarAcceso`, `desvincularDispositivo`, `revisarPermisos`, `sincronizarAula(perfilId)` (adulto); `buscarMiAula()`, `sincronizarComoAlumno()` y `registrarDispositivo()` (alumno).
+- **Pruebas:** ampliar `tests/drive-falso.js` a **varias cuentas** (dueño, alumno A, alumno B, un tercero) con carpetas anidadas, propiedades, `owners`, permisos heredados (lector en el aula → lector en `del-alumno/`, más el editor directo) y `sharedWithMe`; el Drive falso **debe rechazar** (403) lo que Drive real rechazaría. Escenarios:
+  - el adulto crea dos aulas e invita a A y a B; A solo encuentra la suya; B solo la suya; el tercero ninguna;
+  - A baja todo (palabra con foto y voz, libro, álbum cargado con portada y sobre) y se registra;
+  - A **no puede** actualizar `adulto.json`, `aula.json` ni un `medio-*`, ni crear archivos en el aula, en la carpeta de trabajo ni en el aula de B (403 del Drive falso, y la app no lo intenta);
+  - A juega sin conexión y al volver sube sesión y respuestas, que aparecen en el almacén del adulto con el mismo `perfilId`;
+  - un `alumno.json` manipulado (con una palabra, un medio, un registro del perfil de B o un perfil ajeno) no cambia nada de eso en el adulto y deja un aviso;
+  - el adulto agrega un álbum y A lo recibe; un medio borrado por el adulto desaparece en A y no vuelve;
+  - un permiso `anyone` agregado a mano aparece como «Permiso extraño»; quitar acceso y desvincular funcionan.
+- **Acepta si:** todo lo anterior en `npm test`, y las pruebas de la sincronización personal (fase 7) siguen pasando sin cambios.
+
+### Fase 17 — Pantalla «Alumnos habilitados» del adulto
+- Ruta adulta `#/adulto/alumnos` (botón en el panel, con el número de conectados). Por cada perfil: «Habilitar alumno» → pide permiso de Drive si falta → crea la carpeta de trabajo si no existe, el aula y la primera sincronización (con barra «Subiendo imágenes y audios (n de m)…»; puede tardar con cientos de voces).
+- Agregar correo (validación simple), lista de alumnos con su estado (**Invitado, aún no entra** / **Conectado** · hace cuánto sincronizó cada dispositivo · versión de la app / **Sin acceso**), **Quitar acceso** y **Desvincular dispositivo** (con confirmación), **Sincronizar ahora**, **Ver estadísticas** (fija el perfil activo y abre `#/adulto/progreso`; desde ahí, Análisis como siempre) y los avisos de **Permiso extraño** y de datos descartados del alumno.
+- Un recuadro «Qué puede ver el alumno» con la tabla de seguridad en palabras simples, y las instrucciones: «En el dispositivo del niño: instala la app, toca *Este dispositivo es de un alumno* y entra con el Gmail que invitaste».
+- **`nube.js`:** tras la sincronización personal, sincroniza cada aula del adulto con las reglas de disparo de la fase 7 (al abrir, al volver la conexión, al volver a la app) más la revisión de 60 s del `modifiedTime` de `alumno.json`, para traer las sesiones nuevas. Un fallo en un aula no detiene las demás ni la personal; el estado de cada aula se ve en «Alumnos». Al editar cualquier cosa del perfil, el aula queda «con cambios por subir».
+- `aula.json` se reescribe cuando cambia el fondo o se desvincula un dispositivo.
+- **Acepta si:** en el navegador con el Google y Drive simulados (o reales si ya están los orígenes autorizados): habilitar, invitar, ver «Invitado» → «Conectado» cuando un segundo origen (`127.0.0.1:8080` como alumno) entra, quitar acceso, desvincular; una sesión jugada en el alumno aparece en Progreso del adulto; no aparece el texto «null» (ver CLAUDE.md).
+
+### Fase 18 — Dispositivo del alumno
+- **Primer uso:** si no hay perfiles, la pantalla inicial ofrece dos botones grandes: «Soy el adulto» (lo de hoy) y **«Este dispositivo es de un alumno»**. El segundo: iniciar sesión con Google (con el permiso del aula) → buscar aulas compartidas con ese Gmail → si hay una, se toma; si hay varias, se elige por nombre; si no hay ninguna: «Pídele a tu adulto que invite a *correo*» con «Buscar otra vez».
+- **Descarga completa** con barra de progreso («Bajando imágenes y audios (n de m)…») y aviso de que no cierre la app; al terminar, `meta.rol = 'alumno'` (copiado también en `localStorage` para que el router lo sepa al instante), perfil activo fijado, `registrarDispositivo()` y `pedirAlmacenamientoPersistente()`. Si se corta, al volver retoma (la sincronización es segura de repetir).
+- **Nunca sale del modo alumno:** el candado no se dibuja; el router manda **todas** las rutas `#/adulto/*` a `#/nino` (`guardia` = `adultoHabilitado() && !esAlumno()`, `siNoPasa: '/nino'`), y si algo llama a `habilitarAdulto()` en modo alumno no tiene efecto. No se ofrece cambiar de perfil. Lo único que ve el niño es su pantalla principal y lo que sale de ella (sesión, premio, álbumes, tienda, libros).
+- **Sincronización del alumno:** solo el aula (nunca `appDataFolder`); al abrir, al volver la conexión, al terminar cada sesión (en el premio o el inicio) y la revisión de 60 s; **nunca durante** `#/nino/sesion`. Al tocar ▶ con el token vencido, `renovarAlTocar()` sin hacer esperar al niño (ver «Token»). Cada sincronización actualiza `ultimaSync` en su `dispositivo-<id>.json`.
+- **Aplicar lo que llega:** fondo de `aula.json`; perfil y ajustes nuevos entran en la siguiente pantalla que se monte (nunca a mitad de sesión: §4 y fase 14). Si su `idDispositivo` está en `desvinculados`, borra la base (`indexedDB.deleteDatabase`), olvida la cuenta y vuelve al primer uso. Si el adulto quitó el acceso, la app sigue andando sin conexión.
+- **`sw.js`:** agregar a `PRECACHE` los archivos nuevos y subir `VERSION` en `js/config.js` (regla de CLAUDE.md).
+- **Acepta si**, en el navegador (dos orígenes: adulto en `localhost:8080`, alumno en `127.0.0.1:8080`, con espías de voz y vibración):
+  - el alumno se configura, baja todo, y **sin conexión** juega una sesión completa con fotos, voces y su álbum;
+  - no hay forma de llegar a una pantalla adulta: `location.hash = '#/adulto/ajustes'` (con y sin `leo_modo_adulto` en `sessionStorage`) termina en `#/nino`, y no hay candado en pantalla;
+  - al reconectar, la sesión aparece en Progreso y Análisis del adulto;
+  - el adulto carga un álbum nuevo y cambia un ajuste → el alumno los tiene a los ≤ 60 s (o al volver a la app) sin tocar nada, y nunca a mitad de una sesión;
+  - desvincular desde el adulto deja el dispositivo del alumno como recién instalado.
+
+### Fase 19 — Pulido, ayuda y prueba real
+- Ayuda del adulto (`#/adulto/ayuda`): cómo habilitar un alumno, el permiso de Drive (por qué se pide), qué ve y qué no ve el alumno (la tabla de seguridad), cómo quitar el acceso y desvincular, y un enlace a la guía de Google Cloud.
+- Página pública de privacidad `privacidad.html` (la pide Google para publicar la app; ver la guía) y «Acerca de»: las fotos y voces del niño también están en una carpeta del Drive del adulto **compartida solo con los correos que él invitó, en solo lectura**; el alumno escribe únicamente su propia subcarpeta.
+- `README.md` y el estado en `CLAUDE.md`.
+- Lista para el usuario (no la hace Sonnet): seguir [docs/google-cloud.md](docs/google-cloud.md) (alcance `drive`, orígenes autorizados, publicar la app) y probar con dos teléfonos reales (Android Chrome y, si hay, iPhone Safari).
+- **Acepta si:** `npm test` en verde, la prueba de punta a punta de la fase 18 repetida tras `location.reload()` y con el service worker nuevo, y la ayuda revisada.
+
+### Fuera de alcance (preguntar antes si hace falta)
+- Que un alumno tenga varios perfiles, o que un adulto gestione alumnos de otro adulto (co-terapeutas).
+- Avisos al niño de «hay algo nuevo», notificaciones push o correo propio de la app (Drive ya manda el aviso de carpeta compartida).
+- Pasar la verificación completa de Google (con evaluación de seguridad CASA) o rediseñar con `drive.file` + Google Picker: ver la guía.
+- Optimización opcional (solo si la primera subida resulta muy lenta): las voces del catálogo (`origen: 'catalogo'`) podrían bajarse desde los mp3 de la app en vez de Drive, guardando su ruta en el medio.
+
+---
+
 ## 10. Notas para el desarrollo
 
 - **Git:** commit al cerrar cada fase con un mensaje claro. **No hacer `git push`** (no puede autenticarse desde este equipo): el usuario sube los cambios.
