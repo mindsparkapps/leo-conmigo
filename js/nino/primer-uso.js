@@ -43,7 +43,9 @@ export function pintarPrimerUso(vista, { ir, estaVivo }) {
     poner(
       titulo(),
       el('p', { class: 'mensaje-nino' }, 'Un adulto debe preparar la aplicación.'),
-      crearCandado({ alDesbloquear: () => { habilitarAdulto(); ir('/adulto'); } }),
+      el('p', { class: 'ayuda' }, 'Mantén presionado el candado 3 segundos sin soltar y luego resuelve la suma.'),
+      // Aquí el candado va grande y con texto: el de la esquina casi no se ve en un dispositivo que se abre por primera vez
+      crearCandado({ alDesbloquear: () => { habilitarAdulto(); ir('/adulto'); }, etiqueta: 'Entrar como adulto' }),
       instalacion,
       el('button', { type: 'button', class: 'boton secundario chico', onclick: elegir }, 'Volver'),
       version(),

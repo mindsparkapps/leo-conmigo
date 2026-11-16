@@ -461,6 +461,7 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 .primer-uso .boton { font-size: 1.3rem; min-width: min(90vw, 360px); padding: 18px 20px; }
 .primer-uso .boton.chico { font-size: 1rem; min-width: 0; padding: 10px 16px; }
 .primer-uso progress { width: min(90vw, 420px); height: 22px; }
+.primer-uso .candado.candado-menu { min-width: min(90vw, 360px); font-size: 1.3rem; }
 
 /* Alumnos habilitados (modo adulto) */
 .lista-alumnos { margin: 0 0 12px; padding: 0; list-style: none; display: grid; gap: 10px; }
