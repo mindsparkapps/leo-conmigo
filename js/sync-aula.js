@@ -76,11 +76,16 @@ export function crearSincronizadorDeAula({
       ? archivosAula.find((a) => a.name === ARCHIVO_ADULTO)
       : archivosAlumno.find((a) => a.name === ARCHIVO_ALUMNO && (!miCorreo || duenoDe(a) === miCorreo));
     let propios = {};
+    let limpiarPropio = false;
     if (archivoPropio) {
       const doc = await propia.leerJson(archivoPropio.id);
       const error = validarArchivoAula(doc, { rolEsperado: rol, perfilId });
       if (error) throw new ErrorSync(error);
-      propios = doc.almacenes;
+      // También mi propio archivo se filtra: si alguien lo manipuló con mi cuenta, lo ajeno no entra y el archivo se limpia
+      const { almacenes, descartados: d } = filtrarEntrantes({ almacenes: doc.almacenes, perfilId, aceptados: publicaRol(rol) });
+      propios = almacenes;
+      limpiarPropio = d.total - (d.porAlmacen.medios ?? 0) > 0;
+      if (limpiarPropio) avisos.push(`Tu archivo ${archivoPropio.name} traía registros que no son de este perfil o de este lado: se quitaron.`);
     }
 
     // ---- el archivo del otro lado, filtrado ----
@@ -167,7 +172,7 @@ export function crearSincronizadorDeAula({
     const resultado = {};
     for (const nombre of ALMACENES_SYNC) resultado[nombre] = fusion[nombre].resultado;
     const doc = armarArchivoAula({ rol, perfilId, almacenes: resultado, ahora: ahora() });
-    const cambia = !archivoPropio || publicaRol(rol).some((nombre) => {
+    const cambia = !archivoPropio || limpiarPropio || publicaRol(rol).some((nombre) => {
       const enDoc = new Set(doc.almacenes[nombre].map((r) => r.id));
       return fusion[nombre].paraPropio.some((r) => enDoc.has(r.id));
     });

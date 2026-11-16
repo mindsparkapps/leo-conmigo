@@ -13,7 +13,10 @@ import { crearSincronizador } from './sync.js';
 import { ErrorSync } from './core/sync.js';
 import { obtenerStore } from './contexto.js';
 import { adultoHabilitado } from './acceso.js';
+import { crearAulas, ErrorAula } from './aulas.js';
+import { VERSION } from './config.js';
 
+const REVISAR_ALUMNOS_CADA_MS = 60_000; // ¿escribió algo el alumno? (una sola llamada de lista por aula)
 const REVISAR_CADA_MS = 15_000;
 const REINTENTAR_ERROR_MS = 60_000;
 const ESPERA_INICIAL_MS = 2_000;
@@ -95,8 +98,118 @@ function describir(error) {
   return { fase: FASES.ERROR, mensaje: 'No se pudo sincronizar. Se intentará de nuevo más tarde.' };
 }
 
-/** Sincroniza ahora. Devuelve el resumen, o null si no se pudo (el motivo queda en el estado). */
+// ---------------- las aulas de los alumnos (fase 17) ----------------
+// Cada aula se sincroniza DESPUÉS de la sincronización personal, una por una, y un fallo en una no detiene a las demás
+// ni a la personal. El estado de cada aula se ve en «Alumnos habilitados».
+
+const oyentesAulas = new Set();
+const estadoAulas = new Map(); // perfilId -> estado del aula
+let aulasCreadas = null;
+let aulasDe = '';
+let temporizadorAlumnos = null;
+
+const estadoAulaInicial = () => ({ fase: 'reposo', progreso: '', mensaje: '', ultimo: null, alumnos: [], permisosExtranos: [], avisos: [], descartados: 0 });
+
+function publicarAula(perfilId, cambios) {
+  estadoAulas.set(perfilId, { ...(estadoAulas.get(perfilId) ?? estadoAulaInicial()), ...cambios });
+  const copia = new Map(estadoAulas);
+  for (const oyente of oyentesAulas) oyente(copia);
+}
+
+/** Suscribe a los cambios de las aulas: oyente(Map perfilId -> { fase, progreso, mensaje, ultimo, alumnos, permisosExtranos, avisos, descartados }). */
+export function observarAulas(oyente) {
+  oyentesAulas.add(oyente);
+  oyente(new Map(estadoAulas));
+  return () => oyentesAulas.delete(oyente);
+}
+
+export const tienePermisoAulas = () => auth.tienePermisoAulas();
+
+/** Pide el permiso de Drive del aula. Debe llamarse desde un toque del adulto. */
+export const pedirPermisoAulas = () => auth.pedirPermisoAulas();
+
+/** Las operaciones de aulas (crear, invitar, quitar acceso…) de la cuenta vinculada. */
+export async function obtenerAulas() {
+  const email = auth.cuenta().email;
+  if (!aulasCreadas || aulasDe !== email) {
+    const store = await obtenerStore();
+    aulasDe = email;
+    aulasCreadas = crearAulas({
+      store,
+      obtenerToken: (forzar) => auth.obtenerToken(forzar),
+      emailAdulto: email,
+      versionApp: VERSION,
+      alProgreso: (texto) => {
+        for (const [id, e] of estadoAulas) if (e.fase === 'sincronizando') publicarAula(id, { progreso: texto });
+      },
+    });
+  }
+  return aulasCreadas;
+}
+
+function textoDeErrorAula(error) {
+  if (error instanceof ErrorDrive && error.sinConexion) return 'Sin conexión: se sincronizará al volver.';
+  if (error instanceof ErrorSync || error instanceof ErrorDrive || error instanceof ErrorCuenta || error instanceof ErrorAula) return error.message;
+  console.error(error);
+  return 'No se pudo sincronizar el aula. Se intentará de nuevo más tarde.';
+}
+
+/** Sincroniza el aula de un perfil y deja su estado listo para la pantalla. Devuelve el resultado o null si falló. */
+export async function sincronizarAulaAhora(perfilId) {
+  publicarAula(perfilId, { fase: 'sincronizando', progreso: 'Preparando…', mensaje: '' });
+  try {
+    const r = await (await obtenerAulas()).sincronizarAula(perfilId);
+    publicarAula(perfilId, {
+      fase: 'reposo', progreso: '', mensaje: '', ultimo: r.resumen.fecha, alumnos: r.alumnos, permisosExtranos: r.permisosExtranos,
+      avisos: r.resumen.avisos, descartados: r.resumen.descartados.total,
+    });
+    return r;
+  } catch (error) {
+    publicarAula(perfilId, { fase: 'error', progreso: '', mensaje: textoDeErrorAula(error) });
+    return null;
+  }
+}
+
+/** Todas las aulas, una tras otra; nunca lanza. */
+export async function sincronizarAulas() {
+  try {
+    if (!navigator.onLine || !auth.configurado() || !auth.cuenta().vinculada || !auth.tienePermisoAulas()) return;
+    const ids = Object.keys(await (await obtenerAulas()).listarAulas());
+    for (const id of ids) await sincronizarAulaAhora(id);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+/** Cada 60 s: si el alumno escribió algo en su carpeta, se trae. */
+async function revisarAlumnos() {
+  try {
+    if (document.hidden || !navigator.onLine || !auth.configurado() || !auth.cuenta().vinculada || !auth.tienePermisoAulas()) return;
+    if (location.hash.startsWith('#/nino/sesion')) return;
+    if (!(auth.tokenVigente() || adultoHabilitado())) return;
+    const aulas = await obtenerAulas();
+    for (const id of Object.keys(await aulas.listarAulas())) {
+      if (estadoAulas.get(id)?.fase === 'sincronizando') continue;
+      try {
+        if (await aulas.huboCambios(id)) await sincronizarAulaAhora(id);
+      } catch (error) {
+        publicarAula(id, { fase: 'error', mensaje: textoDeErrorAula(error) });
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+/** Sincroniza ahora: primero lo personal y después cada aula. Devuelve el resumen personal, o null si no se pudo. */
 export async function sincronizarAhora() {
+  const resumen = await sincronizarPersonal();
+  await sincronizarAulas();
+  return resumen;
+}
+
+/** Sincroniza ahora (solo lo personal). Devuelve el resumen, o null si no se pudo (el motivo queda en el estado). */
+async function sincronizarPersonal() {
   const cuenta = auth.cuenta();
   if (!auth.configurado() || !cuenta.vinculada) { await refrescarEstado(); return null; }
   if (!navigator.onLine) { publicar({ fase: FASES.SIN_CONEXION, mensaje: '', progreso: '' }); return null; }
@@ -164,6 +277,7 @@ export function iniciarNube() {
   window.addEventListener('offline', () => refrescarEstado());
   document.addEventListener('visibilitychange', () => { if (!document.hidden) revisar({ forzar: true }); });
   temporizador = setInterval(() => revisar(), REVISAR_CADA_MS);
+  temporizadorAlumnos = setInterval(() => revisarAlumnos(), REVISAR_ALUMNOS_CADA_MS);
   setTimeout(() => revisar({ forzar: true }), ESPERA_INICIAL_MS);
   refrescarEstado();
 }
@@ -171,6 +285,7 @@ export function iniciarNube() {
 /** Para las pruebas: detiene el temporizador. */
 export function detenerNube() {
   clearInterval(temporizador);
+  clearInterval(temporizadorAlumnos);
   iniciada = false;
 }
 

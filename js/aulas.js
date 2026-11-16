@@ -64,10 +64,28 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
     return nuevo;
   }
 
+  // Qué había en `del-alumno/` la última vez que se sincronizó (archivos del alumno y su `modifiedTime`): una sola llamada de lista.
+  const firmas = new Map();
+  async function firmaDelAlumno(info) {
+    const invitados = new Set(info.invitados);
+    const archivos = await clienteCarpeta(info.carpetaAlumnoId).listar();
+    return archivos
+      .filter((a) => a.name.endsWith('.json') && invitados.has(minuscula(a.owners?.[0]?.emailAddress)))
+      .map((a) => `${a.id}:${a.modifiedTime}`).sort().join('|');
+  }
+
   return {
     drive,
 
     // ---------------- el adulto ----------------
+
+    /** Las aulas de este adulto: { [perfilId]: { perfilId, carpetaId, carpetaAlumnoId, invitados } }. */
+    listarAulas: () => leerAulas(),
+
+    /** ¿Cambió algo en `del-alumno/` desde la última sincronización? (para la revisión cada 60 s) */
+    async huboCambios(perfilId) {
+      return (await firmaDelAlumno(await aulaDe(perfilId))) !== firmas.get(perfilId);
+    },
 
     /** Busca o crea `Leo Conmigo/` y comprueba que sea privada: si alguien la compartió a mano, no se habilita a nadie. */
     async asegurarCarpetaDeTrabajo() {
@@ -150,6 +168,7 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
       if (!sincronizando.has(perfilId)) {
         const promesa = (async () => {
           const info = await aulaDe(perfilId);
+          const firma = await firmaDelAlumno(info); // antes de sincronizar: si el alumno escribe mientras tanto, se vuelve a revisar
           const conocidos = new Set((await store.leerMeta(`aula:${perfilId}:idsMediosConocidos`, [])) ?? []);
           const sincronizador = crearSincronizadorDeAula({
             store: vistaDePerfil(store, perfilId, { idsMediosConocidos: conocidos }),
@@ -162,6 +181,7 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
             alProgreso,
           });
           const resumen = await sincronizador.sincronizar();
+          firmas.set(perfilId, firma);
           const permisos = { aula: await drive.permisos(info.carpetaId), delAlumno: await drive.permisos(info.carpetaAlumnoId) };
           return { resumen, ...estadoDeAlumnos({ invitados: info.invitados, permisos, dispositivos: resumen.dispositivos, ahora: ahora() }) };
         })().finally(() => sincronizando.delete(perfilId));

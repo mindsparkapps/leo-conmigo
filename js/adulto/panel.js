@@ -8,9 +8,13 @@ import { crearMiniatura } from '../ui/miniatura.js';
 import { describirError } from '../ui/adulto.js';
 import { urlDeMedio, liberarUrls } from '../medios.js';
 import { avisosPendientes, deshacerCambio, marcarVisto, nombreDeAjuste } from '../core/autoajuste.js';
-import { FASES, clasePunto, observarNube, refrescarEstado, textoDeEstado } from '../nube.js';
+import { FASES, clasePunto, observarAulas, observarNube, refrescarEstado, textoDeEstado } from '../nube.js';
 
 export const titulo = 'Modo adulto · Leo Conmigo';
+
+let conectadosAhora = 0; // alumnos conectados según la última sincronización de las aulas
+const contarConectados = (mapa) => [...mapa.values()].reduce((n, e) => n + (e.alumnos ?? []).filter((a) => a.estado === 'conectado').length, 0);
+const textoEnlaceAlumnos = (n) => (n > 0 ? `Alumnos (${n} ${n === 1 ? 'conectado' : 'conectados'})` : 'Alumnos');
 
 export function montar(contenedor, { ir }) {
   const zonaAviso = el('div');
@@ -82,10 +86,18 @@ export function montar(contenedor, { ir }) {
   });
   refrescarEstado().catch(() => {});
 
+  // «Alumnos (2 conectados)»: el número sale del estado de las aulas
+  const dejarDeObservarAulas = observarAulas((mapa) => {
+    conectadosAhora = contarConectados(mapa);
+    const enlace = contenedor.querySelector('[data-enlace-alumnos]');
+    if (enlace) enlace.textContent = textoEnlaceAlumnos(conectadosAhora);
+  });
+
   return () => {
     vivo = false;
     dejarDeObservar();
     dejarDeObservarNube();
+    dejarDeObservarAulas();
     liberarUrls();
   };
 }
@@ -173,6 +185,7 @@ async function pintarNino(zona, estaVivo) {
       el('a', { class: 'boton secundario', href: '#/adulto/ajustes' }, 'Ajustes'),
       el('a', { class: 'boton secundario', href: '#/adulto/fondo' }, 'Fondo'),
       el('a', { class: 'boton secundario', href: '#/adulto/perfiles' }, 'Perfiles'),
+      el('a', { class: 'boton secundario', href: '#/adulto/alumnos', 'data-enlace-alumnos': '' }, textoEnlaceAlumnos(conectadosAhora)),
     ),
     el('p', { class: 'ayuda' }, el('a', { href: '#/adulto/respaldo' }, 'Copia de seguridad')),
   );

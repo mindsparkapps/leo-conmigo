@@ -456,6 +456,12 @@ details.panel > summary { display: flex; align-items: center; min-height: 44px; 
 .punto-estado.aviso { background: var(--amarillo); }
 .creditos { margin-top: 16px; font-size: 0.85rem; }
 
+/* Alumnos habilitados (modo adulto) */
+.lista-alumnos { margin: 0 0 12px; padding: 0; list-style: none; display: grid; gap: 10px; }
+.alumno-fila { display: grid; gap: 6px; justify-items: start; padding: 10px 12px; border: 2px solid var(--borde); border-radius: 12px; }
+.alumno-dispositivo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.progreso-aula progress { width: 100%; max-width: 420px; height: 16px; }
+
 /* ===== Modo niño: inicio, álbum y premio ===== */
 .inicio-nino { gap: 20px; justify-content: center; }
 .inicio-nino .miniatura-grande { width: clamp(112px, 22vmin, 180px); height: clamp(112px, 22vmin, 180px); }

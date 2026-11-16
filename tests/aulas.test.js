@@ -229,6 +229,25 @@ test('un alumno.json manipulado (palabra, medio, registro de B, perfil ajeno) no
   assert.deepEqual(aula2.resumen.descartados.total, 0);
 });
 
+test('si el propio alumno.json de A trae registros ajenos (manipulado con su cuenta), A no los toma y el archivo se limpia', async () => {
+  const m = await montar();
+  const { aula1 } = await habilitar(m);
+  const aula = await miAula(m.a);
+  await m.a.aulas.sincronizarComoAlumno({ aula, email: A });
+  const archivo = m.nube.porNombre('alumno.json', aula1.carpetaAlumnoId);
+  const doc = m.nube.json(archivo.id);
+  doc.almacenes.progresos.push({ id: 'g-ajeno', perfilId: 'P2', updatedAt: '2099-01-01T00:00:00.000Z' });
+  doc.almacenes.palabras = [{ id: 'w-x', perfilId: 'P1', updatedAt: '2099-01-01T00:00:00.000Z' }];
+  m.nube.reescribir(archivo.id, doc);
+  const r = await m.a.aulas.sincronizarComoAlumno({ aula, email: A });
+  assert.equal(await m.a.store.obtener('progresos', 'g-ajeno'), undefined);
+  assert.equal(await m.a.store.obtener('palabras', 'w-x'), undefined);
+  assert.ok(r.avisos.length > 0);
+  const limpio = m.nube.json(archivo.id);
+  assert.ok(!limpio.almacenes.progresos.some((x) => x.id === 'g-ajeno'));
+  assert.equal(limpio.almacenes.palabras, undefined);
+});
+
 test('un alumno.json de otro dueño, de otro perfil o dañado se ignora con un aviso', async () => {
   const m = await montar();
   const { aula1 } = await habilitar(m);
