@@ -740,7 +740,13 @@ Reglas para la implementación:
 | Dispositivo con datos | Solo se convierte en dispositivo de alumno si no tiene perfiles; si tiene, se ofrece borrar los datos del dispositivo (con confirmación que dice que no se puede deshacer). |
 | Quitar acceso | En «Alumnos», **Quitar acceso** borra los permisos de ese correo en el aula y en `del-alumno/` (los datos ya traídos al adulto se quedan). El dispositivo del alumno sigue funcionando sin conexión con lo que tiene. |
 
-### Fase 15 — Núcleo puro del aula (sin red ni DOM)
+### Fase 15 — Núcleo puro del aula (sin red ni DOM) ✔ hecha
+**Decisiones de implementación (fase 15):**
+- `publicaRol('adulto')` = todos los almacenes (en el orden de `ALMACENES_RESPALDO`, `medios` primero); `publicaRol('alumno')` = `ALMACENES_DEL_ALUMNO`. `aceptaDe(a, b)` = `publicaRol(b)`, y vacío si los dos roles son iguales; un rol desconocido lanza error.
+- `filtrarEntrantes` devuelve `descartados: { total, porAlmacen }`. Los `medios` solo pasan si el perfil los usa (se calcula con `mediosDelPerfil` sobre lo ya filtrado) **o si son un borrado** (para que el borrado viaje). Un registro sin `perfilId`, un almacén desconocido o que no es lista, se descartan. Los registros borrados del perfil pasan.
+- `mediosDelPerfil` solo cuenta registros **vivos** del perfil. `mediosDeRegistro` (en `borrar-perfil.js`) ahora también recorre `colecciones[]` y `base` (`medioPortadaId`/`medioSobreId`): **`borrarPerfil` olvidaba esas portadas y sobres y los dejaba huérfanos; queda arreglado** (premios y calcomanías propias ya se cubrían por sus `medioImagenId`).
+- `estadoDeAlumnos({ invitados, permisos: { aula, delAlumno }, dispositivos, ahora })` → `{ alumnos: [{ email, estado, dispositivos }], permisosExtranos, dispositivosInvalidos }`. Permitido: en el aula, dueño y lectores invitados; en `del-alumno/`, dueño y lectores o editores invitados (el lector es el heredado). Todo lo demás (`anyone`, `domain`, `group`, otro correo, un editor en el aula) es «extraño». Sin `permisos` no se evalúa «sin acceso» ni extraños.
+- `fusionarConAjeno({ locales, propios, ajenos, soloLectura })` → `{ resultado, paraLocal, paraPropio }`; en empate gana lo local. `fusionarAlmacen` no cambia. Extras de `aula.js`: `nuevaAula`, `nuevoDispositivo`, `armarArchivoAula` y nombres de archivo. Pruebas en `tests/aula.test.js`.
 - **`core/aula.js`** (nuevo, puro, con pruebas):
   - `ALMACENES_SOLO_ADULTO`, `ALMACENES_DEL_ALUMNO`, `publicaRol(rol)` y `aceptaDe(rolLocal, rolRemoto)` → qué almacenes escribe cada lado y cuáles acepta del otro (rol `'adulto'` o `'alumno'`).
   - `filtrarEntrantes({ almacenes, perfilId, aceptados })` → `{ almacenes, descartados }`: deja solo los almacenes aceptados y los registros de ese perfil (en `perfiles`, solo el suyo); cuenta lo descartado.

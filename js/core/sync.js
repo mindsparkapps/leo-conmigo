@@ -105,6 +105,27 @@ export function fusionarAlmacen(locales, remotos) {
 }
 
 /**
+ * Fusión de TRES fuentes para el aula (PLAN.md, fase 15). `fusionarAlmacen` no cambia.
+ *   locales  lo que hay aquí (este dispositivo)
+ *   propios  lo que yo mismo publiqué en mi archivo de Drive
+ *   ajenos   lo que publicó el otro lado (ya filtrado con `filtrarEntrantes`)
+ * Gana el `updatedAt` más reciente; en un empate gana lo local. Nada se borra: un borrado es un registro `deleted`.
+ * @returns {{ resultado, paraLocal, paraPropio }} resultado = unión final; paraLocal = lo que hay que escribir aquí;
+ *   paraPropio = lo que hay que publicar en mi archivo (lo que mi archivo no tiene así todavía).
+ *   Con `soloLectura` (almacenes que este lado no publica) `paraPropio` sale vacío.
+ */
+export function fusionarConAjeno({ locales = [], propios = [], ajenos = [], soloLectura = false }) {
+  // primero lo de aquí contra mi archivo, luego el resultado contra lo del otro lado (los objetos conservan su identidad)
+  const { resultado: visto } = fusionarAlmacen(locales, propios);
+  const { resultado } = fusionarAlmacen(visto, ajenos);
+  const local = new Map(locales.map((r) => [r.id, r]));
+  const propio = new Map(propios.map((r) => [r.id, r]));
+  const paraLocal = resultado.filter((r) => local.get(r.id) !== r);
+  const paraPropio = soloLectura ? [] : resultado.filter((r) => !propio.has(r.id) || (propio.get(r.id).updatedAt ?? '') < (r.updatedAt ?? ''));
+  return { resultado, paraLocal, paraPropio };
+}
+
+/**
  * Qué hay que hacer con los archivos de imágenes y audios.
  * @param medios       los medios ya fusionados (con `deleted`)
  * @param archivos     Map nombre -> { id } de lo que hay en Drive

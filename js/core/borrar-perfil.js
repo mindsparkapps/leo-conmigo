@@ -38,6 +38,12 @@ export function mediosDeRegistro(registro) {
   if (Array.isArray(registro.paginas)) {
     for (const pagina of registro.paginas) if (pagina?.medioImagenId) ids.push(pagina.medioImagenId);
   }
+  // Lo anidado del perfil: portada y sobre de cada álbum cargado (`colecciones`) y los del álbum de la app (`base`).
+  const anidados = [...(Array.isArray(registro.colecciones) ? registro.colecciones : []), registro.base];
+  for (const a of anidados) {
+    if (!a || typeof a !== 'object') continue;
+    for (const clave of ['medioPortadaId', 'medioSobreId']) if (typeof a[clave] === 'string' && a[clave]) ids.push(a[clave]);
+  }
   return ids;
 }
 
