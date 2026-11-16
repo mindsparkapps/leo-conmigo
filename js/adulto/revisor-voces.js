@@ -10,9 +10,8 @@ const PAUSA_ENTRE_AUDIOS_MS = 600;
 // Las grabaciones desde «nube» (y la frase «elige un álbum») se generaron por API y ya se revisaron
 const PRIMERA_POR_API = 'nube';
 const FRASES_POR_API = new Set(['¡Lo lograste! Elige un álbum']);
-// Palabras regeneradas tras una queja (para volver a oírlas solas) y el tramo de 100 palabras más reciente
-const CORREGIDAS = ['ríe', 'doctor'];
-const TRAMO_NUEVO = ['mujeres', 'precio', 'hambre', 'sed', 'sueño', 'calor', 'dolor', 'miedo', 'amor', 'perdón', 'permiso', 'grande', 'chico', 'lindo', 'feo', 'rico', 'caliente', 'frío', 'limpio', 'sucio', 'bueno', 'malo', 'feliz', 'triste', 'quién', 'dónde', 'cuál', 'cuánto', 'hoy', 'mañana', 'noche', 'día', 'tarde', 'hora', 'arriba', 'abajo', 'dentro', 'fuera', 'cerca', 'lejos', 'antes', 'después', 'siempre', 'nunca', 'todo', 'nada', 'algo', 'poco', 'así', 'ahí', 'allá', 'otro', 'otra', 'nos', 'le', 'ese', 'esa', 'esto', 'mío', 'tuyo', 'ni', 'sin', 'sobre', 'entre', 'hasta', 'desde', 'por', 'porque', 'cuando', 'solo', 'juntos', 'pide', 'usa', 'saca', 'tira', 'empuja', 'corta', 'lleva', 'trae', 'guarda', 'busca', 'encuentra', 'compra', 'paga', 'vende', 'cuida', 'ama', 'sabe', 'pasea', 'dibuja', 'pinta', 'lee', 'escribe', 'estudia', 'trabaja', 'viaja', 'cuenta', 'dice', 'llama', 'escucha'];
+// El tramo de palabras más reciente (el botón «siguiente tramo»; se actualiza en cada tanda nueva)
+const TRAMO_NUEVO = ['habla', 'vuela', 'cae', 'sale', 'entra', 'llega', 'viene', 've', 'da', 'pone', 'hace', 'quiere', 'puede', 'espera', 'ordena', 'siente', 'piensa', 'gusta', 'necesita', 'comparte', 'abraza', 'besa', 'saluda', 'limpia', 'despierta', 'levanta', 'baña', 'viste', 'peina', 'sienta', 'rápido', 'lento', 'alto', 'bajo', 'nuevo', 'viejo', 'lleno', 'vacío', 'duro', 'blando', 'mojado', 'seco', 'cansado', 'contento', 'enojado', 'asustado', 'enfermo', 'bonito', 'pequeño', 'largo', 'corto', 'listo', 'bombero', 'policía', 'señor', 'señora', 'hombre', 'mujer', 'familia', 'gente', 'espalda', 'rodilla', 'codo', 'cuello', 'corazón', 'pecho', 'hombro', 'ensalada', 'hamburguesa', 'completo', 'cebolla', 'lechuga', 'choclo', 'pastel', 'mermelada', 'aceite', 'desayuno', 'almuerzo', 'once', 'cena', 'pescado', 'harina', 'tostada', 'dormitorio', 'jardín', 'reja', 'escalera', 'ropa', 'basura', 'fuego', 'horno', 'refri', 'lavadora', 'espejo', 'almohada', 'sábana', 'frazada', 'vela', 'lámpara', 'radio', 'escoba', 'balde', 'sartén', 'tetera', 'caja', 'bolsa', 'culebra', 'lobo', 'zorro', 'jirafa', 'cebra', 'delfín', 'ballena', 'tiburón', 'pingüino', 'pavo', 'cabra', 'mosca', 'mosquito', 'gusano', 'caracol', 'loro', 'búho', 'perrito', 'gatito', 'computador', 'cuaderno', 'tijera', 'goma', 'lentes'];
 
 function leerMalas() {
   try { return JSON.parse(localStorage.getItem(CLAVE_MALAS) ?? '[]'); } catch { return []; }
@@ -42,9 +41,8 @@ async function cargarLista(incluirApi, modo = 'anteriores') {
   const respuesta = await fetch('data/vocabulario-inicial.json');
   if (!respuesta.ok) throw new Error('No se pudo leer el catálogo de palabras.');
   const catalogo = await respuesta.json();
-  const soloEstas = modo === 'corregidas' ? CORREGIDAS : modo === 'tramo' ? TRAMO_NUEVO : null;
-  if (soloEstas) {
-    return catalogo.filter((p) => soloEstas.includes(p.texto) && p.voz).map((p) => ({ texto: p.texto, ruta: p.voz, tipo: 'palabra' }));
+  if (modo === 'tramo') {
+    return catalogo.filter((p) => TRAMO_NUEVO.includes(p.texto) && p.voz).map((p) => ({ texto: p.texto, ruta: p.voz, tipo: 'palabra' }));
   }
   const desde = catalogo.findIndex((p) => p.texto === PRIMERA_POR_API);
   const frases = LISTA_DE_FRASES
@@ -68,8 +66,7 @@ export function crearRevisorVoces() {
 
   const incluirApi = el('input', { type: 'checkbox' });
   const preparar = el('button', { type: 'button', class: 'boton' }, 'Probar todas las anteriores');
-  const prepararCorregidas = el('button', { type: 'button', class: 'boton secundario' }, 'Probar solo ríe y doctor');
-  const prepararTramo = el('button', { type: 'button', class: 'boton secundario' }, 'Probar el siguiente tramo (100 palabras)');
+  const prepararTramo = el('button', { type: 'button', class: 'boton secundario' }, `Probar el siguiente tramo (${TRAMO_NUEVO.length} palabras)`);
   const estado = el('p', { class: 'ayuda', role: 'status' });
   const actualTexto = el('p', { class: 'revisor-actual', 'aria-live': 'polite' }, '');
   const barra = el('input', { type: 'range', min: '0', max: '0', step: '0.1', value: '0', 'aria-label': 'Posición en la lista de voces', disabled: true });
@@ -179,7 +176,7 @@ export function crearRevisorVoces() {
 
   async function iniciar(modo) {
     detener();
-    const botones = [preparar, prepararCorregidas, prepararTramo];
+    const botones = [preparar, prepararTramo];
     for (const b of botones) b.disabled = true;
     estado.textContent = 'Preparando la lista…';
     try {
@@ -206,7 +203,6 @@ export function crearRevisorVoces() {
     }
   }
   preparar.addEventListener('click', () => iniciar('anteriores'));
-  prepararCorregidas.addEventListener('click', () => iniciar('corregidas'));
   prepararTramo.addEventListener('click', () => iniciar('tramo'));
 
   pintarMalas();
@@ -217,7 +213,7 @@ export function crearRevisorVoces() {
     el('h2', {}, 'Revisar las voces'),
     el('p', { class: 'ayuda' }, 'Reproduce de corrido las frases y palabras con la voz de Catalina, para escuchar cuáles suenan mal. Marca las malas y copia la lista para regenerarlas.'),
     el('label', { class: 'interruptor' }, incluirApi, el('span', {}, 'Incluir también las generadas por API (desde «nube»), que ya se revisaron')),
-    el('div', { class: 'acciones' }, preparar, prepararCorregidas, prepararTramo),
+    el('div', { class: 'acciones' }, preparar, prepararTramo),
     estado,
     actualTexto,
     barra,

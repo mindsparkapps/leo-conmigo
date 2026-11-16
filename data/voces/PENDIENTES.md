@@ -6,7 +6,7 @@ Cómo se hace cada palabra: generar en la web de ElevenLabs con Catalina (sin AP
 
 Las palabras de la lista ampliada (`data/voces/lista-ampliada.json`) se agregan al catálogo `data/vocabulario-inicial.json` a medida que tienen voz. Orden de trabajo: 1) catálogo actual, 2) prioridad 1, 3) prioridad 2, 4) prioridad 3.
 
-**Total: 597 palabras, 367 con voz, 230 por generar.**
+**Total: 597 palabras, 497 con voz, 100 por generar.**
 
 ## Catálogo actual (48) (48/48 hechas)
 
@@ -42,21 +42,21 @@ Las palabras de la lista ampliada (`data/voces/lista-ampliada.json`) se agregan 
 
 **otras:** [x] rojo · [x] azul · [x] verde · [x] amarillo · [x] blanco · [x] negro · [x] uno · [x] dos · [x] tres · [x] cuatro · [x] cinco · [x] entrada · [x] salida · [x] abierto · [x] cerrado · [x] cuidado · [x] peligro · [x] pare · [x] empujar · [x] tirar · [x] hombres · [x] mujeres · [x] precio · [x] hambre · [x] sed · [x] sueño · [x] calor · [x] dolor · [x] miedo · [x] amor · [x] perdón · [x] permiso
 
-## Prioridad 2 (76/255 hechas)
+## Prioridad 2 (206/255 hechas)
 
-**enlace:** [x] quién · [x] dónde · [x] cuál · [x] cuánto · [x] hoy · [x] mañana · [x] noche · [x] día · [x] tarde · [x] hora · [x] arriba · [x] abajo · [x] dentro · [x] fuera · [x] cerca · [x] lejos · [x] antes · [x] después · [x] siempre · [x] nunca · [x] todo · [x] nada · [x] algo · [x] poco · [x] así · [x] ahí · [x] allá · [x] otro · [x] otra · [x] nos · [x] le · [x] ese · [x] esa · [x] esto · [x] mío · [x] tuyo · [x] ni · [x] sin · [x] sobre · [x] entre · [x] hasta · [x] desde · [x] por · [x] porque · [x] cuando · [x] solo · [x] juntos · [x] pide · [x] usa · [x] saca · [x] tira · [x] empuja · [x] corta · [x] lleva · [x] trae · [x] guarda · [x] busca · [x] encuentra · [x] compra · [x] paga · [x] vende · [x] cuida · [x] ama · [x] sabe · [x] pasea · [x] dibuja · [x] pinta · [x] lee · [x] escribe · [x] estudia · [x] trabaja · [x] viaja · [x] cuenta · [x] dice · [x] llama · [x] escucha · [ ] habla · [ ] vuela · [ ] cae · [ ] sale · [ ] entra · [ ] llega · [ ] viene · [ ] ve · [ ] da · [ ] pone · [ ] hace · [ ] quiere · [ ] puede · [ ] espera · [ ] ordena · [ ] siente · [ ] piensa · [ ] gusta · [ ] necesita · [ ] comparte · [ ] abraza · [ ] besa · [ ] saluda · [ ] limpia · [ ] despierta · [ ] levanta · [ ] baña · [ ] viste · [ ] peina · [ ] sienta · [ ] rápido · [ ] lento · [ ] alto · [ ] bajo · [ ] nuevo · [ ] viejo · [ ] lleno · [ ] vacío · [ ] duro · [ ] blando · [ ] mojado · [ ] seco · [ ] cansado · [ ] contento · [ ] enojado · [ ] asustado · [ ] enfermo · [ ] bonito · [ ] pequeño · [ ] largo · [ ] corto · [ ] listo
+**enlace:** [x] quién · [x] dónde · [x] cuál · [x] cuánto · [x] hoy · [x] mañana · [x] noche · [x] día · [x] tarde · [x] hora · [x] arriba · [x] abajo · [x] dentro · [x] fuera · [x] cerca · [x] lejos · [x] antes · [x] después · [x] siempre · [x] nunca · [x] todo · [x] nada · [x] algo · [x] poco · [x] así · [x] ahí · [x] allá · [x] otro · [x] otra · [x] nos · [x] le · [x] ese · [x] esa · [x] esto · [x] mío · [x] tuyo · [x] ni · [x] sin · [x] sobre · [x] entre · [x] hasta · [x] desde · [x] por · [x] porque · [x] cuando · [x] solo · [x] juntos · [x] pide · [x] usa · [x] saca · [x] tira · [x] empuja · [x] corta · [x] lleva · [x] trae · [x] guarda · [x] busca · [x] encuentra · [x] compra · [x] paga · [x] vende · [x] cuida · [x] ama · [x] sabe · [x] pasea · [x] dibuja · [x] pinta · [x] lee · [x] escribe · [x] estudia · [x] trabaja · [x] viaja · [x] cuenta · [x] dice · [x] llama · [x] escucha · [x] habla · [x] vuela · [x] cae · [x] sale · [x] entra · [x] llega · [x] viene · [x] ve · [x] da · [x] pone · [x] hace · [x] quiere · [x] puede · [x] espera · [x] ordena · [x] siente · [x] piensa · [x] gusta · [x] necesita · [x] comparte · [x] abraza · [x] besa · [x] saluda · [x] limpia · [x] despierta · [x] levanta · [x] baña · [x] viste · [x] peina · [x] sienta · [x] rápido · [x] lento · [x] alto · [x] bajo · [x] nuevo · [x] viejo · [x] lleno · [x] vacío · [x] duro · [x] blando · [x] mojado · [x] seco · [x] cansado · [x] contento · [x] enojado · [x] asustado · [x] enfermo · [x] bonito · [x] pequeño · [x] largo · [x] corto · [x] listo
 
-**personas:** [ ] bombero · [ ] policía · [ ] señor · [ ] señora · [ ] hombre · [ ] mujer · [ ] familia · [ ] gente
+**personas:** [x] bombero · [x] policía · [x] señor · [x] señora · [x] hombre · [x] mujer · [x] familia · [x] gente
 
-**cuerpo:** [ ] espalda · [ ] rodilla · [ ] codo · [ ] cuello · [ ] corazón · [ ] pecho · [ ] hombro
+**cuerpo:** [x] espalda · [x] rodilla · [x] codo · [x] cuello · [x] corazón · [x] pecho · [x] hombro
 
-**comida:** [ ] ensalada · [ ] hamburguesa · [ ] completo · [ ] cebolla · [ ] lechuga · [ ] choclo · [ ] pastel · [ ] mermelada · [ ] aceite · [ ] desayuno · [ ] almuerzo · [ ] once · [ ] cena · [ ] pescado · [ ] harina · [ ] tostada
+**comida:** [x] ensalada · [x] hamburguesa · [x] completo · [x] cebolla · [x] lechuga · [x] choclo · [x] pastel · [x] mermelada · [x] aceite · [x] desayuno · [x] almuerzo · [x] once · [x] cena · [x] pescado · [x] harina · [x] tostada
 
-**casa:** [ ] dormitorio · [ ] jardín · [ ] reja · [ ] escalera · [ ] ropa · [ ] basura · [ ] fuego · [ ] horno · [ ] refri · [ ] lavadora · [ ] espejo · [ ] almohada · [ ] sábana · [ ] frazada · [ ] vela · [ ] lámpara · [ ] radio · [ ] escoba · [ ] balde · [ ] sartén · [ ] tetera · [ ] caja · [ ] bolsa
+**casa:** [x] dormitorio · [x] jardín · [x] reja · [x] escalera · [x] ropa · [x] basura · [x] fuego · [x] horno · [x] refri · [x] lavadora · [x] espejo · [x] almohada · [x] sábana · [x] frazada · [x] vela · [x] lámpara · [x] radio · [x] escoba · [x] balde · [x] sartén · [x] tetera · [x] caja · [x] bolsa
 
-**animales:** [ ] culebra · [ ] lobo · [ ] zorro · [ ] jirafa · [ ] cebra · [ ] delfín · [ ] ballena · [ ] tiburón · [ ] pingüino · [ ] pavo · [ ] cabra · [ ] mosca · [ ] mosquito · [ ] gusano · [ ] caracol · [ ] loro · [ ] búho · [ ] perrito · [ ] gatito
+**animales:** [x] culebra · [x] lobo · [x] zorro · [x] jirafa · [x] cebra · [x] delfín · [x] ballena · [x] tiburón · [x] pingüino · [x] pavo · [x] cabra · [x] mosca · [x] mosquito · [x] gusano · [x] caracol · [x] loro · [x] búho · [x] perrito · [x] gatito
 
-**juguetes:** [ ] computador · [ ] cuaderno · [ ] tijera · [ ] goma · [ ] lentes · [ ] zapatilla · [ ] guante · [ ] bufanda · [ ] pijama · [ ] falda · [ ] camisa · [ ] cuento · [ ] canción · [ ] música · [ ] foto · [ ] dinero · [ ] columpio · [ ] tobogán · [ ] bloques · [ ] casco · [ ] cumpleaños · [ ] fiesta · [ ] navidad · [ ] viento · [ ] cinturón
+**juguetes:** [x] computador · [x] cuaderno · [x] tijera · [x] goma · [x] lentes · [ ] zapatilla · [ ] guante · [ ] bufanda · [ ] pijama · [ ] falda · [ ] camisa · [ ] cuento · [ ] canción · [ ] música · [ ] foto · [ ] dinero · [ ] columpio · [ ] tobogán · [ ] bloques · [ ] casco · [ ] cumpleaños · [ ] fiesta · [ ] navidad · [ ] viento · [ ] cinturón
 
 **otras:** [ ] marrón · [ ] rosado · [ ] morado · [ ] gris · [ ] seis · [ ] siete · [ ] ocho · [ ] nueve · [ ] diez · [ ] cero · [ ] farmacia · [ ] panadería · [ ] almacén · [ ] supermercado · [ ] correo · [ ] banco · [ ] ambulancia · [ ] taxi · [ ] paradero · [ ] semáforo · [ ] ascensor · [ ] mercado · [ ] feria · [ ] menú · [ ] receta · [ ] mensaje · [ ] besos · [ ] abrazo · [ ] rabia
 
