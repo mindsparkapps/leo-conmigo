@@ -7,11 +7,8 @@ import { LISTA_DE_FRASES } from '../frases-voz.js';
 
 const CLAVE_MALAS = 'leo_voces_malas';
 const PAUSA_ENTRE_AUDIOS_MS = 600;
-// Las grabaciones desde «nube» (y la frase «elige un álbum») se generaron por API y ya se revisaron
-const PRIMERA_POR_API = 'nube';
-const FRASES_POR_API = new Set(['¡Lo lograste! Elige un álbum']);
-// El tramo de palabras más reciente (el botón «siguiente tramo»; se actualiza en cada tanda nueva)
-const TRAMO_NUEVO = ['habla', 'vuela', 'cae', 'sale', 'entra', 'llega', 'viene', 've', 'da', 'pone', 'hace', 'quiere', 'puede', 'espera', 'ordena', 'siente', 'piensa', 'gusta', 'necesita', 'comparte', 'abraza', 'besa', 'saluda', 'limpia', 'despierta', 'levanta', 'baña', 'viste', 'peina', 'sienta', 'rápido', 'lento', 'alto', 'bajo', 'nuevo', 'viejo', 'lleno', 'vacío', 'duro', 'blando', 'mojado', 'seco', 'cansado', 'contento', 'enojado', 'asustado', 'enfermo', 'bonito', 'pequeño', 'largo', 'corto', 'listo', 'bombero', 'policía', 'señor', 'señora', 'hombre', 'mujer', 'familia', 'gente', 'espalda', 'rodilla', 'codo', 'cuello', 'corazón', 'pecho', 'hombro', 'ensalada', 'hamburguesa', 'completo', 'cebolla', 'lechuga', 'choclo', 'pastel', 'mermelada', 'aceite', 'desayuno', 'almuerzo', 'once', 'cena', 'pescado', 'harina', 'tostada', 'dormitorio', 'jardín', 'reja', 'escalera', 'ropa', 'basura', 'fuego', 'horno', 'refri', 'lavadora', 'espejo', 'almohada', 'sábana', 'frazada', 'vela', 'lámpara', 'radio', 'escoba', 'balde', 'sartén', 'tetera', 'caja', 'bolsa', 'culebra', 'lobo', 'zorro', 'jirafa', 'cebra', 'delfín', 'ballena', 'tiburón', 'pingüino', 'pavo', 'cabra', 'mosca', 'mosquito', 'gusano', 'caracol', 'loro', 'búho', 'perrito', 'gatito', 'computador', 'cuaderno', 'tijera', 'goma', 'lentes'];
+// El último tramo generado (el botón «siguiente tramo»; se actualiza en cada tanda nueva)
+const TRAMO_NUEVO = ['zapatilla', 'guante', 'bufanda', 'pijama', 'falda', 'camisa', 'cuento', 'canción', 'música', 'foto', 'dinero', 'columpio', 'tobogán', 'bloques', 'casco', 'cumpleaños', 'fiesta', 'navidad', 'viento', 'cinturón', 'marrón', 'rosado', 'morado', 'gris', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'cero', 'farmacia', 'panadería', 'almacén', 'supermercado', 'correo', 'banco', 'ambulancia', 'taxi', 'paradero', 'semáforo', 'ascensor', 'mercado', 'feria', 'menú', 'receta', 'mensaje', 'besos', 'abrazo', 'rabia', 'mezcla', 'hierve', 'fríe', 'hornea', 'pela', 'bate', 'agrega', 'revuelve', 'sirve', 'veinte', 'cien', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo', 'semana', 'mes', 'año', 'verano', 'invierno', 'otoño', 'primavera', 'sala', 'comedor', 'pasillo', 'cuarto', 'estufa', 'lavamanos', 'peineta', 'pañal', 'servilleta', 'mantel', 'mapa', 'carta', 'diario', 'revista', 'cartel', 'letra', 'número', 'tablero', 'naipes', 'dado', 'trompo', 'cometa', 'autito', 'camioneta', 'barco', 'cohete'];
 
 function leerMalas() {
   try { return JSON.parse(localStorage.getItem(CLAVE_MALAS) ?? '[]'); } catch { return []; }
@@ -37,20 +34,14 @@ function duracionDe(ruta) {
   });
 }
 
-async function cargarLista(incluirApi, modo = 'anteriores') {
+/** Todas las grabaciones (frases y palabras) o, con modo «tramo», solo las del último tramo. */
+async function cargarLista(modo = 'todas') {
   const respuesta = await fetch('data/vocabulario-inicial.json');
   if (!respuesta.ok) throw new Error('No se pudo leer el catálogo de palabras.');
   const catalogo = await respuesta.json();
-  if (modo === 'tramo') {
-    return catalogo.filter((p) => TRAMO_NUEVO.includes(p.texto) && p.voz).map((p) => ({ texto: p.texto, ruta: p.voz, tipo: 'palabra' }));
-  }
-  const desde = catalogo.findIndex((p) => p.texto === PRIMERA_POR_API);
-  const frases = LISTA_DE_FRASES
-    .filter((f) => incluirApi || !FRASES_POR_API.has(f.texto))
-    .map((f) => ({ texto: f.texto, ruta: f.ruta, tipo: 'frase' }));
-  const palabras = catalogo
-    .map((p, i) => ({ texto: p.texto, ruta: p.voz, tipo: 'palabra', api: desde >= 0 && i >= desde }))
-    .filter((p) => p.ruta && (incluirApi || !p.api));
+  const palabras = catalogo.filter((p) => p.voz).map((p) => ({ texto: p.texto, ruta: p.voz, tipo: 'palabra' }));
+  if (modo === 'tramo') return palabras.filter((p) => TRAMO_NUEVO.includes(p.texto));
+  const frases = LISTA_DE_FRASES.map((f) => ({ texto: f.texto, ruta: f.ruta, tipo: 'frase' }));
   return [...frases, ...palabras];
 }
 
@@ -64,7 +55,6 @@ export function crearRevisorVoces() {
   let arrastrando = false;
   let malas = leerMalas();
 
-  const incluirApi = el('input', { type: 'checkbox' });
   const preparar = el('button', { type: 'button', class: 'boton' }, 'Probar todas las anteriores');
   const prepararTramo = el('button', { type: 'button', class: 'boton secundario' }, `Probar el siguiente tramo (${TRAMO_NUEVO.length} palabras)`);
   const estado = el('p', { class: 'ayuda', role: 'status' });
@@ -180,7 +170,7 @@ export function crearRevisorVoces() {
     for (const b of botones) b.disabled = true;
     estado.textContent = 'Preparando la lista…';
     try {
-      items = await cargarLista(incluirApi.checked, modo);
+      items = await cargarLista(modo);
       const duraciones = [];
       for (let i = 0; i < items.length; i += 20) {
         duraciones.push(...(await Promise.all(items.slice(i, i + 20).map((x) => duracionDe(x.ruta)))));
@@ -202,7 +192,7 @@ export function crearRevisorVoces() {
       for (const b of botones) b.disabled = false;
     }
   }
-  preparar.addEventListener('click', () => iniciar('anteriores'));
+  preparar.addEventListener('click', () => iniciar('todas'));
   prepararTramo.addEventListener('click', () => iniciar('tramo'));
 
   pintarMalas();
@@ -212,7 +202,6 @@ export function crearRevisorVoces() {
     { class: 'panel revisor-voces' },
     el('h2', {}, 'Revisar las voces'),
     el('p', { class: 'ayuda' }, 'Reproduce de corrido las frases y palabras con la voz de Catalina, para escuchar cuáles suenan mal. Marca las malas y copia la lista para regenerarlas.'),
-    el('label', { class: 'interruptor' }, incluirApi, el('span', {}, 'Incluir también las generadas por API (desde «nube»), que ya se revisaron')),
     el('div', { class: 'acciones' }, preparar, prepararTramo),
     estado,
     actualTexto,
