@@ -25,11 +25,13 @@ export function montar(contenedor) {
       seccion(
         'Privacidad',
         el('ul', { class: 'lista-ayuda' }, [
-          el('li', {}, 'Las fotos, la voz grabada, las palabras y el progreso del niño se guardan solo en este dispositivo.'),
-          el('li', {}, 'Si inicias sesión con Google, además se guardan en una carpeta oculta de tu propio Google Drive que solo esta aplicación puede ver. La app no puede leer nada más de tu Drive.'),
+          el('li', {}, 'Las fotos, la voz grabada, las palabras y el progreso del niño se guardan en este dispositivo.'),
+          el('li', {}, 'Si inicias sesión con Google, además se guardan en una carpeta oculta de tu propio Google Drive que solo esta aplicación puede ver. Sin habilitar alumnos, la app no puede leer nada más de tu Drive.'),
           el('li', {}, 'No hay analítica, publicidad ni seguimiento. Los únicos servicios externos son Google (inicio de sesión y Drive) y ARASAAC (al elegir un pictograma solo se envía el texto que buscas).'),
+          el('li', {}, 'Si habilitas alumnos, las fotos y voces del niño también están en una carpeta de tu Drive (el aula) que se comparte SOLO con los correos que invitas, en solo lectura. El alumno escribe únicamente en su propia subcarpeta («del-alumno»). La app avisa si aparece un acceso que ella no puso.'),
           el('li', {}, 'Cerrar la sesión de Google no borra los datos del dispositivo. Puedes descargar una copia de todo en «Copia de seguridad».'),
         ]),
+        el('p', {}, el('a', { href: 'privacidad.html', target: '_blank', rel: 'noopener' }, 'Política de privacidad completa')),
       ),
       seccion(
         'Créditos',

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de privacidad • Leo Conmigo</title>
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --border: #e2e8f0;
+      --accent: #6366f1;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --surface: #1e293b;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --border: #334155;
+        --accent: #818cf8;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      line-height: 1.6;
+    }
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 32px 16px 64px;
+    }
+    h1 { font-size: 1.8rem; margin: 0 0 4px; }
+    h2 { font-size: 1.15rem; margin: 32px 0 8px; }
+    p, li { color: var(--muted); }
+    strong { color: var(--text); }
+    .updated { font-size: 0.9rem; margin: 0 0 24px; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+    }
+    a { color: var(--accent); }
+    code { font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Política de privacidad</h1>
+    <p class="updated">Leo Conmigo, una app de MindSpark para que un niño aprenda a leer. Última actualización: 16 de noviembre de 2026.</p>
+
+    <div class="card">
+      <p><strong>En resumen:</strong> las fotos, las voces y el progreso del niño se guardan en su dispositivo y en el Google Drive del adulto que prepara la app. MindSpark no tiene una base de datos con esa información, no la vende, no la comparte con terceros, no usa analítica ni publicidad y no la usa para nada distinto de que la app funcione.</p>
+    </div>
+
+    <h2>Qué datos usa la app</h2>
+    <ul>
+      <li><strong>Lo que el adulto crea para el niño:</strong> el nombre del niño, las palabras, frases y libros, y las <strong>fotos y voces grabadas</strong> que el adulto elige para cada palabra.</li>
+      <li><strong>El progreso del niño:</strong> qué palabras practicó, sus respuestas en cada ejercicio, las sesiones, las calcomanías y las monedas. Sirve para adaptar las actividades y para que el adulto vea cómo va.</li>
+      <li><strong>El correo, el nombre y la foto de la cuenta de Google</strong> con la que se inicia sesión, solo para saber con qué cuenta se está trabajando y, en el caso de un alumno, para que el adulto vea qué correo entró.</li>
+      <li><strong>De cada dispositivo de un alumno:</strong> un identificador anónimo del dispositivo, la versión de la app y la fecha de la última sincronización.</li>
+    </ul>
+    <p>Todo esto se guarda primero en el navegador del dispositivo y funciona sin conexión.</p>
+
+    <h2>Cómo se usa Google Drive</h2>
+    <p>Si el adulto inicia sesión con Google, la app guarda una copia de los datos en una <strong>carpeta oculta de la app</strong> dentro de su Drive (<code>appDataFolder</code>, permiso <code>drive.appdata</code>), para tener lo mismo en varios dispositivos. Esa carpeta no aparece entre sus archivos y no se puede compartir.</p>
+    <p>Si el adulto <strong>habilita a un alumno</strong>, la app crea en su Drive una carpeta «Leo Conmigo» y dentro una carpeta de aula por niño. Para esto se pide el permiso de Drive (<code>https://www.googleapis.com/auth/drive</code>), que solo se solicita cuando el adulto habilita a un alumno. Con él la app solo crea, lee y escribe sus propias carpetas y archivos; no lee ni modifica el resto del Drive.</p>
+    <ul>
+      <li><strong>El aula se comparte únicamente con los correos que el adulto invita</strong>, uno por uno, y <strong>en solo lectura</strong>: el alumno ve las palabras, fotos y voces de su niño, pero no puede cambiarlas.</li>
+      <li>El alumno puede <strong>escribir solo en una subcarpeta propia («del-alumno»)</strong>: sus sesiones, respuestas y progreso.</li>
+      <li>Nunca se usa «cualquiera con el enlace» ni se comparte con un dominio. El alumno no ve el resto del Drive del adulto ni las aulas de otros niños.</li>
+      <li>La app avisa al adulto si aparece un acceso que ella no puso y es el adulto quien decide si lo quita.</li>
+    </ul>
+    <p>El uso de la información recibida de las APIs de Google cumple la <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Política de datos de usuario de los servicios de API de Google</a>, incluidos sus requisitos de uso limitado.</p>
+
+    <h2>Terceros</h2>
+    <ul>
+      <li><strong>Google</strong> (inicio de sesión y Drive), como se describe arriba.</li>
+      <li><strong>ARASAAC</strong> (pictogramas): cuando el adulto busca un pictograma, solo se envía el texto de la búsqueda. No se envían fotos, voces ni datos del niño.</li>
+    </ul>
+    <p>No hay analítica, publicidad, seguimiento ni otros servicios externos.</p>
+
+    <h2>Cómo quitar el acceso y borrar los datos</h2>
+    <ul>
+      <li><strong>Quitar acceso a un alumno:</strong> en la app, modo adulto → Alumnos habilitados → «Quitar acceso». También puedes quitarlo desde Drive, en «Compartir» de la carpeta del aula. Para que un dispositivo olvide todo, usa «Desvincular».</li>
+      <li><strong>Quitar el acceso de la app a tu cuenta de Google:</strong> entra a <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a> y elimina Leo Conmigo (o MindSpark).</li>
+      <li><strong>Borrar los datos guardados en Drive:</strong> borra las carpetas «Leo Conmigo» y de aula como cualquier carpeta de tu Drive; para la carpeta oculta, en Google Drive ve a Configuración → Administrar aplicaciones y elige «Borrar datos ocultos de la app».</li>
+      <li><strong>Borrar los datos de un dispositivo:</strong> borra los datos del sitio en el navegador o desinstala la app. En un celular de alumno, el adulto puede desvincularlo desde la app.</li>
+      <li>Puedes descargar una copia de todo en «Copia de seguridad» (modo adulto).</li>
+    </ul>
+
+    <h2>Niños</h2>
+    <p>La app está pensada para que un niño la use acompañado de un adulto, que es quien la prepara y quien decide qué datos del niño se guardan y con quién se comparten. El niño no tiene que escribir ni dar datos personales.</p>
+
+    <h2>Contacto</h2>
+    <p>Si tienes preguntas sobre esta política, escribe a <a href="mailto:andres.gonzalez.prat@gmail.com">andres.gonzalez.prat@gmail.com</a>.</p>
+
+    <p><a href="./">← Volver a Leo Conmigo</a></p>
+  </main>
+</body>
+</html>

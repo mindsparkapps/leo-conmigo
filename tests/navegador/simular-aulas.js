@@ -26,10 +26,11 @@ export function instalar({ cuenta = ADULTO, compartida = true } = {}) {
   let cola = Promise.resolve();
   const enCola = (fn) => { const p = cola.then(fn, fn); cola = p.catch(() => {}); return p; };
   // El servidor de pruebas a veces resetea una conexión: se reintenta (y con tiempo máximo, para no colgarse)
+  // (con el service worker activo, una URL repetida se serviría de su caché: por eso cada petición lleva una marca distinta)
   const pedir = async (url, opciones = {}) => {
     for (let intento = 0; ; intento++) {
       try {
-        return await original(url, { ...opciones, signal: AbortSignal.timeout(8000) });
+        return await original(`${url}?t=${Date.now()}-${Math.random().toString(36).slice(2)}`, { ...opciones, cache: 'no-store', signal: AbortSignal.timeout(8000) }); // sin caché: si no, se lee un estado viejo
       } catch (error) {
         if (intento >= 3) throw error;
         await new Promise((r) => setTimeout(r, 250));
@@ -127,7 +128,7 @@ async function sembrarAdulto({ cuenta: correo = ADULTO } = {}) {
   };
 
   /** Borra la nube compartida (para empezar de cero). */
-  const reiniciar = async () => { await original(RUTA, { method: 'DELETE' }); nube.importar({ archivos: [], permisos: [], tokens: [] }); };
+  const reiniciar = async () => { await pedir(RUTA, { method: 'DELETE' }); nube.importar({ archivos: [], permisos: [], tokens: [] }); };
 
   globalThis.__sim = { nube, alumno, registro, original, reiniciar, cuenta, sembrar: sembrarAdulto };
   return globalThis.__sim;

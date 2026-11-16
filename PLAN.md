@@ -819,7 +819,20 @@ Reglas para la implementación:
   - el adulto carga un álbum nuevo y cambia un ajuste → el alumno los tiene a los ≤ 60 s (o al volver a la app) sin tocar nada, y nunca a mitad de una sesión;
   - desvincular desde el adulto deja el dispositivo del alumno como recién instalado.
 
-### Fase 19 — Pulido, ayuda y prueba real
+### Fase 19 — Pulido, ayuda y prueba real ✔ hecha (queda la lista del usuario)
+**Decisiones de implementación (fase 19, 0.36.0):**
+- **Ayuda** (`#/adulto/ayuda`): apartado «Alumnos con su propio celular» con cómo habilitar (y por qué se pide el permiso de Drive), qué ve y qué no el alumno, quitar acceso / desvincular / convertir un dispositivo, el aviso «Google no verificó esta app» (Configuración avanzada → Ir a Leo Conmigo) y la referencia a `docs/google-cloud.md`. **Acerca de** suma lo del aula y el enlace a la política.
+- **`privacidad.html`** en la raíz (modelo: la de ZenBan): datos que usa (fotos, voces y progreso, correo de Google, `appDataFolder` y carpetas de aula), para qué, sin analítica ni terceros salvo Google y ARASAAC, aulas compartidas solo con los correos invitados en solo lectura (salvo `del-alumno/`), cómo quitar acceso y borrar. Está en `PRECACHE`. **Corrección en `sw.js`:** toda navegación se servía con la clave `index.html`, así que abrir `privacidad.html` habría mostrado la app y, peor, habría pisado `index.html` en la caché; ahora esa página se sirve como su propio archivo.
+- **`docs/google-cloud.md`** revisada: los permisos (`drive.appdata`, `drive`, `openid`, `email`, `profile`), la URL de privacidad (`.../leo-conmigo/privacidad.html`, ya existe) y el mensaje de `access_denied` coinciden con `js/auth.js`. `README.md` explica cómo habilitar alumnos y enlaza la guía.
+- **Pruebas en el navegador:** `tests/servidor.js` (servidor de Node, con la nube compartida) es la alternativa a `tests/servidor.py` cuando hace falta el service worker: el de Python resetea conexiones al precachear ~1200 archivos y el worker no se instala. Con el service worker activo, `tests/navegador/simular-aulas.js` marca cada lectura de `/__nube/estado` con una URL distinta (si no, el worker sirve el estado viejo).
+
+**Lista para el usuario (NO hecha; no marcar hasta que la haga):**
+1. [ ] Seguir [docs/google-cloud.md](docs/google-cloud.md): orígenes autorizados del cliente «MindSpark» (`https://mindsparkapps.github.io`, `http://localhost:8080`, `http://127.0.0.1:8080`).
+2. [ ] En Google Cloud: permisos `drive.appdata`, `drive`, `openid`, `email`, `profile` y la API de Drive habilitada.
+3. [ ] Marca: página principal, política de privacidad `https://mindsparkapps.github.io/leo-conmigo/privacidad.html` y dominio autorizado (la página tiene que estar publicada para esto).
+4. [ ] Publicar la app (Público → En producción) y elegir la opción A (sin verificar, hasta 100 usuarios) o B (verificación con CASA).
+5. [ ] Subir el repositorio y publicar en GitHub Pages (`git push`: lo hace el usuario).
+6. [ ] Probar con dos teléfonos reales: Android (Chrome) y, si hay, iPhone (Safari); con un Gmail que no sea usuario de prueba. Revisar sobre todo: la ventana de Google al tocar ▶ con el token vencido, el audio y el almacenamiento persistente.
 - Ayuda del adulto (`#/adulto/ayuda`): cómo habilitar un alumno, el permiso de Drive (por qué se pide), qué ve y qué no ve el alumno (la tabla de seguridad), cómo quitar el acceso y desvincular, y un enlace a la guía de Google Cloud.
 - Página pública de privacidad `privacidad.html` (la pide Google para publicar la app; ver la guía) y «Acerca de»: las fotos y voces del niño también están en una carpeta del Drive del adulto **compartida solo con los correos que él invitó, en solo lectura**; el alumno escribe únicamente su propia subcarpeta.
 - `README.md` y el estado en `CLAUDE.md`.

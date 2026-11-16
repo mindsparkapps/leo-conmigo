@@ -76,6 +76,36 @@ export function montar(contenedor) {
         ),
       ),
       seccion(
+        'Alumnos con su propio celular',
+        el('p', {}, 'Un alumno es el niño usando la app en SU dispositivo, con su propio Gmail. No ve ninguna configuración y nunca sale del modo alumno. Tú ves sus estadísticas y cambias lo que él ve desde tu celular.'),
+        el('h3', {}, 'Cómo habilitar a un alumno'),
+        pasos(
+          'En el modo adulto abre «Alumnos» (en el panel). Necesitas haber iniciado sesión con Google en «Cuenta».',
+          'La primera vez, toca «Dar el permiso de Drive» y deja marcada la casilla del permiso de Drive en la ventana de Google. Se pide porque el aula es una carpeta de TU Drive que compartes con el Gmail del alumno; la app solo toca sus carpetas «Leo Conmigo» y no lee el resto de tu Drive.',
+          'En el niño que corresponda toca «Habilitar alumno». Se crea su aula y se suben sus fotos y voces (puede tardar si hay muchas; no cierres la app).',
+          'Escribe el Gmail del alumno y toca «Invitar». Google le manda un correo. Puedes invitar a más de un correo (por ejemplo la tablet y el celular del niño).',
+          'En el dispositivo del niño: instala la app, toca «Este dispositivo es de un alumno», entra con ese Gmail y espera la descarga. Desde ese momento funciona sin conexión.',
+          'En «Alumnos» verás «Invitado, aún no entra» y, cuando entre, «Conectado», con cuánto hace que sincronizó. Sus sesiones aparecen en Progreso y en «Qué le cuesta» (toca «Ver estadísticas»).',
+        ),
+        el('h3', {}, 'Qué ve el alumno y qué no'),
+        lista(
+          'Ve solo la carpeta de su aula: sus palabras, frases, libros, álbumes, fotos y voces, y no puede cambiarlas.',
+          'Puede escribir únicamente en su subcarpeta «del-alumno»: sus sesiones, respuestas y progreso.',
+          'No ve el resto de tu Drive, ni la carpeta «Leo Conmigo», ni las aulas de otros niños.',
+          'Nadie más ve el aula: solo los correos que invitas, uno por uno (nunca «cualquiera con el enlace»). Si aparece un acceso que Leo Conmigo no puso, lo verás como «Permiso extraño» con un botón para quitarlo: la app no lo quita sola.',
+          'Lo que cambies (palabras, álbumes, ajustes, fondo) le llega solo en menos de un minuto, sin avisarle al niño y nunca a mitad de una sesión.',
+        ),
+        el('h3', {}, 'Quitar el acceso, desvincular y convertir un dispositivo'),
+        lista(
+          '«Quitar acceso» (en «Alumnos»): borra los permisos de ese correo en el aula. Lo que ya trajo a tu app se queda y su dispositivo sigue funcionando sin conexión con lo que ya tiene.',
+          '«Desvincular» (en cada dispositivo): la próxima vez que se conecte, ese dispositivo borra sus datos y vuelve a la pantalla de primer uso. También sirve desinstalar la app.',
+          '«Convertir este dispositivo en celular de alumno» (en «Cuenta»): para un dispositivo que ya tenía tus datos. Borra TODO lo que hay en él (no se puede deshacer): haz antes una copia de seguridad o comprueba que esté sincronizado.',
+        ),
+        el('h3', {}, 'Si Google dice «Google no verificó esta app»'),
+        el('p', {}, 'Es normal mientras la app no esté verificada por Google. En esa pantalla toca «Configuración avanzada» y luego «Ir a Leo Conmigo (no seguro)», y acepta los permisos. Solo hace falta una vez por cuenta. Si dice que la cuenta no tiene permiso para usar la app, quien publica la app debe revisar la opción «Público» en Google Cloud.'),
+        el('p', { class: 'ayuda' }, 'Cómo configurar Google Cloud (orígenes, permisos, publicar la app): guía docs/google-cloud.md del proyecto. Cómo se tratan los datos: ', el('a', { href: 'privacidad.html', target: '_blank', rel: 'noopener' }, 'política de privacidad'), '.'),
+      ),
+      seccion(
         'Si algo no funciona',
         lista(
           'No se oye nada: sube el volumen del dispositivo. En iPhone, revisa que el interruptor lateral no esté en silencio y toca la pantalla una vez antes de empezar.',

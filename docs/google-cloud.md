@@ -33,7 +33,7 @@ Comprueba también que la **API de Google Drive** esté habilitada en el proyect
 
 - Nombre de la app, correo de asistencia y logo (opcional; un logo nuevo puede pedir revisión).
 - **Página principal:** `https://mindsparkapps.github.io/leo-conmigo/`
-- **Política de privacidad:** `https://mindsparkapps.github.io/leo-conmigo/privacidad.html` (la crea la fase 19; ZenBan ya tiene la suya en `privacidad.html`).
+- **Política de privacidad:** `https://mindsparkapps.github.io/leo-conmigo/privacidad.html` (ya existe: `privacidad.html` en la raíz de la app, con los datos que usa, el uso de `appDataFolder` y de las carpetas de aula, y cómo borrar todo; ZenBan tiene la suya aparte).
 - **Dominios autorizados:** `mindsparkapps.github.io`.
 
 ## Paso 4. Publicar la app

@@ -251,6 +251,7 @@ const PRECACHE = [
   'js/drive.js',
   'js/sync.js',
   'js/nube.js',
+  'privacidad.html',
   'js/aulas.js',
   'js/nube-alumno.js',
   'js/nino/primer-uso.js',
@@ -1207,7 +1208,8 @@ self.addEventListener('fetch', (evento) => {
   if (url.origin !== self.location.origin) return; // otros orígenes: directo a la red
   if (url.pathname.includes('/tests/')) return; // las pruebas siempre se leen frescas de la red
 
-  if (peticion.mode === 'navigate') {
+  // Toda navegación abre la app (index.html), salvo la página pública de privacidad, que es su propio archivo
+  if (peticion.mode === 'navigate' && !url.pathname.endsWith('/privacidad.html')) {
     evento.respondWith(cacheYActualizar(peticion, evento, INDEX));
   } else {
     evento.respondWith(cacheYActualizar(peticion, evento, peticion));
