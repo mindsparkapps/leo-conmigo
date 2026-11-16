@@ -14,8 +14,11 @@
 
 import { ALMACENES_SYNC, ErrorSync, contarRegistros, fusionarAlmacen, fusionarConAjeno, planDeMedios } from './core/sync.js';
 import {
-  ARCHIVO_ADULTO, ARCHIVO_ALUMNO, aceptaDe, armarArchivoAula, filtrarEntrantes, nombreArchivoDispositivo, nuevoDispositivo, publicaRol,
+  ARCHIVO_ADULTO, ARCHIVO_ALUMNO, armarArchivoAula, filtrarEntrantes, nombreArchivoDispositivo, nuevoDispositivo,
   validarArchivoAula, validarDispositivo,
+  // TRANSITORIO: esta sincronización sigue siendo la de las aulas versión 1 (avance y medios dentro del aula) hasta que
+  // la fase 22 la reescriba para cursos con fichas y Biblioteca
+  aceptaDeV1 as aceptaDe, publicaRolV1 as publicaRol,
 } from './core/aula.js';
 
 const MIME_JSON = 'application/json';
@@ -171,7 +174,7 @@ export function crearSincronizadorDeAula({
     // ---- subir mis datos (después de los medios) ----
     const resultado = {};
     for (const nombre of ALMACENES_SYNC) resultado[nombre] = fusion[nombre].resultado;
-    const doc = armarArchivoAula({ rol, perfilId, almacenes: resultado, ahora: ahora() });
+    const doc = armarArchivoAula({ rol, perfilId, almacenes: resultado, publica: publicaRol(rol), ahora: ahora() });
     const cambia = !archivoPropio || limpiarPropio || publicaRol(rol).some((nombre) => {
       const enDoc = new Set(doc.almacenes[nombre].map((r) => r.id));
       return fusion[nombre].paraPropio.some((r) => enDoc.has(r.id));

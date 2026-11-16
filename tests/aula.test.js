@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  ALMACENES_DEL_ALUMNO, ALMACENES_SOLO_ADULTO, aceptaDe, armarArchivoAula, estadoDeAlumnos, filtrarEntrantes, mediosDelPerfil,
+  ALMACENES_DEL_ALUMNO, ALMACENES_DEL_CURSO, ALMACENES_SOLO_ADULTO, aceptaDeV1, aulaComoV2, publicaRolV1, aceptaDe, armarArchivoAula, estadoDeAlumnos, filtrarEntrantes, mediosDelPerfil,
   nuevaAula, nuevoDispositivo, publicaRol, validarArchivoAula, validarAula, validarDispositivo,
 } from '../js/core/aula.js';
 import { ALMACENES_RESPALDO } from '../js/core/respaldo.js';
@@ -13,19 +13,27 @@ const reg = (id, s, extra = {}) => ({ id, updatedAt: t(s), deleted: false, ...ex
 
 // ---------- listas de almacenes ----------
 
-test('listas: no se pisan, juntas cubren todos los almacenes y los medios son solo del adulto', () => {
+test('listas: no se pisan, con los medios cubren todos los almacenes y los medios ya no van en el aula', () => {
   const juntas = [...ALMACENES_SOLO_ADULTO, ...ALMACENES_DEL_ALUMNO];
   assert.equal(new Set(juntas).size, juntas.length);
-  assert.deepEqual([...juntas].sort(), [...ALMACENES_RESPALDO].sort());
-  assert.deepEqual([...ALMACENES_SOLO_ADULTO].sort(), ['calcomaniasPropias', 'frases', 'libros', 'medios', 'palabras', 'premios']);
+  assert.deepEqual([...juntas, 'medios'].sort(), [...ALMACENES_RESPALDO].sort());
+  assert.deepEqual([...ALMACENES_SOLO_ADULTO].sort(), ['calcomaniasPropias', 'frases', 'libros', 'palabras', 'premios']);
+  assert.deepEqual([...ALMACENES_DEL_CURSO].sort(), ['calcomaniasPropias', 'frases', 'libros', 'palabras', 'perfiles', 'premios']);
   assert.deepEqual([...ALMACENES_DEL_ALUMNO].sort(), ['calcomanias', 'movimientos', 'niveles', 'perfiles', 'progresos', 'respuestas', 'sesiones']);
 });
 
-test('publicaRol / aceptaDe: el alumno nunca publica lo del adulto; el adulto solo acepta lo del alumno', () => {
+test('publicaRol / aceptaDe: el alumno nunca publica lo del curso; el adulto publica el curso y nunca avance de alumnos', () => {
   assert.deepEqual([...publicaRol('alumno')], [...ALMACENES_DEL_ALUMNO]);
-  assert.deepEqual([...publicaRol('adulto')].sort(), [...ALMACENES_RESPALDO].sort());
+  assert.deepEqual([...publicaRol('adulto')], [...ALMACENES_DEL_CURSO]);
   assert.deepEqual([...aceptaDe('adulto', 'alumno')], [...ALMACENES_DEL_ALUMNO]);
-  assert.deepEqual([...aceptaDe('alumno', 'adulto')].sort(), [...ALMACENES_RESPALDO].sort());
+  assert.deepEqual([...aceptaDe('alumno', 'adulto')], [...ALMACENES_DEL_CURSO]);
+  for (const a of ['progresos', 'niveles', 'sesiones', 'respuestas', 'calcomanias', 'movimientos', 'medios']) {
+    assert.ok(!publicaRol('adulto').includes(a), a); // el avance viaja en un solo sentido: del alumno al adulto
+  }
+  // transitorio (aulas versión 1): lo de antes, con el avance y los medios dentro del aula
+  assert.deepEqual([...publicaRolV1('adulto')].sort(), [...ALMACENES_RESPALDO].sort());
+  assert.deepEqual([...aceptaDeV1('alumno', 'adulto')].sort(), [...ALMACENES_RESPALDO].sort());
+  assert.deepEqual([...aceptaDeV1('adulto', 'alumno')], [...ALMACENES_DEL_ALUMNO]);
   for (const a of ALMACENES_SOLO_ADULTO) {
     assert.ok(!publicaRol('alumno').includes(a), a);
     assert.ok(!aceptaDe('adulto', 'alumno').includes(a), a);
@@ -79,7 +87,7 @@ test('filtrarEntrantes (alumno recibe del adulto): solo los medios que usa el pe
     palabras: [reg('w1', 1, { perfilId: 'P1', medioImagenId: 'img' }), reg('w2', 1, { perfilId: 'P2', medioImagenId: 'ajena' })],
     medios: [reg('f', 1), reg('port', 1), reg('sobre', 1), reg('img', 1), reg('ajena', 1), reg('suelto', 1), reg('viejo', 2, { deleted: true })],
   };
-  const { almacenes, descartados } = filtrarEntrantes({ almacenes: adulto, perfilId: 'P1', aceptados: aceptaDe('alumno', 'adulto') });
+  const { almacenes, descartados } = filtrarEntrantes({ almacenes: adulto, perfilId: 'P1', aceptados: aceptaDeV1('alumno', 'adulto') });
   assert.deepEqual(almacenes.medios.map((m) => m.id).sort(), ['f', 'img', 'port', 'sobre', 'viejo']);
   assert.equal(descartados.porAlmacen.medios, 2);
   assert.equal(descartados.porAlmacen.palabras, 1);
@@ -121,7 +129,7 @@ test('validarAula: acepta una buena y rechaza formato ajeno, versión nueva, per
   assert.equal(validarAula(aulaBuena(), { perfilId: 'P1' }), null);
   assert.match(validarAula({ formato: 'otra-cosa' }), /no es de Leo Conmigo/);
   assert.match(validarAula(null), /no es de Leo Conmigo/);
-  assert.match(validarAula({ ...aulaBuena(), version: 2 }), /versión más nueva/);
+  assert.match(validarAula({ ...aulaBuena(), version: 3 }), /versión más nueva/);
   assert.match(validarAula({ ...aulaBuena(), version: 0 }), /versión/);
   assert.match(validarAula(aulaBuena(), { perfilId: 'P2' }), /otro perfil/);
   assert.match(validarAula({ ...aulaBuena(), perfilId: '' }), /perfil/);
@@ -158,8 +166,15 @@ test('armarArchivoAula: el alumno publica solo lo suyo y solo de su perfil; el a
     almacenes: { ...delAlumno(), perfiles: [reg('P1', 1, { fotoMedioId: 'm1' })], medios: [reg('m1', 1, { mime: 'image/png', blob: new Blob(['x']) }), reg('otro', 1)] },
   });
   assert.deepEqual(adulto.almacenes.palabras.map((p) => p.id), ['w1']);
-  assert.deepEqual(adulto.almacenes.medios.map((m) => m.id), ['m1']);
-  assert.equal('blob' in adulto.almacenes.medios[0], false);
+  assert.deepEqual(Object.keys(adulto.almacenes).sort(), [...ALMACENES_DEL_CURSO].sort()); // sin medios ni almacenes del alumno
+  assert.equal(adulto.contenidoFamilia, undefined);
+  // transitorio (aulas versión 1): con la lista de antes sí lleva los medios, sin su contenido
+  const v1 = armarArchivoAula({
+    rol: 'adulto', perfilId: 'P1', publica: publicaRolV1('adulto'),
+    almacenes: { ...delAlumno(), perfiles: [reg('P1', 1, { fotoMedioId: 'm1' })], medios: [reg('m1', 1, { mime: 'image/png', blob: new Blob(['x']) }), reg('otro', 1)] },
+  });
+  assert.deepEqual(v1.almacenes.medios.map((m) => m.id), ['m1']);
+  assert.equal('blob' in v1.almacenes.medios[0], false);
 });
 
 test('validarDispositivo: acepta uno bueno y rechaza formato ajeno, versión nueva y datos rotos', () => {
@@ -297,4 +312,145 @@ test('fusionarConAjeno sin lo ajeno y sin lo propio coincide con fusionarAlmacen
   assert.deepEqual(nuevo.resultado.map((x) => x.id).sort(), viejo.resultado.map((x) => x.id).sort());
   assert.deepEqual(nuevo.paraLocal.map((x) => x.id).sort(), viejo.paraLocal.map((x) => x.id).sort());
   assert.equal(nuevo.paraPropio.length, viejo.paraRemoto);
+});
+
+// ---------- Ampliación 4: aula.json v2, familia y permisos nuevos ----------
+
+test('aula.json: la versión 1 se sigue leyendo (y se migra) y la 2 trae alumnos y biblioteca', () => {
+  const v2 = aulaBuena();
+  assert.equal(v2.version, 2);
+  assert.deepEqual(v2.alumnos, []);
+  assert.equal(v2.bibliotecaId, null);
+  const { alumnos, bibliotecaId, ...resto } = v2;
+  const v1 = { ...resto, version: 1 };
+  assert.equal(validarAula(v1), null);
+  const migrada = aulaComoV2(v1);
+  assert.equal(migrada.version, 2);
+  assert.deepEqual(migrada.alumnos, []);
+  assert.equal(migrada.bibliotecaId, null);
+  assert.equal(validarAula(migrada), null);
+  const conAlumnos = nuevaAula({ perfilId: 'P1', nombre: 'Curso', email: 'adulto@ejemplo.com', alumnos: [{ email: 'Pedro@Gmail.com', carpetaId: 'k1' }], bibliotecaId: 'bib' });
+  assert.deepEqual(conAlumnos.alumnos, [{ email: 'pedro@gmail.com', carpetaId: 'k1' }]);
+  assert.equal(validarAula(conAlumnos, { perfilId: 'P1' }), null);
+  assert.match(validarAula({ ...conAlumnos, alumnos: [{ email: 'x' }] }), /alumnos/);
+  assert.match(validarAula({ ...conAlumnos, alumnos: 'x' }), /alumnos/);
+  assert.match(validarAula({ ...conAlumnos, bibliotecaId: 5 }), /biblioteca/);
+  assert.match(validarAula({ ...v2, version: 3 }), /versión más nueva/);
+});
+
+test('filtrarEntrantes: lo que tiene origen «familia» no entra como contenido del curso, en ninguna dirección', () => {
+  const delCurso = {
+    palabras: [reg('w1', 1, { perfilId: 'P1' }), reg('wf', 1, { perfilId: 'P1', origen: 'familia' })],
+    frases: [reg('f1', 1, { perfilId: 'P1', origen: 'familia' })],
+    medios: [reg('m1', 1, { origen: 'familia' }), reg('m2', 1, { origen: 'familia', deleted: true })],
+  };
+  // el celular del alumno recibe del adulto
+  const alAlumno = filtrarEntrantes({ almacenes: delCurso, perfilId: 'P1', aceptados: aceptaDe('alumno', 'adulto') });
+  assert.deepEqual(alAlumno.almacenes.palabras.map((r) => r.id), ['w1']);
+  assert.deepEqual(alAlumno.almacenes.frases, []);
+  assert.equal(alAlumno.descartados.porAlmacen.palabras, 1);
+  assert.equal(alAlumno.descartados.porAlmacen.medios, 2); // los medios ni siquiera viajan en el aula
+  // el adulto recibe del alumno: un registro de la familia metido en un almacén normal se descarta
+  const alAdulto = filtrarEntrantes({
+    almacenes: { progresos: [reg('g1', 1, { perfilId: 'P1' }), reg('g2', 1, { perfilId: 'P1', origen: 'familia' })], palabras: [reg('wf', 1, { perfilId: 'P1', origen: 'familia' })] },
+    perfilId: 'P1', aceptados: aceptaDe('adulto', 'alumno'),
+  });
+  assert.deepEqual(alAdulto.almacenes.progresos.map((r) => r.id), ['g1']);
+  assert.equal(alAdulto.almacenes.palabras, undefined);
+  assert.equal(alAdulto.descartados.porAlmacen.progresos, 1);
+  // con los medios aceptados (aula versión 1) tampoco pasan los de la familia
+  const v1 = filtrarEntrantes({ almacenes: { medios: [reg('m1', 1, { origen: 'familia' })] }, perfilId: 'P1', aceptados: aceptaDeV1('alumno', 'adulto') });
+  assert.deepEqual(v1.almacenes.medios, []);
+});
+
+test('armarArchivoAula: el alumno publica contenidoFamilia aparte y sin blobs; nunca como palabras del curso', () => {
+  const alumno = armarArchivoAula({
+    rol: 'alumno',
+    perfilId: 'P1',
+    almacenes: { ...delAlumno(), palabras: [reg('wf', 1, { perfilId: 'P1', origen: 'familia' })] },
+    contenidoFamilia: { palabras: [reg('wf', 1, { perfilId: 'P1', origen: 'familia', blob: 'x' }), reg('malo', 1, { perfilId: 'P1' })], progresos: [reg('p', 1)] },
+  });
+  assert.equal(alumno.almacenes.palabras, undefined);
+  assert.deepEqual(alumno.contenidoFamilia.palabras.map((p) => p.id), ['wf']);
+  assert.equal('blob' in alumno.contenidoFamilia.palabras[0], false);
+  assert.equal(alumno.contenidoFamilia.progresos, undefined);
+  assert.equal(validarArchivoAula(alumno, { rolEsperado: 'alumno', perfilId: 'P1' }), null);
+  assert.match(validarArchivoAula({ ...alumno, contenidoFamilia: 'x' }, { rolEsperado: 'alumno', perfilId: 'P1' }), /familia/);
+  // un archivo del adulto no puede traer contenido de la familia
+  const adulto = armarArchivoAula({ rol: 'adulto', perfilId: 'P1', almacenes: {}, contenidoFamilia: { palabras: [reg('wf', 1, { perfilId: 'P1', origen: 'familia' })] } });
+  assert.equal(adulto.contenidoFamilia, undefined);
+  assert.match(validarArchivoAula({ ...adulto, contenidoFamilia: {} }, { rolEsperado: 'adulto', perfilId: 'P1' }), /familia/);
+});
+
+test('armarArchivoAula: el adulto nunca publica avance de alumnos ni medios, aunque los tenga en su almacén', () => {
+  const adulto = armarArchivoAula({
+    rol: 'adulto',
+    perfilId: 'P1',
+    almacenes: { ...delAlumno(), perfiles: [reg('P1', 1)], medios: [reg('m1', 1)] },
+  });
+  for (const n of ['progresos', 'niveles', 'sesiones', 'respuestas', 'calcomanias', 'movimientos', 'medios']) assert.equal(adulto.almacenes[n], undefined, n);
+  assert.deepEqual(adulto.almacenes.perfiles.map((p) => p.id), ['P1']);
+});
+
+const lectorDe = (email) => ({ id: `r-${email}`, type: 'user', role: 'reader', emailAddress: email });
+const editorDe = (email) => ({ id: `w-${email}`, type: 'user', role: 'writer', emailAddress: email });
+const duenoA = { id: 'o', type: 'user', role: 'owner', emailAddress: 'adulto@ejemplo.com' };
+
+test('estadoDeAlumnos (v2): Biblioteca para invitados de cualquier curso, curso para los suyos y alumnos/<correo>/ con su editor', () => {
+  const r = estadoDeAlumnos({
+    invitados: ['pedro@gmail.com', 'sofia@gmail.com'],
+    invitadosDeTodos: ['pedro@gmail.com', 'sofia@gmail.com', 'luis@gmail.com'],
+    permisos: {
+      biblioteca: [duenoA, lectorDe('pedro@gmail.com'), lectorDe('sofia@gmail.com'), lectorDe('luis@gmail.com')],
+      aula: [duenoA, lectorDe('pedro@gmail.com'), lectorDe('sofia@gmail.com')],
+      alumnos: {
+        'pedro@gmail.com': [duenoA, lectorDe('pedro@gmail.com'), editorDe('pedro@gmail.com'), lectorDe('sofia@gmail.com')],
+        'sofia@gmail.com': [duenoA, lectorDe('pedro@gmail.com'), lectorDe('sofia@gmail.com'), editorDe('sofia@gmail.com')],
+      },
+    },
+    ahora,
+  });
+  assert.deepEqual(r.permisosExtranos, []);
+  assert.deepEqual(r.alumnos.map((a) => [a.email, a.estado]), [['pedro@gmail.com', 'invitado'], ['sofia@gmail.com', 'invitado']]);
+});
+
+test('estadoDeAlumnos (v2): permisos extraños en Biblioteca, en el curso y en las carpetas de los alumnos', () => {
+  const anyone = { id: 'a1', type: 'anyone', role: 'reader' };
+  const r = estadoDeAlumnos({
+    invitados: ['pedro@gmail.com', 'sofia@gmail.com'],
+    invitadosDeTodos: ['pedro@gmail.com', 'sofia@gmail.com'],
+    permisos: {
+      biblioteca: [duenoA, editorDe('pedro@gmail.com'), lectorDe('intruso@gmail.com')], // un editor en la Biblioteca y alguien no invitado
+      aula: [duenoA, lectorDe('pedro@gmail.com'), anyone],
+      alumnos: {
+        'pedro@gmail.com': [duenoA, editorDe('pedro@gmail.com'), anyone, editorDe('sofia@gmail.com')], // sofia no es la dueña de esta carpeta: no puede editar
+        'sofia@gmail.com': [duenoA, editorDe('sofia@gmail.com'), editorDe('pedro@gmail.com'), { id: 'g', type: 'group', role: 'reader', emailAddress: 'g@grupos.com' }],
+      },
+    },
+    ahora,
+  });
+  const lista = r.permisosExtranos.map((p) => [p.carpeta, p.id]).sort();
+  assert.deepEqual(lista, [
+    ['alumnos/pedro@gmail.com', 'w-sofia@gmail.com'],
+    ['alumnos/sofia@gmail.com', 'g'],
+    ['alumnos/sofia@gmail.com', 'w-pedro@gmail.com'],
+    ['aula', 'a1'],
+    ['biblioteca', 'r-intruso@gmail.com'],
+    ['biblioteca', 'w-pedro@gmail.com'],
+  ].sort()); // `anyone` heredado del curso se cuenta una sola vez (en el curso)
+  assert.ok(r.permisosExtranos.find((p) => p.id === 'w-sofia@gmail.com').motivo.includes('writer'));
+});
+
+test('estadoDeAlumnos (v2): un invitado a otro curso puede leer la Biblioteca pero no el curso ni escribir en la carpeta de otro', () => {
+  const r = estadoDeAlumnos({
+    invitados: ['pedro@gmail.com'],
+    invitadosDeTodos: ['pedro@gmail.com', 'luis@gmail.com'],
+    permisos: {
+      biblioteca: [duenoA, lectorDe('luis@gmail.com')],
+      aula: [duenoA, lectorDe('pedro@gmail.com'), lectorDe('luis@gmail.com')], // luis no es de este curso
+      alumnos: { 'pedro@gmail.com': [duenoA, editorDe('pedro@gmail.com')] },
+    },
+    ahora,
+  });
+  assert.deepEqual(r.permisosExtranos.map((p) => [p.carpeta, p.id, p.motivo]), [['aula', 'r-luis@gmail.com', 'Un correo que no invitaste']]);
 });

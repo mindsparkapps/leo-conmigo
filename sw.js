@@ -259,6 +259,7 @@ const PRECACHE = [
   'js/sync-aula.js',
   'js/store-perfil.js',
   'js/core/aula.js',
+  'js/core/curso.js',
   'js/adulto/alumnos.js',
   'js/adulto/cuenta.js',
   'js/adulto/ayuda.js',

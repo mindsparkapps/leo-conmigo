@@ -7,11 +7,15 @@
 import { ALMACENES_RESPALDO } from './respaldo.js';
 import { armarDocumento, validarDocumento } from './sync.js';
 import { mediosDeRegistro } from './borrar-perfil.js';
+import { ORIGEN_FAMILIA, limpiarContenidoFamilia } from './curso.js';
 
 export const FORMATO_AULA = 'leo-conmigo-aula';
 export const FORMATO_DISPOSITIVO = 'leo-conmigo-dispositivo';
-export const VERSION_AULA = 1;
+export const VERSION_AULA = 2; // 2 (Ampliación 4): `alumnos` y `bibliotecaId`; la 1 se sigue leyendo y se migra
 export const VERSION_DISPOSITIVO = 1;
+export const NOMBRE_BIBLIOTECA = 'Biblioteca';
+export const NOMBRE_CARPETA_ALUMNOS = 'alumnos';
+export const NOMBRE_CARPETA_FAMILIA = 'familia';
 export const ROLES = Object.freeze(['adulto', 'alumno']);
 
 export const ARCHIVO_AULA = 'aula.json';
@@ -21,10 +25,15 @@ export const nombreArchivoDispositivo = (idDispositivo) => `dispositivo-${idDisp
 
 const enOrden = (nombres) => Object.freeze(ALMACENES_RESPALDO.filter((a) => nombres.includes(a)));
 
-/** Solo los escribe el adulto; el alumno los acepta y nunca los publica. */
-export const ALMACENES_SOLO_ADULTO = enOrden(['palabras', 'frases', 'libros', 'calcomaniasPropias', 'premios', 'medios']);
-/** Los escriben los dos lados; gana el `updatedAt` más reciente. */
+/**
+ * Solo los escribe el adulto; el alumno los acepta y nunca los publica.
+ * Los `medios` ya NO van en el aula (Ampliación 4): las imágenes y audios del adulto están una sola vez en `Biblioteca/`.
+ */
+export const ALMACENES_SOLO_ADULTO = enOrden(['palabras', 'frases', 'libros', 'calcomaniasPropias', 'premios']);
+/** Lo que el celular del alumno escribe en su `alumno.json` (en `perfiles`, solo su parte: `perfilPublicable`). */
 export const ALMACENES_DEL_ALUMNO = enOrden(['perfiles', 'progresos', 'niveles', 'sesiones', 'respuestas', 'calcomanias', 'movimientos']);
+/** Lo que el adulto escribe en `adulto.json`: el contenido del curso (el perfil del curso incluido). Nunca avance de alumnos. */
+export const ALMACENES_DEL_CURSO = enOrden(['perfiles', ...ALMACENES_SOLO_ADULTO]);
 
 const comprobarRol = (rol) => {
   if (!ROLES.includes(rol)) throw new Error(`Rol desconocido: ${rol}`);
@@ -34,7 +43,7 @@ const comprobarRol = (rol) => {
 /** Los almacenes que un rol escribe en su archivo de Drive. */
 export function publicaRol(rol) {
   comprobarRol(rol);
-  return rol === 'adulto' ? enOrden([...ALMACENES_SOLO_ADULTO, ...ALMACENES_DEL_ALUMNO]) : ALMACENES_DEL_ALUMNO;
+  return rol === 'adulto' ? ALMACENES_DEL_CURSO : ALMACENES_DEL_ALUMNO;
 }
 
 /** Los almacenes que el rol local acepta del archivo del otro lado (solo lo que el otro lado puede publicar). */
@@ -45,7 +54,23 @@ export function aceptaDe(rolLocal, rolRemoto) {
   return publicaRol(rolRemoto);
 }
 
+/**
+ * TRANSITORIO (aulas versión 1, hasta que la fase 22 reescriba la sincronización): lo que el adulto publicaba antes,
+ * con el avance de los alumnos y los medios dentro del aula. Solo lo usa `js/sync-aula.js`.
+ */
+export const ALMACENES_AULA_V1_ADULTO = enOrden([...ALMACENES_SOLO_ADULTO, 'medios', ...ALMACENES_DEL_ALUMNO]);
+export function publicaRolV1(rol) {
+  comprobarRol(rol);
+  return rol === 'adulto' ? ALMACENES_AULA_V1_ADULTO : enOrden(ALMACENES_DEL_ALUMNO);
+}
+export function aceptaDeV1(rolLocal, rolRemoto) {
+  comprobarRol(rolLocal);
+  comprobarRol(rolRemoto);
+  return rolLocal === rolRemoto ? Object.freeze([]) : publicaRolV1(rolRemoto);
+}
+
 const esRegistro = (r) => Boolean(r) && typeof r === 'object' && !Array.isArray(r) && typeof r.id === 'string' && r.id !== '';
+const esDeFamilia = (r) => Boolean(r) && typeof r === 'object' && r.origen === ORIGEN_FAMILIA;
 
 // ---------- medios del perfil ----------
 
@@ -92,7 +117,8 @@ export function filtrarEntrantes({ almacenes, perfilId, aceptados }) {
     const buenos = [];
     for (const r of lista) {
       const suyo = nombre === 'perfiles' ? esRegistro(r) && r.id === perfilId : esRegistro(r) && r.perfilId === perfilId;
-      if (suyo) buenos.push(r); else descartar(nombre);
+      // Lo de la familia viaja solo en `contenidoFamilia` (y en su carpeta): jamás como contenido del curso
+      if (suyo && !esDeFamilia(r)) buenos.push(r); else descartar(nombre);
     }
     salida[nombre] = buenos;
   }
@@ -102,7 +128,7 @@ export function filtrarEntrantes({ almacenes, perfilId, aceptados }) {
     const usados = new Set(mediosDelPerfil({ perfil, registros: salida }));
     salida.medios = [];
     for (const m of entrada.medios) {
-      if (esRegistro(m) && (usados.has(m.id) || m.deleted === true)) salida.medios.push(m); else descartar('medios');
+      if (esRegistro(m) && !esDeFamilia(m) && (usados.has(m.id) || m.deleted === true)) salida.medios.push(m); else descartar('medios');
     }
   }
 
@@ -121,7 +147,11 @@ function revisarVersion(doc, esperada, nombre) {
   return null;
 }
 
-export function nuevaAula({ perfilId, nombre, email, fondo = null, desvinculados = [], ahora = new Date() }) {
+/**
+ * `aula.json` versión 2: el curso (perfil), su dueño, la apariencia, los dispositivos desvinculados, los alumnos
+ * invitados con la carpeta `alumnos/<correo>/` de cada uno y la `Biblioteca/` común (null hasta que se crea).
+ */
+export function nuevaAula({ perfilId, nombre, email, fondo = null, desvinculados = [], alumnos = [], bibliotecaId = null, ahora = new Date() }) {
   return {
     formato: FORMATO_AULA,
     version: VERSION_AULA,
@@ -130,7 +160,19 @@ export function nuevaAula({ perfilId, nombre, email, fondo = null, desvinculados
     dueno: { email },
     apariencia: { fondo },
     desvinculados: [...desvinculados],
+    alumnos: alumnos.map((a) => ({ email: minuscula(a.email), carpetaId: a.carpetaId ?? null })),
+    bibliotecaId,
     actualizado: ahora.toISOString(),
+  };
+}
+
+/** Un `aula.json` (versión 1 o 2 ya validado) en la forma de la versión 2. La versión 1 no tenía alumnos ni biblioteca. */
+export function aulaComoV2(doc) {
+  return {
+    ...doc,
+    version: VERSION_AULA,
+    alumnos: Array.isArray(doc.alumnos) ? doc.alumnos.map((a) => ({ email: minuscula(a.email), carpetaId: a.carpetaId ?? null })) : [],
+    bibliotecaId: doc.bibliotecaId ?? null,
   };
 }
 
@@ -149,20 +191,30 @@ export function validarAula(doc, { perfilId } = {}) {
   if (!Array.isArray(doc.desvinculados) || doc.desvinculados.some((d) => !textoNoVacio(d))) {
     return 'El aula está dañada: la lista de dispositivos desvinculados no se entiende.';
   }
+  if (doc.version >= 2) {
+    const alumnosOk = Array.isArray(doc.alumnos) && doc.alumnos.every((a) => a && typeof a === 'object' && esEmail(a.email) && (a.carpetaId == null || textoNoVacio(a.carpetaId)));
+    if (!alumnosOk) return 'El aula está dañada: la lista de alumnos no se entiende.';
+    if (doc.bibliotecaId != null && !textoNoVacio(doc.bibliotecaId)) return 'El aula está dañada: la biblioteca no se entiende.';
+  }
   return null;
 }
 
 /**
  * Arma `adulto.json` o `alumno.json`: el mismo formato que `data.json`, con `perfilId` y `rol`, y solo los almacenes
- * que ese rol publica (y solo los registros de ese perfil).
+ * que ese rol publica (y solo los registros de ese perfil). El adulto publica el contenido del curso y nunca avance de
+ * alumnos; el alumno publica su avance y, aparte, `contenidoFamilia` (sin blobs). Nada con `origen: 'familia'` entra a
+ * los almacenes normales.
+ * @param publica            (transitorio) la lista de almacenes a publicar, para las aulas versión 1
+ * @param contenidoFamilia   (alumno) { palabras, frases, libros, calcomaniasPropias, premios } de `separarFamilia`
  */
-export function armarArchivoAula({ rol, perfilId, almacenes, ahora = new Date() }) {
-  const publica = publicaRol(rol);
+export function armarArchivoAula({ rol, perfilId, almacenes, contenidoFamilia, publica = publicaRol(rol), ahora = new Date() }) {
   const { almacenes: propios } = filtrarEntrantes({ almacenes, perfilId, aceptados: publica });
   const doc = armarDocumento({ almacenes: propios, ahora });
   const soloPublicados = {};
   for (const nombre of publica) soloPublicados[nombre] = doc.almacenes[nombre];
-  return { ...doc, almacenes: soloPublicados, perfilId, rol };
+  const archivo = { ...doc, almacenes: soloPublicados, perfilId, rol };
+  if (rol === 'alumno') archivo.contenidoFamilia = limpiarContenidoFamilia(contenidoFamilia, { cursoId: perfilId }).contenido;
+  return archivo;
 }
 
 /**
@@ -176,6 +228,9 @@ export function validarArchivoAula(doc, { rolEsperado, perfilId }) {
   if (doc.rol !== rolEsperado) return `El archivo no lo escribió ${rolEsperado === 'adulto' ? 'el adulto' : 'el alumno'}.`;
   if (!textoNoVacio(doc.perfilId)) return 'El archivo del aula está dañado: no dice de qué perfil es.';
   if (perfilId !== undefined && doc.perfilId !== perfilId) return 'El archivo del aula es de otro perfil.';
+  if (doc.contenidoFamilia !== undefined && (rolEsperado !== 'alumno' || !doc.contenidoFamilia || typeof doc.contenidoFamilia !== 'object' || Array.isArray(doc.contenidoFamilia))) {
+    return 'El archivo del aula está dañado: el contenido de la familia no se entiende.';
+  }
   return null;
 }
 
@@ -217,40 +272,57 @@ const minuscula = (e) => String(e ?? '').trim().toLowerCase();
  *  - nada de `anyone`, `domain` ni `group`, ni otros correos, ni un editor en el aula.
  * @param permisos  { aula: [permiso], delAlumno: [permiso] } con la forma de Drive { id, type, role, emailAddress }
  */
-function permisosExtranos(invitadosMin, permisos) {
+function permisosExtranos(invitadosMin, permisos, enBibliotecaMin = invitadosMin) {
   const extranos = [];
-  const revisar = (carpeta, lista, rolesOk) => {
+  /** `rolesOk(email)`: los roles permitidos a ese correo en esa carpeta. */
+  const revisar = (carpeta, lista, correosOk, rolesOk) => {
     for (const p of Array.isArray(lista) ? lista : []) {
       if (p?.role === 'owner' && p?.type === 'user') continue;
       let motivo = null;
       if (p?.type !== 'user') motivo = p?.type === 'anyone' ? 'Cualquiera con el enlace' : `Acceso de tipo «${p?.type ?? 'desconocido'}»`;
-      else if (!invitadosMin.has(minuscula(p.emailAddress))) motivo = 'Un correo que no invitaste';
-      else if (!rolesOk.includes(p.role)) motivo = `Puede ${p.role === 'writer' ? 'cambiar' : 'tocar'} más de lo debido (${p.role})`;
+      else if (!correosOk.has(minuscula(p.emailAddress))) motivo = 'Un correo que no invitaste';
+      else if (!rolesOk(minuscula(p.emailAddress)).includes(p.role)) motivo = `Puede ${p.role === 'writer' ? 'cambiar' : 'tocar'} más de lo debido (${p.role})`;
       if (motivo) extranos.push({ carpeta, id: p?.id ?? null, tipo: p?.type ?? null, rol: p?.role ?? null, email: p?.emailAddress ?? null, motivo });
     }
   };
-  revisar('aula', permisos?.aula, ['reader']);
-  const yaDelAula = new Set(extranos.map((e) => e.id).filter(Boolean));
-  const enDelAlumno = [];
+  const soloLector = () => ['reader'];
+
+  // Ampliación 4: Biblioteca (lector para los invitados de cualquier curso), curso (lector para sus invitados) y
+  // `alumnos/<correo>/` (editor solo ese correo; los demás, como mucho lectores heredados del curso)
+  revisar('aula', permisos?.aula, invitadosMin, soloLector);
+  // Se compara por id y rol: el id de un permiso de Drive es el de la persona, igual en todas las carpetas
+  const clave = (e) => `${e.id}:${e.rol}`;
+  const yaDelAula = new Set(extranos.filter((e) => e.id).map(clave));
+  revisar('biblioteca', permisos?.biblioteca, enBibliotecaMin, soloLector);
+  const heredados = [];
   const antes = extranos.length;
-  revisar('del-alumno', permisos?.delAlumno, ['reader', 'writer']);
-  // un permiso extraño del aula se hereda a `del-alumno/`: es el mismo, se quita una sola vez desde el aula
-  for (const e of extranos.splice(antes)) if (!(e.id && yaDelAula.has(e.id))) enDelAlumno.push(e);
-  return [...extranos, ...enDelAlumno];
+  for (const [correo, lista] of Object.entries(permisos?.alumnos ?? {})) {
+    const dueno = minuscula(correo);
+    revisar(`alumnos/${dueno}`, lista, invitadosMin, (e) => (e === dueno ? ['reader', 'writer'] : ['reader']));
+  }
+  // Aulas versión 1 (transitorio): una sola carpeta `del-alumno/` donde cualquier invitado puede ser editor
+  revisar('del-alumno', permisos?.delAlumno, invitadosMin, () => ['reader', 'writer']);
+  // un permiso extraño del aula se hereda a las carpetas de dentro: es el mismo, se quita una sola vez desde el aula
+  for (const e of extranos.splice(antes)) if (!(e.id && yaDelAula.has(clave(e)))) heredados.push(e);
+  return [...extranos, ...heredados];
 }
 
 /**
  * Estado de cada correo invitado a un aula.
- * @param invitados    correos (cadenas) invitados al aula
- * @param permisos     { aula, delAlumno } permisos reales de las carpetas (si falta, no se revisa nada)
+ * @param invitados    correos (cadenas) invitados a este curso
+ * @param invitadosDeTodos  correos invitados a cualquier curso del adulto (pueden leer la Biblioteca)
+ * @param permisos     { biblioteca, aula, alumnos: { <correo>: [permiso] } } permisos reales de las carpetas
+ *                     (si falta, no se revisa nada; `delAlumno` es de las aulas versión 1)
  * @param dispositivos contenido de los `dispositivo-<id>.json` ya leídos
  * @param ahora        Date
  * @returns {{ alumnos: [{ email, estado, dispositivos: [{ ..., haceMs }] }], permisosExtranos, dispositivosInvalidos }}
  *   estado: 'invitado' (aún no entra) | 'conectado' | 'sin acceso' (ya no tiene permiso en el aula)
  */
-export function estadoDeAlumnos({ invitados = [], permisos = null, dispositivos = [], ahora = new Date() }) {
+export function estadoDeAlumnos({ invitados = [], invitadosDeTodos = null, permisos = null, dispositivos = [], ahora = new Date() }) {
   const lista = [...new Set(invitados.map(minuscula).filter(Boolean))];
   const invitadosMin = new Set(lista);
+  // La Biblioteca la leen los invitados de CUALQUIER curso (siempre incluye a los de este)
+  const enBibliotecaMin = new Set([...lista, ...(invitadosDeTodos ?? []).map(minuscula).filter(Boolean)]);
   const conAcceso = permisos
     ? new Set((permisos.aula ?? []).filter((p) => p?.type === 'user' && p.emailAddress).map((p) => minuscula(p.emailAddress)))
     : null;
@@ -272,5 +344,5 @@ export function estadoDeAlumnos({ invitados = [], permisos = null, dispositivos 
     if (conAcceso && !conAcceso.has(email)) estado = 'sin acceso';
     return { email, estado, dispositivos: suyos };
   });
-  return { alumnos, permisosExtranos: permisos ? permisosExtranos(invitadosMin, permisos) : [], dispositivosInvalidos };
+  return { alumnos, permisosExtranos: permisos ? permisosExtranos(invitadosMin, permisos, enBibliotecaMin) : [], dispositivosInvalidos };
 }
