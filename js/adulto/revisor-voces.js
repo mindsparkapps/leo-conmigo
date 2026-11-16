@@ -60,8 +60,9 @@ export function crearRevisorVoces() {
   let temporizador = null;
   let arrastrando = false;
   let malas = leerMalas();
-  let numeros = new Map(); // ruta -> número de la grabación en la lista completa
-  let totalGlobal = 0;
+  let numeros = new Map(); // ruta -> número en la lista «todas» (para completar marcas viejas)
+  let totalTodas = 0;
+  let modoActual = 'todas';
   let aislado = null; // audio de «Reproducir» de una marcada
 
   const preparar = el('button', { type: 'button', class: 'boton' }, 'Probar todas las anteriores');
@@ -81,7 +82,9 @@ export function crearRevisorVoces() {
 
   const etiqueta = (x) => `${x.tipo === 'frase' ? 'Frase' : x.tipo === 'sílaba' ? 'Sílaba' : 'Palabra'}: ${x.texto}`;
   const esMala = (x) => malas.some((m) => m.texto === etiqueta(x));
-  const textoMala = (m) => `${m.numero ? `N.º ${m.numero} de ${totalGlobal || '…'} · ` : ''}${m.texto}`;
+  // El número es el mismo que se ve arriba cuando suena en su lista: «139 de 280» (tramo) o «442 de 901» (todas)
+  const NOMBRE_LISTA = { todas: 'todas', tramo: 'tramo' };
+  const textoMala = (m) => `${m.numero ? `N.º ${m.numero} de ${m.total ?? (totalTodas || '…')} (${NOMBRE_LISTA[m.lista] ?? 'todas'}) · ` : ''}${m.texto}`;
 
   function pintarMalas() {
     listaMalas.replaceChildren(
@@ -176,7 +179,7 @@ export function crearRevisorVoces() {
     const x = items[actual];
     if (!x) return;
     const e = etiqueta(x);
-    malas = esMala(x) ? malas.filter((m) => m.texto !== e) : [...malas, { texto: e, ruta: x.ruta, numero: numeros.get(x.ruta) ?? null }];
+    malas = esMala(x) ? malas.filter((m) => m.texto !== e) : [...malas, { texto: e, ruta: x.ruta, numero: actual + 1, total: items.length, lista: modoActual }];
     guardarMalas(malas);
     pintarMalas();
     pintarActual();
@@ -195,11 +198,14 @@ export function crearRevisorVoces() {
       items = await cargarLista(modo);
       const completa = modo === 'todas' ? items : await cargarLista('todas');
       numeros = new Map(completa.map((x, i) => [x.ruta, i + 1]));
-      totalGlobal = completa.length;
+      totalTodas = completa.length;
+      modoActual = modo;
       // Las marcas viejas (solo texto) se completan buscando la grabación por su etiqueta
       malas = malas.map((m) => {
         const x = m.ruta ? null : completa.find((y) => etiqueta(y) === m.texto);
-        return { ...m, ruta: m.ruta ?? x?.ruta, numero: m.numero ?? numeros.get(m.ruta ?? x?.ruta) ?? null };
+        if (m.numero) return { ...m, ruta: m.ruta ?? x?.ruta };
+        const n = numeros.get(m.ruta ?? x?.ruta) ?? null;
+        return { ...m, ruta: m.ruta ?? x?.ruta, numero: n, total: n ? totalTodas : null, lista: 'todas' };
       });
       guardarMalas(malas);
       pintarMalas();
