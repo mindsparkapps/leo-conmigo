@@ -6,6 +6,7 @@
 // hoja 1, etc. Por eso el total debe ser par. «Páginas pasadas» (0..hojas) dice cuántas hojas están a la izquierda.
 
 import * as THREE from '../../vendor/three.module.min.js';
+import { sonidoPagina } from './sonidos.js';
 
 const ANCHO = 1.5; // media doble página (3:4 con ALTO)
 const ALTO = 2;
@@ -266,7 +267,10 @@ export function crearLibro3D(contenedor, caras, { alCambiar = () => {}, hayLamin
     }
     if (!sinAnimar) {
       const adelante = cambian.length > 0 && objetivo[cambian[0]] === 1;
-      (adelante ? cambian : [...cambian].reverse()).forEach((j, orden) => { espera[j] = Math.min(orden * RETRASO_HOJA_S, 0.6); });
+      (adelante ? cambian : [...cambian].reverse()).forEach((j, orden) => {
+        espera[j] = Math.min(orden * RETRASO_HOJA_S, 0.6);
+        if (orden < 6) sonidoPagina(espera[j], orden % 3); // una por hoja que gira (como mucho 6 seguidas)
+      });
     }
     if (sinAnimar) { foco = focoObjetivo; colocarLibro(); dibujar(); }
     else pedirCuadro();

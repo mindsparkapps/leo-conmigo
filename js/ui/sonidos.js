@@ -74,6 +74,47 @@ export function sonidoCorte(duracion = 0.45) {
   } catch { /* sin audio */ }
 }
 
+/**
+ * Una hoja que se pasa: un «fshh» de papel que sube y baja, con un roce suave al final.
+ * `retraso` (segundos) lo hace sonar más tarde, para pasar varias hojas seguidas.
+ */
+export function sonidoPagina(retraso = 0, variacion = 0) {
+  const c = ctx();
+  if (!c) return;
+  try {
+    const t = c.currentTime + Math.max(0, retraso);
+    const dur = 0.34;
+    const f = ruido(c, dur);
+    const filtro = c.createBiquadFilter();
+    filtro.type = 'bandpass';
+    filtro.Q.value = 0.8;
+    // el aire de la hoja: arranca grave, sube y se apaga (cada hoja un poco distinta)
+    filtro.frequency.setValueAtTime(900 + variacion * 120, t);
+    filtro.frequency.exponentialRampToValueAtTime(3800 + variacion * 200, t + dur * 0.55);
+    filtro.frequency.exponentialRampToValueAtTime(1800, t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.2, t + 0.07);
+    g.gain.exponentialRampToValueAtTime(0.08, t + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    f.connect(filtro).connect(g).connect(c.destination);
+    f.start(t);
+    f.stop(t + dur);
+    // el roce de la hoja al caer sobre la otra página
+    const r = ruido(c, 0.08);
+    const fr = c.createBiquadFilter();
+    fr.type = 'lowpass';
+    fr.frequency.value = 1400;
+    const gr = c.createGain();
+    gr.gain.setValueAtTime(0.0001, t + dur - 0.06);
+    gr.gain.exponentialRampToValueAtTime(0.1, t + dur - 0.04);
+    gr.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.04);
+    r.connect(fr).connect(gr).connect(c.destination);
+    r.start(t + dur - 0.06);
+    r.stop(t + dur + 0.04);
+  } catch { /* sin audio */ }
+}
+
 /** Una lámina que se desliza hacia afuera: «fiuuu» corto y un toque de papel. */
 export function sonidoLamina(indice = 0) {
   const c = ctx();
