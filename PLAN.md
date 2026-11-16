@@ -845,6 +845,151 @@ Reglas para la implementación:
 - Pasar la verificación completa de Google (con evaluación de seguridad CASA) o rediseñar con `drive.file` + Google Picker: ver la guía.
 - Optimización opcional (solo si la primera subida resulta muy lenta): las voces del catálogo (`origen: 'catalogo'`) podrían bajarse desde los mp3 de la app en vez de Drive, guardando su ruta en el medio.
 
+## Ampliación 4 — Fases 20 a 26: cursos, biblioteca común, contenido de la familia y limpieza de Drive (pedida el 2026-11-16, aprobada por el usuario el 2026-11-16 con los cambios de «Lo que agregó el usuario al aprobar»)
+
+> **Para Sonnet:** lee antes la Ampliación 3 completa (sobre todo «Quién puede tocar qué», que sigue siendo obligatoria y aquí se amplía), `js/core/aula.js`, `js/aulas.js`, `js/sync-aula.js`, `js/nube.js`, `js/nube-alumno.js`, `js/medios.js` y `js/core/borrar-perfil.js`. Una fase a la vez, con su lista de aceptación, `graphify update .` y un commit. Si algo choca con la tabla de seguridad, gana la tabla; si no está definido aquí, pregunta.
+
+### Qué pidió el usuario (al probar la Ampliación 3 con un celular real)
+1. **Los audios son iguales para todos y son de solo lectura:** no deben duplicarse por cada perfil ni por cada aula. No existen audios propios de un curso.
+2. **Las imágenes de los álbumes tampoco** deben duplicarse.
+3. **«Niño» y «alumno» es redundante:** un niño es un alumno. El **perfil** es algo como un **curso**: define qué se ve (palabras, frases, libros, álbumes, ajustes). **Varios alumnos** pueden usar el mismo perfil y **cada uno tiene su propio avance y sus propias estadísticas**.
+4. Si la **familia** del alumno configura en **su celular** audios, libros o álbumes propios, eso **no sube al Drive del adulto**: queda en el **Drive del alumno**. Al adulto solo le interesan **las estadísticas**.
+
+### Lo que agregó el usuario al aprobar (obligatorio; manda sobre cualquier otra parte de esta ampliación)
+1. **El celular del alumno sí descarga y guarda en local** todos los audios e imágenes de su perfil (también las voces del catálogo, las láminas, portadas, sobres y calcomanías de los álbumes) y todas las configuraciones del perfil (ajustes, álbumes, etapas, fondo), para funcionar sin conexión. «Sin copias» se refiere solo al **Drive del adulto**, nunca al almacenamiento del celular.
+2. **Las estadísticas del contenido de la familia sí le llegan al adulto**, a través de los archivos que el alumno escribe con su cuenta (su carpeta `alumnos/<correo>/`). El adulto **no** baja el material de la familia (fotos, voces) salvo que lo pida con un **botón** («Traer el material de la familia»), y puede **quitarlo de su celular** con otro botón sin borrarlo del Drive del alumno ni del celular del alumno.
+3. **Limpieza de lo redundante:** las sincronizaciones de las versiones anteriores dejaron copias repetidas en el Drive del adulto. El adulto debe poder **ver qué quedó** (qué archivos, cuántos, cuánto pesan, dónde) y **eliminarlo** con confirmación. Es la fase 26.
+4. **En el celular del alumno no hay un «modo familia» aparte:** el candado lleva a una **pantalla principal de adulto igual a la del adulto, pero con el menú reducido** (ver la fila «Menú adulto en el celular del alumno»).
+
+### Lo que se encontró al revisar el código
+- Los **audios del catálogo** (las ~900 voces en `data/voces/*.mp3`) **ya vienen dentro de la app** (están en `PRECACHE`). Aun así, `ponerVocesIniciales` (`js/medios.js`) los **copia como un medio nuevo por cada perfil**: por eso, al crear un perfil, la app «bajaba los audios otra vez», y después cada copia se sube a Drive (a la carpeta personal y a cada aula).
+- Los registros `medios` **no** tienen `perfilId` (son de todo el almacén); lo que se duplica son las **copias en Drive**: una en `appDataFolder` y otra en **cada** aula (`medio-*` dentro de `Alumno · <perfil>/`).
+- Hoy un aula es de **un** perfil, y todos los correos invitados escriben el **mismo** avance (el del perfil) en la misma carpeta `del-alumno/`: dos alumnos del mismo perfil mezclarían su progreso.
+
+### La idea
+```
+Mi unidad (del adulto)
+└── Leo Conmigo/                               carpeta de trabajo · NO se comparte con nadie
+    ├── Biblioteca/                            leoConmigo='biblioteca' · LECTOR: todos los alumnos invitados a algún curso
+    │   └── medio-<id>.<ext>                   UNA copia de cada imagen o audio propio del adulto (fotos, láminas, portadas, sobres, calcomanías, grabaciones)
+    ├── Curso · Lectura inicial/               leoConmigo='aula', perfilId · LECTOR: los alumnos de ESTE curso
+    │   ├── aula.json                          (versión 2) curso, dueño, apariencia, desvinculados, lista de alumnos
+    │   ├── adulto.json                        el contenido del curso (palabras, frases, libros, álbumes, ajustes del curso)
+    │   └── alumnos/
+    │       ├── victor@gmail.com/              leoConmigo='del-alumno' · EDITOR: solo victor@gmail.com
+    │       │   ├── alumno.json                avance y estadísticas de Víctor (también de lo de su familia) + la lista del contenido de la familia (sin medios)
+    │       │   ├── dispositivo-<id>.json
+    │       │   └── familia/medio-*            fotos y voces de la familia: los crea el celular de Víctor, son de SU cuenta (ocupan su espacio); el adulto los baja solo con un botón
+    │       └── sofia@gmail.com/               EDITOR: solo sofia@gmail.com
+    └── Curso · Grupo 2/ …
+
+Drive del alumno (su propia cuenta)
+└── appDataFolder (oculta, solo la app)        data.json + medio-*: TODO lo de su celular, incluido el contenido de su familia
+```
+- **Audios del catálogo: cero copias.** Un medio del catálogo guarda la **ruta** del mp3 de la app (`ruta: 'data/voces/mama.mp3'`) y **no** su blob en Drive. Hay **un solo** medio por ruta para todos los perfiles. Cualquier dispositivo, también el del alumno, lo toma de la app (que ya lo trae precacheado).
+- **Imágenes y grabaciones propias del adulto: una sola copia** en `Biblioteca/`, compartida en solo lectura con todos los alumnos invitados. Cada curso solo dice **qué** medios usa (`adulto.json`). Las aulas ya no guardan `medio-*`. (La copia personal en `appDataFolder` sigue igual: es el respaldo del adulto.)
+- **Perfil = curso.** El adulto edita el curso como hoy. Cada alumno invitado tiene en el adulto una **ficha de alumno** (un registro nuevo, ver «Datos») con su propio avance. Las pantallas Progreso, «Qué le cuesta» y Álbum del adulto se abren **por ficha** y leen el contenido del curso.
+- **El avance viaja en un solo sentido: del alumno al adulto.** El adulto ya no publica avance en el aula (solo contenido del curso). Si un alumno reinstala, recupera su avance desde **su propio Drive** (`appDataFolder` de su cuenta), no desde el del adulto.
+- **El celular del alumno guarda todo en local:** baja de la Biblioteca los medios de su curso, saca de la app las voces del catálogo y guarda sus blobs en su almacén, junto con la configuración del perfil. Juega sin conexión como hoy.
+- **Contenido de la familia:** en el celular del alumno, el candado abre la **pantalla principal de adulto con el menú reducido**, donde la familia agrega palabras, fotos, voces, frases, libros y álbumes **propios**. Se guarda en el celular y en el Drive del alumno (su `appDataFolder` y su carpeta `alumnos/<correo>/familia/`, que es de su cuenta). El contenido del curso se ve pero **no** se puede cambiar. Las estadísticas de todo (curso y familia) le llegan al adulto; el material de la familia, solo si el adulto lo pide.
+
+### Quién puede tocar qué (obligatorio; reemplaza la tabla de la Ampliación 3)
+| Carpeta / archivo | Adulto (dueño) | Alumno invitado (su cuenta) | Otro alumno | Cualquier otra persona |
+|---|---|---|---|---|
+| `Leo Conmigo/` y el resto del Drive del adulto | todo | **no la ve** | no la ve | no la ve |
+| `Biblioteca/` (`medio-*`) | todo | **solo lectura** | solo lectura (también es invitado) | no la ve |
+| `Curso · X/`: `aula.json`, `adulto.json` | todo | **solo lectura** si está invitado a X | no la ve si no está invitado a X | no la ve |
+| `Curso · X/alumnos/<su correo>/` (incluida `familia/`) | lee todo; **no** borra ni cambia los archivos del alumno | **editor** (solo la suya) | **no la ve** | no la ve |
+| `appDataFolder` del alumno | **no la ve** | todo (solo la app) | no la ve | no la ve |
+
+Reglas para la implementación (además de las de la Ampliación 3, que siguen):
+- `Biblioteca/` se comparte con `role: 'reader'` a cada correo invitado a **algún** curso, y ese permiso se quita cuando el correo ya no está en **ningún** curso. Nunca `writer`, nunca `anyone`.
+- En `Biblioteca/` solo van medios **del adulto**. Nunca la foto de un alumno ni nada que venga de un celular de alumno (los `medios` del alumno siguen sin aceptarse). **Consecuencia que acepta el usuario:** un alumno invitado puede, fuera de la app, abrir cualquier archivo de la Biblioteca (también los que usa otro curso); la app solo le muestra los de su curso. La ayuda y `privacidad.html` lo dicen.
+- `alumnos/<correo>/` se comparte como `writer` **solo** con ese correo (el permiso de lector del curso se hereda, y está bien). El adulto solo lee de cada subcarpeta los archivos cuyo dueño sea **ese** correo.
+- Del archivo del alumno, el adulto acepta solo `ALMACENES_DEL_ALUMNO`, los guarda bajo **la ficha de ese correo** (nunca bajo el curso ni bajo otra ficha) y descarta lo demás con aviso, como hoy.
+- El celular del alumno **nunca** publica en el aula contenido **del curso**, y el contenido de la familia solo en su propia subcarpeta: en `alumno.json` como la lista `contenidoFamilia` (palabras, frases, libros y álbumes con `origen: 'familia'`, sin blobs) y sus medios en `familia/`. El adulto guarda esa lista aparte (solo para mostrar estadísticas: nombres de palabras y frases), **nunca** la mezcla con el contenido del curso ni la publica en el aula. `filtrarEntrantes` y `armarArchivoAula` lo garantizan, con pruebas.
+- El adulto **nunca borra** archivos de `alumnos/<correo>/` (son del alumno): «Quitar de mi celular» solo borra la copia local del adulto.
+
+### Decisiones tomadas (por defecto; el usuario puede cambiarlas al aprobar)
+| Tema | Decisión |
+|---|---|
+| Nombres en la interfaz | **«Perfil»** sigue siendo la palabra para lo que el adulto configura (en «Alumnos» se aclara: «perfil (curso)»). **«Alumno»** es quien juega con su cuenta. Se quita «niño» donde se refiere al perfil (p. ej. «Alumno · Pedro» → «Curso · Pedro»; «el alumno de Pedro» → «los alumnos del perfil Pedro»). El modo de juego sigue llamándose «modo niño» en el código; en pantalla no cambia. |
+| Ficha de alumno | Almacén nuevo **`alumnos`**: `{ id, cursoId (= perfilId del curso), email, nombre, creado }`. Se crea sola cuando el alumno se conecta por primera vez (o al invitar). Los registros del alumno (`progresos`, `niveles`, `sesiones`, `respuestas`, `calcomanias`, `movimientos`, y su estado de perfil) se guardan en el adulto con **`perfilId = id de la ficha`**. Las claves armadas con el perfil (`progreso.id = perfil:elemento:actividad`, `nivel.id = perfil:actividad`) se rearman con el id de la ficha al importar. |
+| Pantallas del adulto con una ficha | Progreso, «Qué le cuesta», exportar para IA y Álbum reciben un «perfil de estadísticas» que puede ser un perfil o una ficha. Una función pura **`contenidoDe(perfilOFicha)`** devuelve el `perfilId` del que se leen palabras, frases y libros (para una ficha, su `cursoId`). No se duplica ningún cálculo (`core/estadisticas.js`, `core/analisis.js`, `core/album.js` siguen siendo los únicos). |
+| Qué es del curso y qué del alumno en el perfil | **Del curso** (lo pone el adulto, gana siempre en el alumno): nombre, foto del curso, `album` (tamaño, monedas, colecciones disponibles), y en `ajustes` todo lo que **no** es automático (`mayusculas`, `tamanoLetra`, `velocidadVoz`, `sonido`, `vibracion`, `intensidadCelebracion`, `altoContraste`, `habilitarL6`, `actividadesHabilitadas`, `etapasForzadas`, `etapasBloqueadas`, `avanceRapido`, `automaticos`). **Del alumno** (lo calcula su celular): `etapaActual`, los ajustes marcados como automáticos mientras estén en «Automático» (`ensayosPorSesion`, `maxOpciones`, `palabrasNuevasPorSesion`), el estado de sus álbumes (cuál está cargado) y su saldo (ya va en `movimientos`). Si el adulto pone un ajuste en «Lo elijo yo», su valor llega a todos los alumnos del curso. Fase 20 confirma esta lista recorriendo dónde se escribe el perfil (`autoajuste.js`, `album.js`, `albumes.js`, ajustes) y la deja en `core/curso.js` con pruebas. |
+| Avance de un alumno en el celular del adulto | El adulto **no** juega como un alumno: su celular juega el perfil (curso) con su propio avance, como hoy. Una ficha es de solo lectura (estadísticas). |
+| Varios dispositivos de un mismo alumno | Comparten su carpeta `alumnos/<correo>/`; cada dispositivo escribe su propio `dispositivo-<id>.json` y el `alumno.json` se fusiona como hoy (gana el `updatedAt` más reciente). |
+| Respaldo del alumno | El celular del alumno **sí** usa la sincronización personal (`appDataFolder` + `data.json`) **con la cuenta del alumno** (es la misma `js/sync.js` de la fase 7). Ahí va todo lo del celular: avance, contenido de la familia y sus medios. Los medios del curso (Biblioteca) y del catálogo **no** se suben ahí (se marcan como «de otro origen»). Esto cambia la regla de la Ampliación 3 «en el dispositivo del alumno no se usa `appDataFolder`». |
+| Menú adulto en el celular del alumno | El candado (mantener 3 s y la suma) lleva a la **misma pantalla principal de adulto** (`#/adulto`, el panel de siempre) con el **menú reducido**. Una lista blanca en `acceso.js` dice qué rutas `#/adulto/*` existen en el rol alumno: **sí** Palabras, Frases, Libros, Álbumes (editores de siempre; lo del curso se ve con la etiqueta «Del curso» y sin editar ni borrar; lo nuevo se guarda con `origen: 'familia'`), Progreso y «Qué le cuesta» del alumno, Ayuda y «Volver al juego». **No**: Alumnos, Cuenta (ni iniciar otra sesión ni «Convertir»), Ajustes del perfil, Apariencia, Copia de seguridad, Perfiles (crear, cambiar o borrar). Cualquier otra ruta adulta lleva al panel reducido. Esto cambia la regla «el alumno nunca sale del modo alumno» de la Ampliación 3: **sale solo con el candado, y solo a este panel reducido**. |
+| Contenido de la familia en el motor | Sus registros llevan `origen: 'familia'` y el `perfilId` del curso (así el motor los usa sin cambios). Al fusionar el `adulto.json` del curso, nunca se borran ni se pisan. |
+| Estadísticas del contenido de la familia | **Sí le llegan al adulto**: el alumno publica todo su avance (curso y familia) y la lista `contenidoFamilia` (sin medios), así Progreso y «Qué le cuesta» muestran el nombre de cada palabra o frase de la familia, marcada «De la familia». En el adulto esa lista se guarda en un almacén aparte (`contenidoFamilia`, con `fichaId`), nunca en `palabras`/`frases`/`libros`. |
+| Material de la familia en el adulto | No se baja solo. En la ficha del alumno: **«Traer el material de la familia»** baja sus `familia/medio-*` (para ver las fotos y oír las voces en las estadísticas) y **«Quitarlo de mi celular»** borra solo esas copias locales del adulto. Ninguno de los dos toca el Drive ni el celular del alumno. Ese material nunca entra a la sincronización personal del adulto ni a la Biblioteca. |
+| Medios en el celular del alumno | Todo en local: los de la Biblioteca que usa su curso, los del catálogo (blob sacado de la app) y los de su familia. «Sin copias» vale solo para el Drive del adulto. |
+| Aulas ya creadas con la versión 0.36 | Se **actualizan solas** desde el celular del adulto la primera vez que abre «Alumnos» con la versión nueva: la app crea `Biblioteca/`, **mueve** (sin volver a subir) los `medio-*` del aula a la Biblioteca, quita los repetidos, crea `alumnos/<correo>/` por cada invitado, pasa los datos de `del-alumno/` a la ficha de cada dueño y deja `aula.json` en versión 2. Un celular de alumno con versión vieja que vea un `aula.json` v2 muestra «Actualiza la aplicación» (ya lo hace `validarAula` con una versión más nueva). |
+
+### Datos
+```js
+medio   { …lo de hoy, ruta? }        // ruta = mp3 de la app (catálogo): sin blob en Drive, uno por ruta para todos los perfiles
+alumno  { id, cursoId, email, nombre, creado, updatedAt, deleted }   // almacén nuevo `alumnos` (sube VERSION de la base)
+palabra / frase / libro / calcomaniaPropia / premio / medio   { …, origen?: 'familia' }   // solo en el celular del alumno
+contenidoFamilia { id, fichaId, almacen, registro, updatedAt, deleted }   // almacén nuevo en el adulto: lo que la familia agregó (sin blobs), solo para las estadísticas
+alumno.json   { …lo de hoy, contenidoFamilia: { palabras, frases, libros, calcomaniasPropias, premios } }
+aula.json v2  { formato, version: 2, perfilId, nombre, dueno, apariencia, desvinculados, alumnos: [{ email, carpetaId }], bibliotecaId }
+```
+
+### Fase 20 — Núcleo puro: curso, fichas y origen (sin red ni DOM)
+- **`core/curso.js`** (nuevo, con pruebas): `CAMPOS_DEL_CURSO` / `CAMPOS_DEL_ALUMNO` del perfil, `combinarPerfil(curso, propio)` (lo que ve el celular del alumno) y `perfilPublicable(perfil)` (lo que el alumno manda: solo sus campos); `nuevaFicha({ cursoId, email })`; `aFicha(almacenes, { cursoId, fichaId })` (cambia `perfilId` y rearma los ids de `progresos` y `niveles`); `contenidoDe(perfilOFicha)`; `separarFamilia(almacenes)` → `{ delCurso, contenidoFamilia }` (lo que el alumno publica como contenido de la familia, sin blobs) y la validación de `contenidoFamilia` al llegar al adulto.
+- **`core/aula.js`:** formato v2 de `aula.json` (con `alumnos` y `bibliotecaId`; la v1 se sigue leyendo para migrar), `ALMACENES_SOLO_ADULTO` ya no incluye `medios` en el aula (van a la Biblioteca), `filtrarEntrantes` descarta todo registro con `origen: 'familia'` fuera de `contenidoFamilia` (en ambas direcciones), y `armarArchivoAula({ rol: 'adulto' })` ya no publica almacenes del alumno.
+- **`estadoDeAlumnos`** con la estructura nueva: permisos de `Biblioteca/` (lector para invitados de cualquier curso), del curso y de cada `alumnos/<correo>/` (editor solo ese correo; otro editor = «Permiso extraño»).
+- **Acepta si:** pruebas de la división de campos (un cambio automático del alumno no lo pisa un ajuste manual del curso y al revés), de `aFicha` (dos alumnos del mismo curso no chocan en `progresos` ni `niveles`), de `separarFamilia` (el avance de una palabra de la familia sí se publica; la palabra viaja solo en `contenidoFamilia`, sin blob; nunca entra a `palabras` del adulto), del filtro de `origen: 'familia'`, de la lectura de `aula.json` v1 y v2, y de los permisos extraños nuevos. `npm test` en verde.
+
+### Fase 21 — Audios del catálogo sin copias
+- `ponerVocesIniciales` y la puesta «una sola vez por perfil» buscan primero un medio con esa `ruta`; si existe, lo **reutilizan** (sin bajar nada); si no, lo crean **una vez** con `ruta` y `origen: 'catalogo'`. El blob local se sigue guardando para funcionar sin red, pero se puede volver a sacar de la app.
+- **Sincronización personal (`js/sync.js`) y del aula:** un medio con `ruta` viaja solo como registro (sin `medio-*`). Al recibirlo, el dispositivo toma el blob de la app (`fetch(ruta)`, que sirve el service worker) y **lo guarda en su almacén** (el celular del alumno tiene todo en local); si falla, queda la voz sintética y se reintenta en la siguiente sincronización.
+- **Migración (una vez, en el adulto):** los medios `origen: 'catalogo'` sin `ruta` se emparejan con el catálogo por el texto de su palabra; los repetidos se unen en uno (se reescriben `medioAudioId` de las palabras) y los sobrantes se borran del almacén local (borrado suave). **Sus archivos en Drive no se borran solos:** quedan para la pantalla de limpieza de la fase 26, donde el adulto los ve y decide.
+- **Acepta si:** crear un perfil nuevo no baja ni crea audios que ya existían (prueba con el almacén en memoria); dos perfiles comparten el mismo medio de «mamá»; tras la migración ningún medio nuevo del catálogo se sube a Drive (Drive falso); un alumno recibe la voz sin que exista su `medio-*` en Drive y la tiene guardada en local (juega sin red).
+
+### Fase 22 — Biblioteca común en Drive
+- `aulas.js`: `asegurarBiblioteca()` (dentro de `Leo Conmigo/`, privada salvo los lectores invitados), compartir/quitar el lector de la Biblioteca al invitar/quitar acceso (según los cursos de cada correo), y revisión de permisos extraños también en la Biblioteca.
+- `sync-aula.js`: el adulto sube a la Biblioteca los medios que usan sus cursos habilitados y que no estén ya ahí (una sola vez por medio, aunque lo usen varios cursos); borra de la Biblioteca un medio solo cuando ya no lo usa **ningún** curso. El alumno baja de la Biblioteca solo los medios que usa su curso.
+- **Migración de aulas v1:** mover los `medio-*` del aula a la Biblioteca con `files.update` (`addParents` / `removeParents`, sin volver a subir) y dejar `aula.json` en v2 (ver «Decisiones»). Los que ya estaban en la Biblioteca (repetidos) **no se borran solos**: quedan para la fase 26.
+- **Acepta si** (Drive falso con varias cuentas): dos cursos que usan la misma foto la tienen **una** vez en la Biblioteca; A (curso 1) y B (curso 2) bajan su contenido; A no puede escribir en la Biblioteca (403); quitar a A de su único curso le quita también la Biblioteca; un aula v1 con datos queda migrada sin volver a subir medios y sin perder lo que mandó el alumno.
+
+### Fase 23 — Varios alumnos por perfil (fichas)
+- `aulas.js` / `sync-aula.js`: `alumnos/<correo>/` por invitado (editor solo él); el adulto lee cada subcarpeta y guarda lo del alumno bajo su ficha (`aFicha`); la ficha se crea al invitar y se completa al conectarse. El alumno escribe en su subcarpeta, publica solo `perfilPublicable` y sus almacenes, y combina el perfil del curso con el suyo (`combinarPerfil`).
+- **«Alumnos» (`js/adulto/alumnos.js`):** por cada perfil (curso), su lista de alumnos, cada uno con estado, dispositivos, **Ver estadísticas** (abre Progreso de **su ficha**), Quitar acceso y Desvincular. Textos sin «niño» para el perfil.
+- **Progreso, «Qué le cuesta», exportar y Álbum del adulto:** aceptan una ficha (con `contenidoDe`) y muestran arriba de quién son («Víctor · perfil Lectura inicial»). El selector de perfil del adulto **no** mezcla fichas con perfiles: a las fichas se llega desde «Alumnos».
+- `borrarPerfil` también borra las fichas del curso y sus registros; quitar acceso **no** borra la ficha (las estadísticas se quedan).
+- **Acepta si**, en el navegador con dos orígenes y la nube simulada: dos alumnos del mismo perfil juegan y sus estadísticas aparecen **separadas** en el adulto; un cambio de ajuste del curso llega a los dos sin pisar su etapa ni sus ajustes automáticos; el alumno A no puede leer ni escribir la carpeta de B (403).
+
+### Fase 24 — Menú adulto reducido en el celular del alumno, contenido de la familia y respaldo en su Drive
+- **Candado en el celular del alumno:** vuelve a dibujarse; al pasarlo abre **el mismo panel `#/adulto`** con el menú reducido (lista blanca de rutas del rol alumno en `acceso.js`; ver «Menú adulto en el celular del alumno»). Los editores de palabras, frases, libros y álbumes se **reutilizan**: lo del curso se ve con la etiqueta «Del curso» y sin editar ni borrar; lo nuevo se guarda con `origen: 'familia'`. Una ruta adulta fuera de la lista lleva al panel reducido.
+- **Publicar lo de la familia:** el alumno publica en `alumno.json` todo su avance y `contenidoFamilia` (sin blobs), y sube los medios de la familia a `alumnos/<correo>/familia/` (archivos de su cuenta).
+- **En el adulto:** `contenidoFamilia` se guarda aparte por ficha; Progreso y «Qué le cuesta» de la ficha muestran esas palabras y frases con la marca «De la familia». En la ficha, los botones **«Traer el material de la familia»** (baja `familia/medio-*` a un almacén local aparte, fuera de la sincronización personal) y **«Quitarlo de mi celular»** (borra solo esas copias locales; confirma; no toca Drive).
+- **Respaldo:** en el celular del alumno corre también la sincronización personal (`js/sync.js`) con su cuenta (`drive.appdata`, que ya pidió al entrar con el permiso del aula; si no, se pide desde el panel reducido). Sube todo lo del celular **menos** los medios de la Biblioteca y del catálogo. Al reinstalar y entrar con su Gmail: primero baja su `appDataFolder` (su avance y lo de la familia) y después el curso.
+- **Acepta si:** la familia agrega una palabra con foto y voz y el alumno la juega; sus **estadísticas sí** aparecen en la ficha del adulto con el nombre de la palabra y la marca «De la familia»; su foto y su voz **no** están en el celular del adulto hasta tocar «Traer el material de la familia», y desaparecen de él con «Quitarlo de mi celular» sin cambiar nada en el Drive del alumno (Drive falso); nada de la familia entra a `palabras` del adulto, a su `appDataFolder` ni a la Biblioteca; el contenido del curso no se puede editar desde el panel reducido; las rutas Alumnos, Cuenta, Ajustes, Apariencia, Copia de seguridad y Perfiles no se abren en el rol alumno; borrar la base del alumno y volver a entrar recupera su avance y lo de la familia.
+
+### Fase 25 — Migración real, ayuda y textos
+- Actualización automática de aulas v1 (fase 22) probada con un aula creada por la 0.36 en la nube simulada, con un alumno ya conectado.
+- Ayuda del adulto, `privacidad.html`, «Acerca de», `README.md` y `docs/google-cloud.md` con la Biblioteca, los cursos con varios alumnos, el menú adulto reducido del celular del alumno, el contenido de la familia (sus estadísticas llegan; su material solo con el botón) y el Drive del alumno (y el aviso de que un alumno invitado puede abrir cualquier archivo de la Biblioteca fuera de la app). Repaso de textos: «perfil» y «alumno», sin «niño» para el perfil.
+- `PRECACHE` y `VERSION` al día; estado en `CLAUDE.md`.
+- **Acepta si:** `npm test` en verde, la prueba de punta a punta (dos alumnos en un curso, uno con contenido de la familia) repetida tras `location.reload()` y con el service worker activo, y la ayuda revisada.
+
+### Fase 26 — Ver y limpiar lo redundante en el Drive del adulto
+- **Pantalla nueva** en el modo adulto: **«Espacio en Drive»** (en Cuenta, solo con sesión iniciada). Botón «Revisar mi Drive»: recorre `appDataFolder` y `Leo Conmigo/` (Biblioteca y aulas) **solo leyendo**, y muestra por grupo cuántos archivos son, cuánto pesan (`size` de Drive) y dónde están:
+  - **Voces del catálogo copiadas:** `medio-*` de medios con `origen: 'catalogo'` (o unidos en la fase 21) en `appDataFolder`, en aulas o en la Biblioteca. Ya vienen en la app.
+  - **Copias repetidas:** el mismo medio (mismo `id`, o mismo contenido: igual `md5Checksum` y tamaño) en más de un lugar (p. ej. un aula v1 y la Biblioteca).
+  - **Medios sin uso:** `medio-*` cuyo medio ya no existe, está borrado o no lo usa ningún perfil ni curso.
+  - **Restos de aulas viejas:** `medio-*` que quedaron dentro de un aula v1 después de migrar.
+- Cada grupo se puede abrir para ver la lista (nombre, lugar, tamaño) y tiene su botón **«Eliminar estos archivos»**, con una confirmación que dice cuántos archivos, cuánto espacio y que **no se puede deshacer**. Se borran con la API de Drive solo los archivos de esa lista, y nunca: archivos de `alumnos/<correo>/` (son del alumno), `data.json`, `adulto.json`, `aula.json`, ni un medio que hoy use algún perfil, curso o alumno (se vuelve a comprobar justo antes de borrar). Al terminar, se muestra cuánto se liberó.
+- La lógica que clasifica los archivos es pura (`core/limpieza.js`, con pruebas): recibe las listas de Drive y los registros del almacén y devuelve los grupos.
+- **Acepta si:** con el Drive falso lleno como lo habría dejado la 0.36 (voces del catálogo en `appDataFolder` y en un aula, un aula v1 migrada, un medio borrado con su archivo aún en Drive), la pantalla muestra cada grupo con su número y tamaño; eliminar un grupo borra exactamente esos archivos y nada más; un medio en uso o un archivo de un alumno nunca aparece en ningún grupo; después de limpiar, la sincronización personal y la del aula siguen funcionando y el alumno sigue jugando.
+
+### Fuera de alcance (preguntar antes)
+- Que el adulto pase contenido de la familia a un curso, o que la familia lo comparta con otros alumnos.
+- Que el adulto juegue «como» un alumno o edite el avance de una ficha.
+- Audios propios por curso (el usuario dijo que no existen).
+
 ---
 
 ## 10. Notas para el desarrollo
