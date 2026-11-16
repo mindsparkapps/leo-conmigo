@@ -8,7 +8,12 @@
 import { CLIENT_ID } from './config.js';
 
 export const ALCANCES = 'https://www.googleapis.com/auth/drive.appdata openid email profile';
-const URL_GSI = 'https://accounts.google.com/gsi/client';
+/** Para el aula (alumnos): los de siempre más el Drive normal, que es donde viven las carpetas compartidas. Se pide aparte. */
+export const ALCANCE_DRIVE = 'https://www.googleapis.com/auth/drive';
+export const ALCANCES_AULA = `${ALCANCES} ${ALCANCE_DRIVE}`;
+export const MENSAJE_ACCESO_DENEGADO = 'Esta cuenta no tiene permiso para usar la app. Revisa la opción «Público» en Google Cloud (docs/google-cloud.md).';
+const CLAVE_PERMISO_AULAS = 'leo_permiso_aulas';
+const URL_GSI ='https://accounts.google.com/gsi/client';
 const URL_USUARIO = 'https://www.googleapis.com/oauth2/v3/userinfo';
 const CLAVE_CUENTA = 'leo_cuenta_google';
 const MARGEN_MS = 60_000; // se renueva un minuto antes de que venza
@@ -55,6 +60,16 @@ function guardarCuenta(almacenamiento, cuenta) {
   } catch { /* sin almacenamiento: el adulto tendrá que iniciar sesión cada vez */ }
 }
 
+function leerPermisoAulas(almacenamiento) {
+  try { return almacenamiento?.getItem(CLAVE_PERMISO_AULAS) === '1'; } catch { return false; }
+}
+
+function guardarPermisoAulas(almacenamiento, concedido) {
+  try {
+    if (concedido) almacenamiento?.setItem(CLAVE_PERMISO_AULAS, '1'); else almacenamiento?.removeItem(CLAVE_PERMISO_AULAS);
+  } catch { /* sin almacenamiento: se vuelve a comprobar al pedir el permiso */ }
+}
+
 export function crearAuth({
   clienteId = CLIENT_ID,
   cargar = cargarGoogle,
@@ -69,6 +84,8 @@ export function crearAuth({
   let cliente = null;
   let pendiente = null; // { resolver, rechazar, reloj } de la petición de token en curso
   let renovando = null;
+  let permisoAulas = leerPermisoAulas(almacenamiento); // ¿esta cuenta concedió el alcance `drive` del aula?
+  let ultimaPeticionAula = false;
 
   const resolver = (valor) => { const p = pendiente; pendiente = null; if (p) { clearTimeout(p.reloj); p.resolver(valor); } };
   const rechazar = (error) => { const p = pendiente; pendiente = null; if (p) { clearTimeout(p.reloj); p.rechazar(error); } };
@@ -83,7 +100,15 @@ export function crearAuth({
         if (respuesta?.access_token) {
           token = respuesta.access_token;
           venceEn = ahora() + Math.max(0, Number(respuesta.expires_in ?? 3600)) * 1000;
+          // ¿vino con el permiso del aula? (el usuario puede desmarcar la casilla en la ventana de Google)
+          const g = ventana.google?.accounts?.oauth2;
+          const concedido = typeof g?.hasGrantedAllScopes === 'function'
+            ? g.hasGrantedAllScopes(respuesta, ALCANCE_DRIVE)
+            : String(respuesta.scope ?? '').split(' ').includes(ALCANCE_DRIVE);
+          if (concedido || ultimaPeticionAula) { permisoAulas = concedido; guardarPermisoAulas(almacenamiento, concedido); }
           resolver(token);
+        } else if (respuesta?.error === 'access_denied') {
+          rechazar(new ErrorCuenta(MENSAJE_ACCESO_DENEGADO, { vuelveAIniciar: true }));
         } else {
           rechazar(new ErrorCuenta('Google no entregó el permiso. Inténtalo de nuevo.', { vuelveAIniciar: true }));
         }
@@ -147,7 +172,9 @@ export function crearAuth({
       const guardada = leerCuenta(almacenamiento);
       if (!guardada) throw new ErrorCuenta('No hay una cuenta de Google vinculada.', { vuelveAIniciar: true });
       if (!renovando) {
-        renovando = pedirToken({ prompt: '', hint: guardada.email }, { espera: esperaRenovar })
+        const opciones = { prompt: '', hint: guardada.email };
+        if (permisoAulas) opciones.scope = ALCANCES_AULA; // quien ya dio el permiso del aula lo conserva al renovar
+        renovando = pedirToken(opciones, { espera: esperaRenovar })
           .catch((error) => {
             token = null;
             venceEn = 0;
@@ -156,6 +183,51 @@ export function crearAuth({
           .finally(() => { renovando = null; });
       }
       return renovando;
+    },
+
+    /** ¿La cuenta dio el permiso del aula (Drive)? */
+    tienePermisoAulas: () => permisoAulas,
+
+    /**
+     * Pide el permiso del aula (alcance `drive`) aparte y solo cuando hace falta; debe llamarse desde un toque.
+     * Si la persona desmarca la casilla en la ventana de Google, lanza un error que lo explica.
+     */
+    async pedirPermisoAulas() {
+      ultimaPeticionAula = true;
+      try {
+        await pedirToken({ prompt: permisoAulas ? '' : 'consent', scope: ALCANCES_AULA, include_granted_scopes: true });
+      } finally {
+        ultimaPeticionAula = false;
+      }
+      if (!permisoAulas) {
+        throw new ErrorCuenta('Para usar alumnos hay que marcar la casilla que permite ver y crear las carpetas de Leo Conmigo en Drive. Inténtalo de nuevo y déjala marcada.', { vuelveAIniciar: true });
+      }
+      const guardada = leerCuenta(almacenamiento);
+      if (!guardada) {
+        const usuario = await cargarUsuario();
+        guardarCuenta(almacenamiento, usuario);
+      }
+      return true;
+    },
+
+    /**
+     * Para el dispositivo del alumno: renueva el token al tocar ▶. En silencio por defecto; con `interactiva`
+     * (más de 24 h sin sincronizar) espera a que quien acompaña al niño elija la cuenta en la ventana de Google.
+     */
+    async renovarAlTocar({ interactiva = false } = {}) {
+      if (token && ahora() < venceEn - MARGEN_MS) return token;
+      const guardada = leerCuenta(almacenamiento);
+      if (!guardada) throw new ErrorCuenta('No hay una cuenta de Google vinculada.', { vuelveAIniciar: true });
+      if (!interactiva) return this.obtenerToken(true);
+      const opciones = { prompt: '', hint: guardada.email };
+      if (permisoAulas) opciones.scope = ALCANCES_AULA;
+      try {
+        return await pedirToken(opciones);
+      } catch (error) {
+        token = null;
+        venceEn = 0;
+        throw error;
+      }
     },
 
     /** Cierra la sesión: revoca el token y olvida la cuenta en este dispositivo. */

@@ -226,6 +226,12 @@ test('estadoDeAlumnos: `anyone`, un writer en el aula, otro correo o un grupo so
   assert.ok(r.permisosExtranos.find((p) => p.id === 'a1').motivo.includes('enlace'));
 });
 
+test('estadoDeAlumnos: un permiso extraño del aula heredado en del-alumno se cuenta una sola vez', () => {
+  const anyone = { id: 'anyoneWithLink', type: 'anyone', role: 'reader' };
+  const r = estadoDeAlumnos({ invitados: ['pedro@gmail.com'], permisos: { aula: [dueno, anyone], delAlumno: [dueno, anyone] }, ahora });
+  assert.deepEqual(r.permisosExtranos.map((p) => p.carpeta), ['aula']);
+});
+
 test('estadoDeAlumnos: sin permisos leídos no inventa extraños ni quita el acceso', () => {
   const r = estadoDeAlumnos({ invitados: ['pedro@gmail.com'], ahora });
   assert.equal(r.alumnos[0].estado, 'invitado');

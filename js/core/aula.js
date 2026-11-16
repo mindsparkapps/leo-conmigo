@@ -230,8 +230,13 @@ function permisosExtranos(invitadosMin, permisos) {
     }
   };
   revisar('aula', permisos?.aula, ['reader']);
+  const yaDelAula = new Set(extranos.map((e) => e.id).filter(Boolean));
+  const enDelAlumno = [];
+  const antes = extranos.length;
   revisar('del-alumno', permisos?.delAlumno, ['reader', 'writer']);
-  return extranos;
+  // un permiso extraño del aula se hereda a `del-alumno/`: es el mismo, se quita una sola vez desde el aula
+  for (const e of extranos.splice(antes)) if (!(e.id && yaDelAula.has(e.id))) enDelAlumno.push(e);
+  return [...extranos, ...enDelAlumno];
 }
 
 /**
