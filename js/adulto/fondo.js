@@ -3,6 +3,7 @@
 import { el } from '../ui/dom.js';
 import { cabecera, campo } from '../ui/adulto.js';
 import { FONDO_POR_DEFECTO, TEXTURAS, aplicarFondo, guardarFondo, leerFondo } from '../ui/fondo.js';
+import { publicarFondoEnAulas } from '../nube.js';
 
 export const titulo = 'Fondo · Leo Conmigo';
 
@@ -12,6 +13,7 @@ export function montar(contenedor) {
     fondo = { ...fondo, ...parte };
     guardarFondo(fondo);
     aplicarFondo(fondo);
+    publicarFondoEnAulas(leerFondo()); // los alumnos lo reciben en su aula
   };
 
   const color = el('input', { type: 'color', value: fondo.color, 'aria-label': 'Color del fondo' });
@@ -34,6 +36,7 @@ export function montar(contenedor) {
     fondo = { ...FONDO_POR_DEFECTO };
     guardarFondo(fondo);
     aplicarFondo(fondo);
+    publicarFondoEnAulas(leerFondo());
     color.value = fondo.color;
     alpha.value = Math.round(fondo.alpha * 100);
     alphaValor.textContent = `${alpha.value} %`;
@@ -48,7 +51,7 @@ export function montar(contenedor) {
       el(
         'div',
         { class: 'panel' },
-        el('p', { class: 'ayuda' }, 'Los cambios se ven al instante y valen para este dispositivo. La textura siempre es en blanco y negro: se mezcla con el color que elijas.'),
+        el('p', { class: 'ayuda' }, 'Los cambios se ven al instante y valen para este dispositivo y para los alumnos habilitados (lo reciben en su aula). La textura siempre es en blanco y negro: se mezcla con el color que elijas.'),
         campo('Color', color),
         campo('Transparencia de la textura', el('div', { class: 'fila' }, alpha, alphaValor), '0 % no se ve; 100 % se ve completa.'),
         el('h2', {}, 'Textura'),

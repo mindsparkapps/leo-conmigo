@@ -4,6 +4,9 @@
 import { el } from '../ui/dom.js';
 import { cabecera } from '../ui/adulto.js';
 import { datosMuyGrandes } from '../core/sync.js';
+import { obtenerStore } from '../contexto.js';
+import { textoConfirmarConversion } from '../core/dispositivo-alumno.js';
+import { convertirEnDispositivoDeAlumno } from '../nube-alumno.js';
 import {
   FASES, cerrarSesion, clasePunto, iniciarSesion, nubeConfigurada, observarNube, refrescarEstado, sincronizarAhora, textoDeEstado,
 } from '../nube.js';
@@ -94,7 +97,29 @@ export function montar(contenedor) {
     );
   };
 
-  const dejarDeObservar = observarNube(pintar);
+  // Convertir este dispositivo en celular de alumno: borra todo lo suyo (con una confirmación clara)
+  let ultimaFase = null;
+  contenedor.querySelector('.vista-adulto').append(
+    el(
+      'div',
+      { class: 'panel' },
+      el('h2', {}, 'Celular de un alumno'),
+      el('p', { class: 'ayuda' }, 'Si este dispositivo va a ser del niño (no tuyo), conviértelo: se borra todo lo que hay aquí y entra con el Gmail del alumno para bajar su aula. El alumno no ve nada de configuración.'),
+      el('div', { class: 'acciones' }, el('button', {
+        type: 'button',
+        class: 'boton secundario',
+        onclick: async () => {
+          const store = await obtenerStore();
+          const sinCuenta = !ultimaFase || ultimaFase === FASES.SIN_CUENTA || ultimaFase === FASES.SIN_CONFIGURAR;
+          const pendientes = sinCuenta ? 0 : (await store.pendientesSync()).length;
+          if (!globalThis.confirm(textoConfirmarConversion({ pendientes, sinCuenta }))) return;
+          await convertirEnDispositivoDeAlumno();
+        },
+      }, 'Convertir este dispositivo en celular de alumno')),
+    ),
+  );
+
+  const dejarDeObservar = observarNube((e) => { ultimaFase = e.fase; pintar(e); });
   if (nubeConfigurada()) refrescarEstado();
   return () => dejarDeObservar();
 }

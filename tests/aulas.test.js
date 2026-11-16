@@ -373,6 +373,26 @@ test('desvincular un dispositivo lo anota en aula.json y ese dispositivo deja de
   assert.equal((await otro.sincronizarComoAlumno({ aula, email: A })).desvinculado, false);
 });
 
+test('cambiar el fondo lo reescribe en aula.json y A lo recibe; si no cambió no se reescribe', async () => {
+  const m = await montar();
+  const { aula1 } = await habilitar(m);
+  const aula = await miAula(m.a);
+  const fondo = { color: '#ffeedd', alpha: 0.3, textura: 'agua' };
+  await m.a.aulas.sincronizarComoAlumno({ aula, email: A });
+  assert.equal(await m.a.aulas.huboCambiosDelAdulto(aula), false);
+
+  await m.adulto.cambiarApariencia('P1', fondo);
+  assert.deepEqual(m.nube.json(m.nube.porNombre('aula.json', aula1.carpetaId).id).apariencia.fondo, fondo);
+  assert.equal(await m.a.aulas.huboCambiosDelAdulto(aula), true, 'el alumno detecta que aula.json cambió');
+  const r = await m.a.aulas.sincronizarComoAlumno({ aula, email: A });
+  assert.deepEqual(r.aula.apariencia.fondo, fondo);
+
+  m.nube.reiniciarPeticiones();
+  await m.adulto.cambiarApariencia('P1', fondo);
+  assert.equal(m.nube.peticionesDe(ADULTO).filter((p) => p.metodo !== 'GET').length, 0, 'mismo fondo: no se escribe nada');
+  assert.equal(await m.a.aulas.huboCambiosDelAdulto(aula), false);
+});
+
 test('dos cuentas del mismo alumno (tablet y celular) comparten el aula y el adulto las ve a las dos', async () => {
   const m = await montar();
   await habilitar(m);

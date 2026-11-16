@@ -41,6 +41,25 @@ export function elegirAula(aulas, email) {
 /** Un dispositivo solo se convierte en dispositivo de alumno si no tiene perfiles. */
 export const dispositivoVacio = (perfiles) => !(perfiles ?? []).some((p) => !p.deleted);
 
+/**
+ * El texto de la confirmación de «Convertir este dispositivo en celular de alumno» (borra todo lo del dispositivo).
+ * @param pendientes  cambios que aún no se subieron a la nube personal
+ */
+export function textoConfirmarConversion({ pendientes = 0, sinCuenta = false } = {}) {
+  const lineas = [
+    '¿Convertir este dispositivo en celular de alumno?',
+    '',
+    'Se BORRARÁN de este dispositivo todos los perfiles, palabras, fotos, voces y progreso. No se puede deshacer.',
+  ];
+  if (sinCuenta) {
+    lineas.push('', '¡Atención! Este dispositivo no está sincronizado con ninguna cuenta de Google: nada de lo que hay aquí está guardado en otro lado.');
+  } else if (pendientes > 0) {
+    lineas.push('', `¡Atención! Hay ${pendientes} ${pendientes === 1 ? 'cambio' : 'cambios'} que todavía NO se subieron a tu cuenta de Google: si sigues, se perderán.`);
+  }
+  lineas.push('', 'Antes, haz una copia de seguridad (Copia de seguridad) o comprueba que todo esté sincronizado en «Cuenta».', '', 'Después, el dispositivo pedirá entrar con el Gmail del alumno.');
+  return lineas.join('\n');
+}
+
 /** ¿El adulto desvinculó este dispositivo? (`aula.json` lista los `idDispositivo` desvinculados). */
 export const estaDesvinculado = (aulaJson, idDispositivo) => Array.isArray(aulaJson?.desvinculados) && aulaJson.desvinculados.includes(idDispositivo);
 

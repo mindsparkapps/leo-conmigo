@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   HORAS_SIN_SYNC_PARA_VENTANA, dispositivoVacio, elegirAula, esRutaAdulta, esSesionDelNino, estaDesvinculado, firmaDelAdulto, modoDeRenovacion,
-  puedeSincronizarAlumno,
+  puedeSincronizarAlumno, textoConfirmarConversion,
 } from '../js/core/dispositivo-alumno.js';
 
 test('esRutaAdulta: toda ruta #/adulto cuenta; las del niño no', () => {
@@ -52,6 +52,16 @@ test('dispositivoVacio: solo sin perfiles vivos', () => {
   assert.equal(dispositivoVacio([]), true);
   assert.equal(dispositivoVacio([{ id: 'a', deleted: true }]), true);
   assert.equal(dispositivoVacio([{ id: 'a' }]), false);
+});
+
+test('textoConfirmarConversion: dice que borra todo, que no se puede deshacer y sugiere copia; avisa de lo sin subir', () => {
+  const base = textoConfirmarConversion({});
+  for (const frase of [/perfiles, palabras, fotos, voces y progreso/, /No se puede deshacer/, /copia de seguridad/, /sincronizado/]) assert.match(base, frase);
+  assert.doesNotMatch(base, /NO se subieron/);
+  assert.match(textoConfirmarConversion({ pendientes: 3 }), /3 cambios que todavía NO se subieron/);
+  assert.match(textoConfirmarConversion({ pendientes: 1 }), /1 cambio que todavía NO se subieron/);
+  assert.match(textoConfirmarConversion({ sinCuenta: true, pendientes: 5 }), /no está sincronizado con ninguna cuenta/);
+  assert.doesNotMatch(textoConfirmarConversion({ sinCuenta: true }), /NO se subieron/);
 });
 
 test('estaDesvinculado y firmaDelAdulto', () => {

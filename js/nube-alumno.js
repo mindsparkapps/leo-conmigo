@@ -134,6 +134,17 @@ export async function olvidarTodo({ recargar = true } = {}) {
   if (recargar) { location.hash = '#/nino'; location.reload(); }
 }
 
+/**
+ * Convierte este dispositivo (del adulto) en dispositivo de alumno: borra TODO lo suyo y lleva al primer uso, ya en el camino
+ * «Este dispositivo es de un alumno». La confirmación la pide quien llama.
+ */
+export async function convertirEnDispositivoDeAlumno() {
+  await olvidarTodo({ recargar: false });
+  escribir(CLAVE_ROL, 'alumno'); // al recargar, el primer uso ya pide entrar con el Gmail del alumno
+  location.hash = '#/nino';
+  location.reload();
+}
+
 /** Sincroniza ahora (sin ventanas ni avisos). Devuelve el resumen o null si no se pudo (nunca lanza). */
 export async function sincronizarAlumno() {
   if (enCurso) return enCurso;

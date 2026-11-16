@@ -60,7 +60,9 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
     const actual = await cliente.leerJson(archivo.id);
     const error = validarAula(actual, { perfilId });
     if (error) throw new ErrorAula(error);
-    const nuevo = { ...cambiar(actual), actualizado: ahora().toISOString() };
+    const cambiado = cambiar(actual);
+    if (JSON.stringify(cambiado) === JSON.stringify(actual)) return actual; // nada cambió: no se reescribe
+    const nuevo = { ...cambiado, actualizado: ahora().toISOString() };
     await cliente.actualizar(archivo.id, JSON.stringify(nuevo), MIME_JSON);
     return nuevo;
   }

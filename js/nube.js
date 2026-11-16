@@ -174,6 +174,28 @@ export async function sincronizarAulaAhora(perfilId) {
   }
 }
 
+let temporizadorFondo = null;
+
+/**
+ * El fondo viaja a los alumnos en `aula.json`: cuando el adulto lo cambia se reescribe en cada aula (con una pausa, porque el
+ * selector de color y la transparencia avisan muchas veces seguidas). No hace nada sin cuenta, sin el permiso del aula o
+ * sin conexión; un fallo en un aula no detiene a las demás.
+ */
+export function publicarFondoEnAulas(fondo) {
+  clearTimeout(temporizadorFondo);
+  temporizadorFondo = setTimeout(async () => {
+    try {
+      if (esAlumno() || !navigator.onLine || !auth.configurado() || !auth.cuenta().vinculada || !auth.tienePermisoAulas()) return;
+      const aulas = await obtenerAulas();
+      for (const id of Object.keys(await aulas.listarAulas())) {
+        try { await aulas.cambiarApariencia(id, fondo); } catch (error) { console.warn('No se pudo publicar el fondo en un aula:', error?.message ?? error); }
+      }
+    } catch (error) {
+      console.warn('No se pudo publicar el fondo:', error?.message ?? error);
+    }
+  }, 1500);
+}
+
 /** Todas las aulas, una tras otra; nunca lanza. */
 export async function sincronizarAulas() {
   try {
