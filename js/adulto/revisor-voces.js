@@ -189,6 +189,27 @@ export function crearRevisorVoces() {
   });
   vaciar.addEventListener('click', () => { malas = []; guardarMalas(malas); pintarMalas(); pintarActual(); });
 
+  /**
+   * Las marcas viejas (sin lista guardada) se ponen con el número de su lista: las del tramo de frases y sílabas
+   * con el «139 de 280» de ese tramo, y las demás con el de la lista completa.
+   */
+  async function normalizarMarcas() {
+    const completa = await cargarLista('todas');
+    const tramo = await cargarLista('tramo');
+    numeros = new Map(completa.map((x, i) => [x.ruta, i + 1]));
+    totalTodas = completa.length;
+    malas = malas.map((m) => {
+      if (m.lista) return m;
+      const rutaMp3 = m.ruta ?? completa.find((y) => etiqueta(y) === m.texto)?.ruta;
+      const i = tramo.findIndex((y) => y.ruta === rutaMp3);
+      if (i >= 0) return { ...m, ruta: rutaMp3, numero: i + 1, total: tramo.length, lista: 'tramo' };
+      const n = numeros.get(rutaMp3) ?? m.numero ?? null;
+      return { ...m, ruta: rutaMp3, numero: n, total: n ? totalTodas : null, lista: 'todas' };
+    });
+    guardarMalas(malas);
+    pintarMalas();
+  }
+
   async function iniciar(modo) {
     detener();
     const botones = [preparar, prepararTramo];
@@ -196,19 +217,8 @@ export function crearRevisorVoces() {
     estado.textContent = 'Preparando la lista…';
     try {
       items = await cargarLista(modo);
-      const completa = modo === 'todas' ? items : await cargarLista('todas');
-      numeros = new Map(completa.map((x, i) => [x.ruta, i + 1]));
-      totalTodas = completa.length;
       modoActual = modo;
-      // Las marcas viejas (solo texto) se completan buscando la grabación por su etiqueta
-      malas = malas.map((m) => {
-        const x = m.ruta ? null : completa.find((y) => etiqueta(y) === m.texto);
-        if (m.numero) return { ...m, ruta: m.ruta ?? x?.ruta };
-        const n = numeros.get(m.ruta ?? x?.ruta) ?? null;
-        return { ...m, ruta: m.ruta ?? x?.ruta, numero: n, total: n ? totalTodas : null, lista: 'todas' };
-      });
-      guardarMalas(malas);
-      pintarMalas();
+      await normalizarMarcas();
       const duraciones = [];
       for (let i = 0; i < items.length; i += 20) {
         duraciones.push(...(await Promise.all(items.slice(i, i + 20).map((x) => duracionDe(x.ruta)))));
@@ -234,6 +244,7 @@ export function crearRevisorVoces() {
   prepararTramo.addEventListener('click', () => iniciar('tramo'));
 
   pintarMalas();
+  normalizarMarcas().catch((e) => console.error(e));
 
   const panel = el(
     'div',
