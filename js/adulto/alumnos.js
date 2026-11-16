@@ -38,6 +38,7 @@ export function montar(contenedor) {
   let perfiles = [];
   let aulasMeta = {};
   let pendientes = {}; // perfilId -> cambios por subir
+  let contenido = {}; // perfilId -> { palabras, medios }: para elegir el perfil que de verdad tiene el material
   const trabajando = {}; // perfilId -> texto mientras una acción corre
   const mensajes = {}; // perfilId -> { texto, error }
   const borradores = {}; // perfilId -> correo a medio escribir
@@ -48,6 +49,13 @@ export function montar(contenedor) {
     perfiles = (await store.listar('perfiles')).sort((a, b) => (a.creado ?? '').localeCompare(b.creado ?? ''));
     aulasMeta = (await store.leerMeta('aulas', {})) ?? {};
     pendientes = {};
+    contenido = {};
+    for (const p of perfiles) {
+      contenido[p.id] = {
+        palabras: (await store.listar('palabras', { perfilId: p.id })).length,
+        medios: (await vistaDePerfil(store, p.id).listar('medios')).length,
+      };
+    }
     // «por subir al aula»: lo editado después de la última sincronización de esa aula (la cola es de la sincronización personal)
     for (const p of perfiles) {
       if (!aulasMeta[p.id]) continue;
@@ -77,7 +85,7 @@ export function montar(contenedor) {
     if (!tienePermisoAulas()) await pedirPermisoAulas();
     await (await obtenerAulas()).crearAula(perfil, { fondo: leerFondo() });
     await cargar();
-    trabajando[perfil.id] = 'Subiendo imágenes y audios…';
+    trabajando[perfil.id] = 'Subiendo una copia de sus imágenes y audios a tu Drive…';
     pintar();
     await sincronizarAulaAhora(perfil.id);
   });
@@ -174,17 +182,22 @@ export function montar(contenedor) {
   function panelPerfil(perfil, ahora) {
     const info = aulasMeta[perfil.id];
     const mensaje = mensajes[perfil.id];
-    const hecho = [el('h2', {}, perfil.nombre)];
+    const c = contenido[perfil.id];
+    const hecho = [
+      el('h2', {}, perfil.nombre),
+      c ? el('p', { class: 'ayuda' }, `Este perfil tiene ${cuantos(c.palabras, 'palabra', 'palabras')} y ${cuantos(c.medios, 'imagen o audio', 'imágenes y audios')}. Es lo que verá el alumno.`) : null,
+    ].filter(Boolean);
     if (!info) {
       hecho.push(
-        el('p', {}, 'Todavía no tiene alumno habilitado. Al habilitarlo se crea una carpeta en tu Drive con sus palabras, fotos y voces, y podrás invitar el Gmail de quien lo va a usar.'),
+        el('p', {}, 'Todavía no tiene alumno habilitado. Al tocar «Habilitar alumno», tu app sube una sola vez una copia de su material (palabras, fotos y voces) a una carpeta de tu Drive. No descarga nada ni cambia lo que ya tienes. Cuando termine, aquí mismo aparece el campo para escribir el Gmail del alumno.'),
+        c && c.palabras === 0 ? el('p', { class: 'aviso', role: 'note' }, 'Este perfil todavía no tiene palabras: el alumno vería una versión vacía. Si el niño ya tiene un perfil con su material, habilita ese en vez de este.') : null,
         trabajando[perfil.id] ? progreso(trabajando[perfil.id]) : el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton', onclick: () => habilitar(perfil) }, 'Habilitar alumno')),
         mensaje ? el('p', { class: mensaje.error ? 'error-texto' : 'ayuda', role: mensaje.error ? 'alert' : 'status' }, mensaje.texto) : null,
       );
-      return el('div', { class: 'panel', 'data-perfil': perfil.id }, ...hecho);
+      return el('div', { class: 'panel', 'data-perfil': perfil.id }, ...hecho.filter(Boolean));
     }
 
-    const e = aulasEstado.get(perfil.id);
+    const e =aulasEstado.get(perfil.id);
     const sincronizando = e?.fase === 'sincronizando';
     const ocupado = Boolean(trabajando[perfil.id]) || sincronizando;
     const alumnos = e?.alumnos?.length || !info.invitados.length ? (e?.alumnos ?? []) : estadoDeAlumnos({ invitados: info.invitados, ahora: new Date(ahora) }).alumnos;
@@ -226,6 +239,10 @@ export function montar(contenedor) {
     campo.addEventListener('input', () => { borradores[perfil.id] = campo.value; });
     campo.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); invitar(perfil); } });
     hecho.push(
+      el('h3', {}, 'Invitar al alumno'),
+      el('p', { class: 'ayuda' }, ocupado
+        ? 'Podrás escribir el Gmail cuando termine de subir el material (no cierres la app).'
+        : 'Escribe el Gmail con el que el alumno entrará en su celular: el mismo que su app muestra en «Pídele a tu adulto que invite a…».'),
       el('div', { class: 'acciones' }, campo, el('button', { type: 'button', class: 'boton', disabled: ocupado, onclick: () => invitar(perfil) }, 'Invitar')),
       el('div', { class: 'acciones' },
         el('button', { type: 'button', class: 'boton secundario', disabled: ocupado, onclick: () => accion(perfil.id, 'Sincronizando…', async () => { await sincronizarAulaAhora(perfil.id); }) }, 'Sincronizar ahora'),
