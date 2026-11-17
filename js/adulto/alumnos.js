@@ -215,7 +215,7 @@ export function montar(contenedor) {
 
     for (const p of e?.permisosExtranos ?? []) {
       hecho.push(el('div', { class: 'aviso', role: 'alert' },
-        el('p', {}, el('strong', {}, 'Permiso extraño: '), `${p.motivo}${p.email ? ` (${p.email})` : ''}, en ${p.carpeta === 'aula' ? 'la carpeta del aula' : 'la carpeta del alumno'}. Leo Conmigo no lo puso.`),
+        el('p', {}, el('strong', {}, 'Permiso extraño: '), `${p.motivo}${p.email ? ` (${p.email})` : ''}, en ${p.carpeta === 'aula' ? 'la carpeta del aula' : p.carpeta === 'biblioteca' ? 'la Biblioteca' : 'la carpeta del alumno'}. Leo Conmigo no lo puso.`),
         el('button', { type: 'button', class: 'boton secundario chico', disabled: ocupado, onclick: () => quitarExtrano(perfil, p) }, 'Quitar este permiso')));
     }
     if (e?.avisos?.length) {

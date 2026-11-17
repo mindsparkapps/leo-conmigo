@@ -125,19 +125,22 @@ test('A no puede escribir en el aula, en la carpeta de trabajo ni en el aula de 
   await m.a.aulas.sincronizarComoAlumno({ aula: await miAula(m.a), email: A });
   const dep = m.nube.dep(A);
   const enAula = crearDriveCarpeta({ ...dep, carpetaId: aula1.carpetaId });
-  const archivos = await enAula.listar();
+  const enBiblioteca = crearDriveCarpeta({ ...dep, carpetaId: aula1.bibliotecaId });
+  const archivos = [...await enAula.listar(), ...await enBiblioteca.listar()];
   const idDe = (nombre) => archivos.find((x) => x.name === nombre).id;
+  assert.ok(!archivos.some((x) => x.name.startsWith('medio-') && x.parents?.[0] === aula1.carpetaId), 'el aula ya no guarda medios');
 
-  for (const nombre of ['adulto.json', 'aula.json', 'medio-m-img.webp']) {
-    await assert.rejects(() => enAula.actualizar(idDe(nombre), 'trampa', 'application/json'), (e) => e instanceof ErrorDrive && e.estado === 403, `actualizar ${nombre}`);
-    await assert.rejects(() => enAula.borrar(idDe(nombre)), (e) => e instanceof ErrorDrive && e.estado === 403, `borrar ${nombre}`);
+  for (const [nombre, cliente] of [['adulto.json', enAula], ['aula.json', enAula], ['medio-m-img.webp', enBiblioteca]]) {
+    await assert.rejects(() => cliente.actualizar(idDe(nombre), 'trampa', 'application/json'), (e) => e instanceof ErrorDrive && e.estado === 403, `actualizar ${nombre}`);
+    await assert.rejects(() => cliente.borrar(idDe(nombre)), (e) => e instanceof ErrorDrive && e.estado === 403, `borrar ${nombre}`);
   }
   await assert.rejects(() => enAula.crear('nuevo.json', '{}', 'application/json'), (e) => e.estado === 403, 'crear en el aula');
+  await assert.rejects(() => enBiblioteca.crear('medio-trampa.webp', '{}', 'image/webp'), (e) => e.estado === 403, 'crear en la Biblioteca');
   assert.equal(m.nube.json(idDe('adulto.json')).perfilId, 'P1', 'el contenido no cambió');
 
   const trabajo = m.nube.archivo(aula1.carpetaId).parents[0];
   await assert.rejects(() => crearDriveCarpeta({ ...dep, carpetaId: trabajo }).crear('x.json', '{}', 'application/json'), (e) => e.sinAcceso === true, 'carpeta de trabajo');
-  assert.deepEqual((await crearDriveCarpeta({ ...dep, carpetaId: trabajo }).listar()).map((x) => x.id), [aula1.carpetaId], 'de la carpeta de trabajo solo se ve su propia aula');
+  assert.deepEqual((await crearDriveCarpeta({ ...dep, carpetaId: trabajo }).listar()).map((x) => x.id).sort(), [aula1.bibliotecaId, aula1.carpetaId].sort(), 'de la carpeta de trabajo solo se ve su propia aula y la Biblioteca');
   assert.deepEqual(await crearDriveCarpeta({ ...dep, carpetaId: aula2.carpetaId }).listar(), [], 'el aula de B se ve vacía');
   await assert.rejects(() => crearDriveCarpeta({ ...dep, carpetaId: aula2.carpetaId }).crear('x.json', '{}', 'application/json'), (e) => e.sinAcceso === true, 'aula de B');
   await assert.rejects(() => crearDriveCarpeta({ ...dep, carpetaId: aula2.carpetaAlumnoId }).crear('x.json', '{}', 'application/json'), (e) => e.sinAcceso === true, 'del-alumno de B');
@@ -293,18 +296,17 @@ test('el adulto agrega un álbum y A lo recibe; un medio borrado por el adulto d
   assert.deepEqual(await bytesDe((await m.a.store.obtener('medios', 'm-port2')).blob), [21]);
   assert.deepEqual(await ids(m.a.store, 'calcomaniasPropias'), ['cp1', 'cp2']);
 
-  // borrar un medio
-  assert.ok(m.nube.porNombre('medio-m-voz.webm', aula1.carpetaId));
+  // borrar un medio (la palabra deja de usarlo y el medio se borra)
+  assert.ok(m.nube.porNombre('medio-m-voz.webm', aula1.bibliotecaId));
+  await m.tienda.guardar('palabras', { ...(await m.tienda.obtener('palabras', 'w-perro')), medioAudioId: null });
   await m.tienda.borrar('medios', 'm-voz');
   await m.adulto.sincronizarAula('P1');
-  assert.equal(m.nube.porNombre('medio-m-voz.webm', aula1.carpetaId), undefined, 'el adulto limpia el archivo del aula');
+  assert.equal(m.nube.porNombre('medio-m-voz.webm', aula1.bibliotecaId), undefined, 'el adulto limpia el archivo de la Biblioteca');
   await m.a.aulas.sincronizarComoAlumno({ aula, email: A });
-  assert.equal(await m.a.store.obtener('medios', 'm-voz'), undefined);
-  assert.equal((await m.a.store.obtener('medios', 'm-voz', { conBorrados: true })).deleted, true);
+  assert.equal((await m.a.store.obtener('palabras', 'w-perro')).medioAudioId, null);
   await m.a.aulas.sincronizarComoAlumno({ aula, email: A });
   await m.adulto.sincronizarAula('P1');
-  assert.equal(await m.a.store.obtener('medios', 'm-voz'), undefined, 'no vuelve');
-  assert.equal(await m.tienda.obtener('medios', 'm-voz'), undefined, 'ni en el adulto');
+  assert.equal(await m.tienda.obtener('medios', 'm-voz'), undefined, 'no vuelve en el adulto');
   assert.deepEqual(await bytesDe((await m.a.store.obtener('medios', 'm-img')).blob), [4, 5, 6, 13, 10], 'lo demás sigue intacto');
 });
 

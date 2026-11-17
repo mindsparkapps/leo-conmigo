@@ -1,23 +1,27 @@
-// Las aulas (PLAN.md, Ampliación 3, fase 16): lo que hacen el adulto y el alumno con las carpetas de Drive.
+// Las aulas (PLAN.md, Ampliación 3 fase 16 y Ampliación 4 fase 22): lo que hacen el adulto y el alumno con las carpetas de Drive.
 //
 //   Mi unidad (del adulto)
 //   └── Leo Conmigo/                 carpeta de trabajo, privada (leoConmigo = 'trabajo')
+//       ├── Biblioteca/              (leoConmigo = 'biblioteca'): LECTORES = los correos invitados a algún curso
+//       │   └── medio-*              UNA copia de cada imagen o audio del adulto (nunca lo de un alumno)
 //       └── Alumno · Pedro/          un aula por perfil (leoConmigo = 'aula'): lectores = los correos invitados
-//           ├── aula.json · adulto.json · medio-*          los escribe el adulto
+//           ├── aula.json · adulto.json                    los escribe el adulto
 //           └── del-alumno/          (leoConmigo = 'del-alumno'): editores = los correos invitados
 //               └── alumno.json · dispositivo-<id>.json    los escribe el alumno
 //
 // Esta capa solo une las piezas (drive.js, store-perfil.js, sync-aula.js y core/aula.js); la seguridad está en ellas
-// y, sobre todo, en los permisos de Drive que se ponen aquí: `reader` en el aula, `writer` solo en `del-alumno/`.
+// y, sobre todo, en los permisos de Drive que se ponen aquí: `reader` en la Biblioteca y en el aula, `writer` solo en `del-alumno/`.
 
 import { crearDriveAulas, crearDriveCarpeta, esCorreo, ErrorDrive } from './drive.js';
 import { vistaDePerfil } from './store-perfil.js';
 import { crearSincronizadorDeAula } from './sync-aula.js';
-import { ARCHIVO_AULA, estadoDeAlumnos, nuevaAula, validarAula } from './core/aula.js';
+import { ARCHIVO_AULA, aulaComoV2, estadoDeAlumnos, mediosDelPerfil, nuevaAula, validarAula } from './core/aula.js';
+import { ALMACENES_DEL_PERFIL } from './core/borrar-perfil.js';
 import { estaDesvinculado, firmaDelAdulto } from './core/dispositivo-alumno.js';
 
 const MIME_JSON = 'application/json';
 const NOMBRE_TRABAJO = 'Leo Conmigo';
+const NOMBRE_BIBLIOTECA = 'Biblioteca';
 const minuscula = (s) => String(s ?? '').trim().toLowerCase();
 
 export class ErrorAula extends Error {
@@ -67,6 +71,91 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
     return nuevo;
   }
 
+  const todasLasInvitaciones = async () => [...new Set(Object.values(await leerAulas()).flatMap((a) => a.invitados ?? []))];
+
+  /** Busca o crea `Biblioteca/` dentro de `Leo Conmigo/`. Solo el dueño la ve hasta que se invita a alguien. */
+  async function asegurarBiblioteca() {
+    const trabajo = await asegurarTrabajo();
+    const halladas = await drive.buscarCarpeta({ valor: 'biblioteca', padre: trabajo });
+    const id = halladas[0]?.id ?? await drive.crearCarpeta(NOMBRE_BIBLIOTECA, { padre: trabajo, propiedades: { leoConmigo: 'biblioteca' } });
+    await store.escribirMeta('bibliotecaId', id);
+    return id;
+  }
+
+  /** Lector de la Biblioteca para un correo (si ya lo es, no se vuelve a compartir). Nunca `writer` ni `anyone`. */
+  async function darLecturaDeBiblioteca(bibliotecaId, correo) {
+    const ya = (await drive.permisos(bibliotecaId)).some((p) => p.type === 'user' && minuscula(p.emailAddress) === correo);
+    if (!ya) await drive.compartir(bibliotecaId, correo, 'reader', { avisar: false });
+  }
+
+  /** Quita la lectura de la Biblioteca a un correo que ya no está en NINGÚN curso. */
+  async function quitarLecturaDeBiblioteca(bibliotecaId, correo) {
+    for (const p of await drive.permisos(bibliotecaId)) {
+      if (p.type === 'user' && minuscula(p.emailAddress) === correo && p.role !== 'owner') await drive.quitarPermiso(bibliotecaId, p.id);
+    }
+  }
+
+  async function asegurarTrabajo() {
+    const halladas = await drive.buscarCarpeta({ valor: 'trabajo' });
+    const id = halladas[0]?.id ?? await drive.crearCarpeta(NOMBRE_TRABAJO, { propiedades: { leoConmigo: 'trabajo' } });
+    const extranos = (await drive.permisos(id)).filter((p) => !(p.type === 'user' && p.role === 'owner'));
+    if (extranos.length) {
+      throw new ErrorAula(`La carpeta «${NOMBRE_TRABAJO}» de tu Drive está compartida con alguien más. Déjala privada (solo tú) y vuelve a intentarlo.`, { permisosExtranos: extranos });
+    }
+    await store.escribirMeta('carpetaTrabajoId', id);
+    return id;
+  }
+
+  /**
+   * Pasa un aula de la versión 1 a la 2: crea la Biblioteca, MUEVE a ella los `medio-*` del aula (`addParents` /
+   * `removeParents`: no se vuelven a subir), comparte la Biblioteca con los invitados y deja `aula.json` en versión 2.
+   * Un medio que ya estaba en la Biblioteca (repetido) NO se borra: queda en el aula para la pantalla de limpieza.
+   */
+  async function migrarAula(info) {
+    const bibliotecaId = await asegurarBiblioteca();
+    const enAula = (await clienteCarpeta(info.carpetaId).listar()).filter((a) => /^medio-/.test(a.name) && !a.mimeType?.includes('folder'));
+    const enBiblioteca = new Set((await clienteCarpeta(bibliotecaId).listar()).map((a) => a.name));
+    let movidos = 0;
+    for (const archivo of enAula) {
+      if (enBiblioteca.has(archivo.name)) continue; // repetido: se queda donde está
+      await drive.mover(archivo.id, { de: info.carpetaId, a: bibliotecaId });
+      enBiblioteca.add(archivo.name);
+      movidos += 1;
+    }
+    for (const correo of await todasLasInvitaciones()) await darLecturaDeBiblioteca(bibliotecaId, correo);
+    const nuevo = { ...info, bibliotecaId };
+    await guardarAula(nuevo);
+    await cambiarAulaJson(info.perfilId, (a) => ({ ...aulaComoV2(a), bibliotecaId, alumnos: info.invitados.map((email) => ({ email, carpetaId: null })) }));
+    return { info: nuevo, movidos };
+  }
+
+  /** Antes de usar un aula: si es de la versión 1 (sin Biblioteca), se migra. */
+  async function aulaLista(perfilId) {
+    const info = await aulaDe(perfilId);
+    return info.bibliotecaId ? info : (await migrarAula(info)).info;
+  }
+
+  /** Los permisos reales de las carpetas del aula (para revisar lo que la app no puso). */
+  async function permisosDeAula(info) {
+    const permisos = { aula: await drive.permisos(info.carpetaId), delAlumno: await drive.permisos(info.carpetaAlumnoId) };
+    if (info.bibliotecaId) permisos.biblioteca = await drive.permisos(info.bibliotecaId);
+    return permisos;
+  }
+
+  /** Ids de los medios que usan los OTROS cursos del adulto (un medio de la Biblioteca solo se borra si ningún curso lo usa). */
+  async function mediosDeOtrosCursos(perfilId) {
+    const usados = new Set();
+    for (const otro of Object.keys(await leerAulas())) {
+      if (otro === perfilId) continue;
+      const perfil = await store.obtener('perfiles', otro);
+      if (!perfil) continue;
+      const registros = {};
+      for (const almacen of ALMACENES_DEL_PERFIL) registros[almacen] = await store.listar(almacen, { perfilId: otro });
+      for (const id of mediosDelPerfil({ perfil, registros })) usados.add(id);
+    }
+    return usados;
+  }
+
   // Qué había en `del-alumno/` la última vez que se sincronizó (archivos del alumno y su `modifiedTime`): una sola llamada de lista.
   const firmas = new Map();
   async function firmaDelAlumno(info) {
@@ -93,41 +182,38 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
     },
 
     /** Busca o crea `Leo Conmigo/` y comprueba que sea privada: si alguien la compartió a mano, no se habilita a nadie. */
-    async asegurarCarpetaDeTrabajo() {
-      const halladas = await drive.buscarCarpeta({ valor: 'trabajo' });
-      const id = halladas[0]?.id ?? await drive.crearCarpeta(NOMBRE_TRABAJO, { propiedades: { leoConmigo: 'trabajo' } });
-      const extranos = (await drive.permisos(id)).filter((p) => !(p.type === 'user' && p.role === 'owner'));
-      if (extranos.length) {
-        throw new ErrorAula(`La carpeta «${NOMBRE_TRABAJO}» de tu Drive está compartida con alguien más. Déjala privada (solo tú) y vuelve a intentarlo.`, { permisosExtranos: extranos });
-      }
-      await store.escribirMeta('carpetaTrabajoId', id);
-      return id;
-    },
+    asegurarCarpetaDeTrabajo: () => asegurarTrabajo(),
 
-    /** Crea el aula de un perfil (la carpeta, `del-alumno/` y `aula.json`). Si ya existe, la devuelve. */
+    /** Busca o crea la Biblioteca común (los medios del adulto, una sola copia). */
+    asegurarBiblioteca: () => asegurarBiblioteca(),
+
+    /** Crea el aula de un perfil (la carpeta, `del-alumno/` y `aula.json` v2). Si ya existe, la devuelve (migrada si era de la versión 1). */
     async crearAula(perfil, { fondo = null } = {}) {
       const existente = (await leerAulas())[perfil.id];
-      if (existente) return existente;
-      const trabajo = await this.asegurarCarpetaDeTrabajo();
+      if (existente) return existente.bibliotecaId ? existente : (await migrarAula(existente)).info;
+      const trabajo = await asegurarTrabajo();
+      const bibliotecaId = await asegurarBiblioteca();
       const carpetaId = await drive.crearCarpeta(`Alumno · ${perfil.nombre}`, { padre: trabajo, propiedades: { leoConmigo: 'aula', perfilId: perfil.id } });
       const carpetaAlumnoId = await drive.crearCarpeta('del-alumno', { padre: carpetaId, propiedades: { leoConmigo: 'del-alumno', perfilId: perfil.id } });
-      const aula = nuevaAula({ perfilId: perfil.id, nombre: perfil.nombre, email: emailAdulto, fondo, ahora: ahora() });
+      const aula = nuevaAula({ perfilId: perfil.id, nombre: perfil.nombre, email: emailAdulto, fondo, bibliotecaId, ahora: ahora() });
       await clienteCarpeta(carpetaId).crear(ARCHIVO_AULA, JSON.stringify(aula), MIME_JSON);
-      const info = { perfilId: perfil.id, carpetaId, carpetaAlumnoId, invitados: [] };
+      const info = { perfilId: perfil.id, carpetaId, carpetaAlumnoId, bibliotecaId, invitados: [] };
       await guardarAula(info);
       return info;
     },
 
-    /** Invita a un correo: lector en el aula y editor SOLO en `del-alumno/`. */
+    /** Invita a un correo: lector en la Biblioteca y en el aula, y editor SOLO en `del-alumno/`. */
     async invitar(perfilId, email) {
       const correo = minuscula(email);
       if (!esCorreo(correo)) throw new ErrorAula('El correo no parece válido.');
       if (correo === minuscula(emailAdulto)) throw new ErrorAula('Ese es tu propio correo: invita el Gmail del alumno.');
-      const info = await aulaDe(perfilId);
+      const info = await aulaLista(perfilId);
       await drive.compartir(info.carpetaId, correo, 'reader', { avisar: true });
       await drive.compartir(info.carpetaAlumnoId, correo, 'writer', { avisar: false });
+      await darLecturaDeBiblioteca(info.bibliotecaId, correo);
       info.invitados = [...new Set([...info.invitados, correo])];
       await guardarAula(info);
+      await cambiarAulaJson(perfilId, (a) => ({ ...a, alumnos: info.invitados.map((email) => ({ email, carpetaId: null })) }));
       return info;
     },
 
@@ -142,6 +228,9 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
       for (const p of suyos(await drive.permisos(info.carpetaId))) await drive.quitarPermiso(info.carpetaId, p.id);
       info.invitados = info.invitados.filter((c) => c !== correo);
       await guardarAula(info);
+      // La Biblioteca se le quita solo si ya no está en NINGÚN curso
+      if (info.bibliotecaId && !(await todasLasInvitaciones()).includes(correo)) await quitarLecturaDeBiblioteca(info.bibliotecaId, correo);
+      if (info.bibliotecaId) await cambiarAulaJson(perfilId, (a) => ({ ...a, alumnos: info.invitados.map((email) => ({ email, carpetaId: null })) }));
       return info;
     },
 
@@ -158,21 +247,22 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
     /** Los permisos que la app NO puso (la tabla «Quién puede tocar qué»). No quita nada solo. */
     async revisarPermisos(perfilId) {
       const info = await aulaDe(perfilId);
-      const permisos = { aula: await drive.permisos(info.carpetaId), delAlumno: await drive.permisos(info.carpetaAlumnoId) };
-      return estadoDeAlumnos({ invitados: info.invitados, permisos, dispositivos: [], ahora: ahora() }).permisosExtranos;
+      const permisos = await permisosDeAula(info);
+      return estadoDeAlumnos({ invitados: info.invitados, invitadosDeTodos: await todasLasInvitaciones(), permisos, dispositivos: [], ahora: ahora() }).permisosExtranos;
     },
 
     /** El botón «Quitar» de un «Permiso extraño». */
     async quitarPermisoExtrano(perfilId, { carpeta, id }) {
       const info = await aulaDe(perfilId);
-      await drive.quitarPermiso(carpeta === 'aula' ? info.carpetaId : info.carpetaAlumnoId, id);
+      const carpetaId = carpeta === 'aula' ? info.carpetaId : carpeta === 'biblioteca' ? info.bibliotecaId : info.carpetaAlumnoId;
+      await drive.quitarPermiso(carpetaId, id);
     },
 
     /** Sincroniza el aula del adulto y devuelve el resumen, el estado de cada correo y los permisos extraños. */
     sincronizarAula(perfilId) {
       if (!sincronizando.has(perfilId)) {
         const promesa = (async () => {
-          const info = await aulaDe(perfilId);
+          const info = await aulaLista(perfilId);
           const firma = await firmaDelAlumno(info); // antes de sincronizar: si el alumno escribe mientras tanto, se vuelve a revisar
           const conocidos = new Set((await store.leerMeta(`aula:${perfilId}:idsMediosConocidos`, [])) ?? []);
           const sincronizador = crearSincronizadorDeAula({
@@ -182,14 +272,16 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
             aula: info,
             carpetaAula: clienteCarpeta(info.carpetaId),
             carpetaAlumno: clienteCarpeta(info.carpetaAlumnoId),
+            carpetaMedios: clienteCarpeta(info.bibliotecaId),
+            usadosPorOtros: () => mediosDeOtrosCursos(perfilId),
             invitados: info.invitados,
             ahora,
             alProgreso,
           });
           const resumen = await sincronizador.sincronizar();
           firmas.set(perfilId, firma);
-          const permisos = { aula: await drive.permisos(info.carpetaId), delAlumno: await drive.permisos(info.carpetaAlumnoId) };
-          return { resumen, ...estadoDeAlumnos({ invitados: info.invitados, permisos, dispositivos: resumen.dispositivos, ahora: ahora() }) };
+          const permisos = await permisosDeAula(info);
+          return { resumen, ...estadoDeAlumnos({ invitados: info.invitados, invitadosDeTodos: await todasLasInvitaciones(), permisos, dispositivos: resumen.dispositivos, ahora: ahora() }) };
         })().finally(() => sincronizando.delete(perfilId));
         sincronizando.set(perfilId, promesa);
       }
@@ -240,6 +332,8 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
         aula,
         carpetaAula,
         carpetaAlumno: clienteCarpeta(aula.carpetaAlumnoId),
+        // la Biblioteca del adulto; un aula versión 1 sin migrar todavía trae los medios dentro del aula
+        carpetaMedios: aulaJson.bibliotecaId ? clienteCarpeta(aulaJson.bibliotecaId) : carpetaAula,
         emailPropio: email,
         duenoEmail: aula.dueno,
         dispositivo: { idDispositivo, email, nombre: nombreDispositivo, versionApp },

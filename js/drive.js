@@ -111,7 +111,7 @@ export function crearDrive({ obtenerToken, fetchFn = (...args) => globalThis.fet
 // ---------- Carpetas compartidas (el «aula»; alcance `drive`) ----------
 
 export const MIME_CARPETA = 'application/vnd.google-apps.folder';
-export const PROPIEDAD = 'leoConmigo'; // propiedad pública de las carpetas de Leo Conmigo (trabajo | aula | del-alumno)
+export const PROPIEDAD = 'leoConmigo'; // propiedad pública de las carpetas de Leo Conmigo (trabajo | biblioteca | aula | del-alumno)
 const ROLES_PERMITIDOS = Object.freeze(['reader', 'writer']);
 const CAMPOS_ARCHIVO = 'id,name,modifiedTime,mimeType,properties,owners(emailAddress)';
 
@@ -249,6 +249,19 @@ export function crearDriveAulas({ obtenerToken, fetchFn = (...args) => globalThi
     async permisos(carpetaId) {
       const datos = await (await pedir(`${API}/${encodeURIComponent(carpetaId)}/permissions?${consulta({ fields: 'permissions(id,type,role,emailAddress)', pageSize: '100' })}`)).json();
       return datos.permissions ?? [];
+    },
+
+    /**
+     * MUEVE un archivo de una carpeta a otra (sin volver a subirlo): `addParents` / `removeParents`.
+     * Solo se usa para pasar los `medio-*` de un aula a la Biblioteca.
+     */
+    async mover(archivoId, { de, a }) {
+      if (!de || !a) throw new Error('Falta la carpeta de origen o de destino.');
+      await pedir(`${API}/${encodeURIComponent(archivoId)}?${consulta({ addParents: a, removeParents: de, fields: 'id' })}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
     },
 
     async quitarPermiso(carpetaId, permisoId) {

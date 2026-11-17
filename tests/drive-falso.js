@@ -259,6 +259,17 @@ export function crearNubeFalsa() {
       estado.archivos.set(nuevoArchivo.id, nuevoArchivo);
       return json({ id: nuevoArchivo.id });
     }
+    // ---- mover (addParents / removeParents), sin volver a subir ----
+    if (metodo === 'PATCH' && !subida && archivo) {
+      const aAgregar = u.searchParams.get('addParents');
+      const aQuitar = u.searchParams.get('removeParents');
+      if (rango(cuenta, archivo) < RANGO.reader) return error(404, 'File not found');
+      registro.padre = archivo.parents?.[0] ?? null;
+      const destino = aAgregar ? estado.archivos.get(aAgregar) : null;
+      if (rango(cuenta, archivo) < RANGO.writer || (aAgregar && (!destino || rango(cuenta, destino) < RANGO.writer))) return error(403, 'El usuario no tiene permiso para mover este archivo');
+      archivo.parents = [...(archivo.parents ?? []).filter((p) => p !== aQuitar), ...(aAgregar ? [aAgregar] : [])];
+      return json({ id });
+    }
     // ---- reemplazar contenido ----
     if (metodo === 'PATCH' && subida) {
       if (!archivo || rango(cuenta, archivo) < RANGO.reader) return error(404, 'File not found');

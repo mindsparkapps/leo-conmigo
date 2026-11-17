@@ -54,21 +54,6 @@ export function aceptaDe(rolLocal, rolRemoto) {
   return publicaRol(rolRemoto);
 }
 
-/**
- * TRANSITORIO (aulas versión 1, hasta que la fase 22 reescriba la sincronización): lo que el adulto publicaba antes,
- * con el avance de los alumnos y los medios dentro del aula. Solo lo usa `js/sync-aula.js`.
- */
-export const ALMACENES_AULA_V1_ADULTO = enOrden([...ALMACENES_SOLO_ADULTO, 'medios', ...ALMACENES_DEL_ALUMNO]);
-export function publicaRolV1(rol) {
-  comprobarRol(rol);
-  return rol === 'adulto' ? ALMACENES_AULA_V1_ADULTO : enOrden(ALMACENES_DEL_ALUMNO);
-}
-export function aceptaDeV1(rolLocal, rolRemoto) {
-  comprobarRol(rolLocal);
-  comprobarRol(rolRemoto);
-  return rolLocal === rolRemoto ? Object.freeze([]) : publicaRolV1(rolRemoto);
-}
-
 const esRegistro = (r) => Boolean(r) && typeof r === 'object' && !Array.isArray(r) && typeof r.id === 'string' && r.id !== '';
 const esDeFamilia = (r) => Boolean(r) && typeof r === 'object' && r.origen === ORIGEN_FAMILIA;
 
@@ -204,10 +189,10 @@ export function validarAula(doc, { perfilId } = {}) {
  * que ese rol publica (y solo los registros de ese perfil). El adulto publica el contenido del curso y nunca avance de
  * alumnos; el alumno publica su avance y, aparte, `contenidoFamilia` (sin blobs). Nada con `origen: 'familia'` entra a
  * los almacenes normales.
- * @param publica            (transitorio) la lista de almacenes a publicar, para las aulas versión 1
  * @param contenidoFamilia   (alumno) { palabras, frases, libros, calcomaniasPropias, premios } de `separarFamilia`
  */
-export function armarArchivoAula({ rol, perfilId, almacenes, contenidoFamilia, publica = publicaRol(rol), ahora = new Date() }) {
+export function armarArchivoAula({ rol, perfilId, almacenes, contenidoFamilia, ahora = new Date() }) {
+  const publica = publicaRol(rol);
   const { almacenes: propios } = filtrarEntrantes({ almacenes, perfilId, aceptados: publica });
   const doc = armarDocumento({ almacenes: propios, ahora });
   const soloPublicados = {};
@@ -300,7 +285,7 @@ function permisosExtranos(invitadosMin, permisos, enBibliotecaMin = invitadosMin
     const dueno = minuscula(correo);
     revisar(`alumnos/${dueno}`, lista, invitadosMin, (e) => (e === dueno ? ['reader', 'writer'] : ['reader']));
   }
-  // Aulas versión 1 (transitorio): una sola carpeta `del-alumno/` donde cualquier invitado puede ser editor
+  // Hasta la fase 23 los alumnos de un curso comparten una sola carpeta `del-alumno/` donde cualquier invitado puede ser editor
   revisar('del-alumno', permisos?.delAlumno, invitadosMin, () => ['reader', 'writer']);
   // un permiso extraño del aula se hereda a las carpetas de dentro: es el mismo, se quita una sola vez desde el aula
   for (const e of extranos.splice(antes)) if (!(e.id && yaDelAula.has(clave(e)))) heredados.push(e);
