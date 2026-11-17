@@ -70,6 +70,22 @@ export function construirRespuesta({
   }
 
   const registro = {
+    ...camposComunes({ perfilId, sesionId, numeroEnSesion, momento, etapa, ensayo, elemento, intento, msAcierto, repeticionesAudio, progresoAntes, progresoDespues, fatigaActiva }),
+    opciones,
+    posicionCorrecta,
+    nivelOpciones,
+    correctoAlPrimerIntento: modo === 'lectura' ? intento.repeticiones === 0 : intento.errores.length === 0,
+    errores,
+    conAyudaVisual,
+    ...secuencia,
+    ...extra,
+  };
+  return registro;
+}
+
+/** Los campos que tiene todo registro, de lectura o de escritura (el análisis los lee igual). */
+function camposComunes({ perfilId, sesionId, numeroEnSesion, momento, etapa, ensayo, elemento, intento, msAcierto, repeticionesAudio, progresoAntes, progresoDespues, fatigaActiva }) {
+  return {
     id: idDeRespuesta(sesionId, numeroEnSesion),
     perfilId,
     sesionId,
@@ -87,24 +103,55 @@ export function construirRespuesta({
     actividad: ensayo.actividad,
     tipo: ensayo.tipo,
     esFacil: Boolean(ensayo.esFacil),
-    opciones,
-    posicionCorrecta,
-    nivelOpciones,
-    correctoAlPrimerIntento: modo === 'lectura' ? intento.repeticiones === 0 : intento.errores.length === 0,
     intentos: intento.intentos,
-    errores,
     msPrimerToque: COPIA_O_NULO(intento.primerToque),
     msAcierto,
     distraido: msAcierto > MS_DISTRAIDO,
     repeticionesAudio,
-    conAyudaVisual,
     estadoAntes: progresoAntes?.estado ?? null,
     estadoDespues: progresoDespues?.estado ?? null,
     cajaLeitnerAntes: progresoAntes?.cajaLeitner ?? null,
     cajaLeitnerDespues: progresoDespues?.cajaLeitner ?? null,
     fatigaActiva: Boolean(fatigaActiva),
-    ...secuencia,
+  };
+}
+
+/**
+ * Registro fino de un ensayo de escritura (Ampliación 5, fase 28). Tiene los mismos campos que el de lectura (para que el análisis y
+ * las exportaciones lo lean igual) más los propios: `modo: 'escritura'`, `unidad`, `huecos`, `fichas`, `extras`, `toques`,
+ * `escuchasPieza`, `erroresPorHueco`, `ordenLlenado`, `primeraVez` (¿nunca antes había visto esta palabra escribiendo? → mide la
+ * generalización) y `nivelExtras` (las extras que mandaba el nivel; no el `nivelOpciones` de la lectura, que aquí es null).
+ * `errores`: `{ id, texto, hueco, ms }` por cada pieza soltada en una caja equivocada; `id` es el texto de la pieza, para poder
+ * contar confusiones («pa → ba») con las mismas funciones de la lectura.
+ * @param visual  el ensayo armado (`armarEnsayoEscritura`): `{ unidad, huecos, fichas, extras, nivel }`
+ * @param intento intento ya completo (`escritura/intento.js`)
+ */
+export function construirRespuestaEscritura({
+  perfilId, sesionId, numeroEnSesion, fecha, ensayo, elemento, visual, intento, progresoAntes = null, progresoDespues = null,
+  nivelExtras = null, repeticionesAudio = 0, fatigaActiva = false, primeraVez = false, extra = {},
+}) {
+  if (intento.estado !== 'acertado') throw new Error('El ensayo todavía no se resolvió');
+  const momento = fecha instanceof Date ? fecha : new Date(fecha);
+  const msAcierto = Math.round(intento.fin - intento.inicio);
+  return {
+    ...camposComunes({ perfilId, sesionId, numeroEnSesion, momento, etapa: null, ensayo, elemento, intento, msAcierto, repeticionesAudio, progresoAntes, progresoDespues, fatigaActiva }),
+    modo: 'escritura',
+    unidad: visual.unidad,
+    opciones: [],
+    posicionCorrecta: null,
+    nivelOpciones: null,
+    nivelExtras,
+    huecos: [...intento.huecos],
+    fichas: intento.fichas.map((f) => ({ id: f.id, texto: f.texto, distractor: f.distractor })),
+    extras: visual.extras ?? intento.fichas.filter((f) => f.distractor).length,
+    correctoAlPrimerIntento: intento.errores.length === 0,
+    errores: intento.errores.map((e, i) => ({ id: e.texto, texto: e.texto, hueco: e.hueco, ms: intento.erroresMs[i] })),
+    toques: intento.toques.map((t) => ({ fichaId: t.fichaId, texto: t.texto, hueco: t.hueco, correcto: t.correcto, ms: t.ms, forma: t.forma })),
+    escuchasPieza: intento.escuchasPieza.map((e) => ({ texto: e.texto, ms: e.ms })),
+    erroresPorHueco: [...intento.erroresPorHueco],
+    ordenLlenado: [...intento.ordenLlenado],
+    primeraVez: Boolean(primeraVez),
+    conAyudaVisual: intento.conAyudaVisual,
     ...extra,
   };
-  return registro;
 }

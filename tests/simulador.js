@@ -2,7 +2,12 @@
 // Usa crearSesion + registrarRespuesta + aplicarResultado igual que lo hará la interfaz.
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { crearAleatorio } from '../js/core/azar.js';
+import { crearControladorEscritura } from '../js/core/escritura/controlador.js';
+import { elementosDeEscritura } from '../js/core/escritura/elementos.js';
+import { nivelSiguiente } from '../js/core/escritura/niveles.js';
+import { evaluarAutoajusteEscritura } from '../js/core/autoajuste.js';
 import { crearSesion, iniciarCurso, ensayoActual, registrarRespuesta, violacionesDeOrden } from '../js/core/sesion.js';
 import { aplicarResultado, claveDia, idNivel, idProgreso, nuevoNivel, nuevoProgreso } from '../js/core/progreso.js';
 import { contarDominadas } from '../js/core/etapas.js';
@@ -143,5 +148,101 @@ export function simular({
     dominadasL4: contarDominadas(lista, 'L4'),
     palabrasConProgreso: new Set(lista.map((p) => p.elementoId)).size,
     ultimoDia: claveDia(new Date(2026, 9, dias)),
+  };
+}
+
+// ─── Niño virtual que escribe (Ampliación 5, fase 28) ───────────────────────────────────────────────────────────
+
+const BANCO = JSON.parse(readFileSync(new URL('../data/escritura/banco.json', import.meta.url), 'utf8'));
+
+/**
+ * Niño virtual de escritura: usa el controlador de escritura completo (sesión, intento, progreso, nivel de extras) y el autoajuste
+ * al terminar cada sesión, como lo hará la pantalla. En cada palabra acierta al primer intento con probabilidad
+ * `inicio + aprendizaje * veces_vista` (tope 0,95); los repasos, un 90 %. Si falla, comete UN error y luego la arma bien.
+ * Mide cuántas sesiones tarda en pasar del nivel `desde` al siguiente (`sesionesHastaE03` si `desde` es E02).
+ *
+ * @param dias, semilla, aprendizaje, inicio  como en `simular`
+ * @param desde         nivel de partida (por defecto E02)
+ * @param avanceRapido  como el ajuste del perfil (por defecto true, igual que la app)
+ * @param ajustesEscritura  ajustes de escritura del perfil (palabrasPorSesion, maxSilabasExtra…)
+ */
+export function simularEscritura({
+  dias = 60, semilla = 1, aprendizaje = 0.08, inicio = 0.4, desde = 'E02', avanceRapido = true, ajustesEscritura = {},
+} = {}) {
+  const azar = crearAleatorio(semilla);
+  const elementos = elementosDeEscritura({ banco: BANCO });
+  const progresos = new Map();
+  const niveles = new Map();
+  const exposiciones = new Map();
+  const sesiones = [];
+  let perfilActual = { id: PERFIL_ID, ajustes: { avanceRapido, escritura: { nivelEscritura: desde, ...ajustesEscritura } }, cambiosAutomaticos: [] };
+  const stats = { sesiones: 0, ensayos: 0, fatigas: 0, violaciones: 0, sesionesHastaE03: null, diasHastaE03: null, palabrasPorSesion: [], extrasMaximos: 0 };
+  let ms = 0;
+  const siguienteNivel = nivelSiguiente(desde);
+
+  for (let dia = 0; dia < dias; dia++) {
+    if (dia % 7 === 6) continue; // un día sin practicar por semana
+    const hoy = new Date(2026, 9, 1 + dia, 10, 0, 0);
+    let reloj = hoy.getTime();
+    const ctl = crearControladorEscritura({
+      perfil: perfilActual, palabras: elementos, progresos: [...progresos.values()], niveles: [...niveles.values()], hoy, aleatorio: azar,
+      reloj: () => new Date(reloj), sesionId: `sim${dia}`,
+    });
+    let visual = ctl.iniciar(ms);
+    if (!visual) break;
+    const secuencia = ctl.plan.ensayos;
+    stats.violaciones += violacionesDeOrden(secuencia, Infinity);
+    stats.palabrasPorSesion.push(secuencia.length);
+    const inicioSesion = new Date(reloj);
+    while (visual) {
+      const ensayo = visual.ensayo;
+      const clave = `${ensayo.elementoId}:${ensayo.actividad}`;
+      const veces = exposiciones.get(clave) ?? 0;
+      let p = Math.min(0.95, inicio + aprendizaje * veces);
+      if (ensayo.tipo === 'repaso') p = 0.9;
+      if (ensayo.tipo === 'cierre') p = 0.95;
+      const acierta = azar() < p;
+      exposiciones.set(clave, veces + 1);
+      stats.extrasMaximos = Math.max(stats.extrasMaximos, visual.extras);
+      // el niño arma la palabra; si no acierta al primer intento, se equivoca una vez (cuando hay otra pieza que probar)
+      const libres = () => ctl.intento().fichas.filter((f) => !ctl.intento().colocadas.includes(f.id));
+      if (!acierta) {
+        const mala = libres().find((f) => f.texto.toLowerCase() !== visual.huecos[0].toLowerCase());
+        if (mala) { ms += 600; ctl.soltar({ fichaId: mala.id, hueco: 0, forma: 'toque' }, ms); }
+      }
+      for (let h = 0; h < visual.huecos.length; h++) {
+        const ficha = libres().find((f) => f.texto.toLowerCase() === visual.huecos[h].toLowerCase());
+        ms += 600;
+        ctl.soltar({ fichaId: ficha.id, hueco: h, forma: 'toque' }, ms);
+      }
+      reloj += 20000; // una palabra tarda ~20 s
+      const r = ctl.avanzar(ms + 600);
+      ms += 600;
+      progresos.set(r.guardar.progreso.id, r.guardar.progreso);
+      niveles.set(r.guardar.nivel.id, r.guardar.nivel);
+      stats.ensayos += 1;
+      visual = r.siguiente;
+    }
+    const sesion = ctl.registro({ inicio: inicioSesion, fin: new Date(reloj) });
+    sesiones.push(sesion);
+    stats.sesiones += 1;
+    if (sesion.fatiga) stats.fatigas += 1;
+    // autoajuste al terminar la sesión
+    const evaluado = evaluarAutoajusteEscritura({ perfil: perfilActual, sesiones, elementos, progresos: [...progresos.values()], hoy });
+    perfilActual = evaluado.perfil;
+    if (stats.sesionesHastaE03 === null && siguienteNivel && perfilActual.ajustes.escritura.nivelEscritura === siguienteNivel) {
+      stats.sesionesHastaE03 = stats.sesiones;
+      stats.diasHastaE03 = dia + 1;
+    }
+  }
+  const lista = [...progresos.values()];
+  return {
+    ...stats,
+    nivelFinal: perfilActual.ajustes.escritura.nivelEscritura,
+    palabrasPorSesionFinal: perfilActual.ajustes.escritura.palabrasPorSesion,
+    progresos: lista,
+    niveles: [...niveles.values()],
+    sesionesGuardadas: sesiones,
+    cambios: perfilActual.cambiosAutomaticos,
   };
 }

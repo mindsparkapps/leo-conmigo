@@ -207,21 +207,31 @@ export function precision(ultimos) {
  * y baja una si es < 50 %. Al cambiar de nivel la ventana se reinicia.
  */
 export function registrarEnNivel(nivel, correctoAlPrimerIntento, maxOpciones = OPCIONES_MAX) {
-  const tope = limitar(maxOpciones, OPCIONES_MIN, OPCIONES_MAX);
-  let opciones = limitar(nivel.opciones, OPCIONES_MIN, tope); // si el adulto bajó el máximo
+  return ajustarNivel(nivel, correctoAlPrimerIntento, { min: OPCIONES_MIN, max: maxOpciones, tope: OPCIONES_MAX });
+}
+
+/**
+ * La misma regla de subir y bajar para cualquier número «de nivel»: opciones de la lectura (2 a 4, campo `opciones`) o,
+ * en la escritura, sílabas extra (0 a 4, campo `extras`). Sube 1 con >= 80 % de los últimos 10 y baja 1 con < 50 %.
+ * @param min, max  rango permitido hoy (`max` es lo que fijó el adulto)
+ * @param tope      máximo absoluto de ese campo (por defecto, `max`)
+ */
+export function ajustarNivel(nivel, correctoAlPrimerIntento, { min, max, tope = max, campo = 'opciones' }) {
+  const techo = limitar(max, min, tope);
+  let valor = limitar(nivel[campo] ?? min, min, techo); // si el adulto bajó el máximo
   let ultimos = [...nivel.ultimos, Boolean(correctoAlPrimerIntento)].slice(-VENTANA_NIVEL);
 
   if (ultimos.length >= VENTANA_NIVEL) {
     const p = precision(ultimos);
-    if (p >= UMBRAL_SUBIR && opciones < tope) {
-      opciones += 1;
+    if (p >= UMBRAL_SUBIR && valor < techo) {
+      valor += 1;
       ultimos = [];
-    } else if (p < UMBRAL_BAJAR && opciones > OPCIONES_MIN) {
-      opciones -= 1;
+    } else if (p < UMBRAL_BAJAR && valor > min) {
+      valor -= 1;
       ultimos = [];
     }
   }
-  return { ...nivel, opciones, ultimos };
+  return { ...nivel, [campo]: valor, ultimos };
 }
 
 /** Nivel "fácil": 2 opciones, precisión menor a 80 % o aún sin datos (recién cambiado de nivel). */

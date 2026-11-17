@@ -35,14 +35,14 @@ const MAX_CIERRES = 3;
 // ---------- Orden de los ensayos ----------
 
 /** Cuenta las reglas que se rompen: mismo elemento seguido o más de 3 veces la misma actividad. */
-export function violacionesDeOrden(secuencia) {
+export function violacionesDeOrden(secuencia, maxSeguidas = MAX_MISMA_ACTIVIDAD_SEGUIDA) {
   let violaciones = 0;
   let racha = 1;
   for (let i = 1; i < secuencia.length; i++) {
     if (secuencia[i].elementoId === secuencia[i - 1].elementoId) violaciones += 1;
     if (secuencia[i].actividad === secuencia[i - 1].actividad) {
       racha += 1;
-      if (racha > MAX_MISMA_ACTIVIDAD_SEGUIDA) violaciones += 1;
+      if (racha > maxSeguidas) violaciones += 1;
     } else {
       racha = 1;
     }
@@ -56,15 +56,15 @@ function siguienteRacha(anterior, candidato, racha) {
 }
 
 /** ¿Puede ir `candidato` justo después de `anterior` sin romper ninguna regla? */
-function puedeIrDespues(anterior, candidato, racha) {
+function puedeIrDespues(anterior, candidato, racha, maxSeguidas) {
   return (
     anterior.elementoId !== candidato.elementoId &&
-    siguienteRacha(anterior, candidato, racha) <= MAX_MISMA_ACTIVIDAD_SEGUIDA
+    siguienteRacha(anterior, candidato, racha) <= maxSeguidas
   );
 }
 
 /** Coloca `primero` al inicio y `ultimo` al final, y ordena el resto sin romper las reglas (si es posible). */
-function ordenarEnsayos(primero, medio, ultimo, aleatorio) {
+function ordenarEnsayos(primero, medio, ultimo, aleatorio, maxSeguidas) {
   let mejor = null;
   let menosViolaciones = Infinity;
 
@@ -78,8 +78,8 @@ function ordenarEnsayos(primero, medio, ultimo, aleatorio) {
       // Mejor caso: respeta las reglas (y, si es el último del medio, también con el ensayo final).
       let idx = pool.findIndex(
         (c) =>
-          puedeIrDespues(anterior, c, racha) &&
-          !(esElUltimoDelMedio && ultimo && !puedeIrDespues(c, ultimo, siguienteRacha(anterior, c, racha))),
+          puedeIrDespues(anterior, c, racha, maxSeguidas) &&
+          !(esElUltimoDelMedio && ultimo && !puedeIrDespues(c, ultimo, siguienteRacha(anterior, c, racha), maxSeguidas)),
       );
       // Si no hay, al menos no repetir el mismo elemento; y si tampoco se puede, el primero que quede.
       if (idx === -1) idx = pool.findIndex((c) => anterior.elementoId !== c.elementoId);
@@ -90,7 +90,7 @@ function ordenarEnsayos(primero, medio, ultimo, aleatorio) {
     }
     if (ultimo) secuencia.push(ultimo);
 
-    const v = violacionesDeOrden(secuencia);
+    const v = violacionesDeOrden(secuencia, maxSeguidas);
     if (v < menosViolaciones) {
       menosViolaciones = v;
       mejor = secuencia;
@@ -106,7 +106,7 @@ function ordenarEnsayos(primero, medio, ultimo, aleatorio) {
  * todas las reglas de orden; si ninguno puede, el que rompe menos reglas.
  * `candidatos`: [{ ensayo, puntaje }]
  */
-function ordenarSesion(candidatos, aleatorio) {
+function ordenarSesion(candidatos, aleatorio, maxSeguidas) {
   const ranking = barajar(candidatos, aleatorio).sort((a, b) => b.puntaje - a.puntaje);
   if (ranking.length === 1) return { primero: ranking[0], ultimo: null, secuencia: [ranking[0].ensayo] };
 
@@ -128,8 +128,8 @@ function ordenarSesion(candidatos, aleatorio) {
   let mejor = null;
   for (const par of pares.slice(0, MAX_PARES_EXTREMOS)) {
     const medio = ranking.filter((c) => c !== par.a && c !== par.b).map((c) => c.ensayo);
-    const secuencia = ordenarEnsayos(par.a.ensayo, medio, par.b.ensayo, aleatorio);
-    const violaciones = violacionesDeOrden(secuencia);
+    const secuencia = ordenarEnsayos(par.a.ensayo, medio, par.b.ensayo, aleatorio, maxSeguidas);
+    const violaciones = violacionesDeOrden(secuencia, maxSeguidas);
     if (!mejor || violaciones < mejor.violaciones) mejor = { primero: par.a, ultimo: par.b, secuencia, violaciones };
     if (violaciones === 0) break;
   }
@@ -224,11 +224,15 @@ export function reajustarPorDificultad(trabajo, cuentas, dificultades, tope) {
  * @param reglasDe      (actividad) => { soloOtraCategoria } reglas extra para elegir distractores
  * @param vistasPrevias Set de ids de elementos que ya cuentan como vistos (pueden ser distractores desde el primer ensayo)
  * @param dificultades  Map elementoId -> { indice, confiable, tasa, confusionId } (análisis de la fase 13; vacío = sin datos)
+ * @param puedePracticar (elemento) => ¿puede entrar como palabra en práctica o nueva? Los que no, solo se repasan (escritura: los de
+ *                      niveles anteriores). Por defecto, todos.
+ * @param maxActividadSeguida cuántos ensayos seguidos de la misma actividad se aceptan (3). En la escritura la «actividad» es el nivel y
+ *                      todas las palabras de práctica son del mismo: no hay límite.
  */
 export function crearSesion({
   perfil, elementos, progresos = [], niveles = [], actividades, hoy = new Date(), aleatorio = Math.random,
   puedeHacer = () => true, puedeSerOpcion = () => true, reglasDe = () => ({}), vistasPrevias = new Set(),
-  dificultades = new Map(),
+  dificultades = new Map(), puedePracticar = () => true, maxActividadSeguida = MAX_MISMA_ACTIVIDAD_SEGUIDA,
 }) {
   const ajustes = normalizarAjustes(perfil.ajustes);
   const total = ajustes.ensayosPorSesion;
@@ -250,12 +254,12 @@ export function crearSesion({
 
   // 1. Palabras en práctica (las más antiguas sin practicar primero) y, si hacen falta, palabras nuevas.
   const enPractica = infos
-    .filter((i) => i.categoria === 'practica')
+    .filter((i) => i.categoria === 'practica' && puedePracticar(i.elemento))
     .sort((a, b) => a.ultima - b.ultima)
     .slice(0, MAX_EN_PRACTICA);
   const maxNuevas = Math.min(MAX_NUEVAS_POR_SESION, ajustes.palabrasNuevasPorSesion);
   const nuevasNecesarias = enPractica.length < MIN_EN_PRACTICA ? Math.min(maxNuevas, MAX_EN_PRACTICA - enPractica.length) : 0;
-  const nuevas = infos.filter((i) => i.categoria === 'nueva').slice(0, nuevasNecesarias);
+  const nuevas = infos.filter((i) => i.categoria === 'nueva' && puedePracticar(i.elemento)).slice(0, nuevasNecesarias);
   const trabajo = [...enPractica, ...nuevas];
 
   // 2. Repasos: primero los vencidos (Leitner); si faltan, dominadas al azar.
@@ -338,7 +342,7 @@ export function crearSesion({
   if (candidatos.length === 0) return sesionVacia;
 
   // 3. Primer y último ensayo: lo que mejor sabe el niño (el éxito abre y cierra la sesión).
-  const { primero, ultimo, secuencia } = ordenarSesion(candidatos, aleatorio);
+  const { primero, ultimo, secuencia } = ordenarSesion(candidatos, aleatorio, maxActividadSeguida);
   for (const c of [primero, ultimo]) {
     if (c) c.ensayo.esFacil = c.puntaje >= UMBRAL_ENSAYO_FACIL;
   }

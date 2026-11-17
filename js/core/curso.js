@@ -34,6 +34,15 @@ export const AJUSTES_DEL_ALUMNO = Object.freeze({
   maxOpciones: 'maxOpciones',
   palabrasNuevasPorSesion: 'palabrasNuevas',
 });
+/**
+ * Lo mismo dentro de `ajustes.escritura` (Ampliación 5): el nivel y las palabras por sesión son del alumno mientras su marca esté en
+ * «Automático». TODO lo demás de `ajustes.escritura` (habilitada, extras, forma de mover, color del error, niveles, banco…) es del curso.
+ * Los niveles de sílabas extra no van aquí: viven en `niveles` (`<perfil>:E07`), que ya es del alumno.
+ */
+export const AJUSTES_DE_ESCRITURA_DEL_ALUMNO = Object.freeze({
+  nivelEscritura: 'nivelEscritura',
+  palabrasPorSesion: 'palabrasEscritura',
+});
 /** La etapa también es automática (`ajustes.automaticos.etapa`), pero vive fuera de `ajustes`: `perfil.etapaActual`. */
 export const AUTOMATICO_DE_ETAPA = 'etapa';
 
@@ -56,6 +65,11 @@ export function combinarPerfil(curso, propio = null) {
   for (const [clave, marca] of Object.entries(AJUSTES_DEL_ALUMNO)) {
     if (auto[marca] && propiosAjustes[clave] !== undefined) ajustes[clave] = propiosAjustes[clave];
   }
+  const propiosEscritura = esObjeto(propiosAjustes.escritura) ? propiosAjustes.escritura : {};
+  ajustes.escritura = { ...ajustesCurso.escritura };
+  for (const [clave, marca] of Object.entries(AJUSTES_DE_ESCRITURA_DEL_ALUMNO)) {
+    if (auto[marca] && propiosEscritura[clave] !== undefined) ajustes.escritura[clave] = propiosEscritura[clave];
+  }
   const etapaActual = auto[AUTOMATICO_DE_ETAPA] && propio?.etapaActual !== undefined && propio?.etapaActual !== null
     ? propio.etapaActual
     : curso?.etapaActual ?? 1;
@@ -75,6 +89,9 @@ export function perfilPublicable(perfil) {
   const ajustes = normalizarAjustes(perfil?.ajustes);
   const propios = {};
   for (const [clave, marca] of Object.entries(AJUSTES_DEL_ALUMNO)) if (ajustes.automaticos[marca]) propios[clave] = ajustes[clave];
+  const propiosEscritura = {};
+  for (const [clave, marca] of Object.entries(AJUSTES_DE_ESCRITURA_DEL_ALUMNO)) if (ajustes.automaticos[marca]) propiosEscritura[clave] = ajustes.escritura[clave];
+  if (Object.keys(propiosEscritura).length) propios.escritura = propiosEscritura;
   const salida = { id: perfil?.id, ajustes: propios };
   if (ajustes.automaticos[AUTOMATICO_DE_ETAPA]) salida.etapaActual = perfil?.etapaActual ?? 1;
   salida.cambiosAutomaticos = Array.isArray(perfil?.cambiosAutomaticos) ? [...perfil.cambiosAutomaticos] : [];
@@ -118,6 +135,35 @@ export const contenidoDe = (perfilOFicha) => {
   const id = perfilOFicha?.cursoId ?? perfilOFicha?.id;
   return typeof id === 'string' && id ? id : null;
 };
+
+// ---------- ficha de prueba (Ampliación 5: modo administrador de Escritura) ----------
+// Lo que se juega «de prueba» se guarda con `perfilId = prueba:<perfilId>`: una ficha que lee el contenido del perfil real
+// (`contenidoDe` → `cursoId`) y tiene sus propios progresos, niveles, sesiones, respuestas, calcomanías y movimientos. Nunca se
+// mezcla con el avance real: ni cuenta para su autoajuste, ni se publica en el aula.
+
+export const PREFIJO_PRUEBA = 'prueba:';
+
+/** Id determinista de la ficha de prueba de un perfil. */
+export const idDePrueba = (perfilId) => `${PREFIJO_PRUEBA}${perfilId}`;
+
+/** ¿Es el id (de perfil o de ficha) de un perfil de prueba? */
+export const esIdDePrueba = (id) => typeof id === 'string' && id.startsWith(PREFIJO_PRUEBA) && id.length > PREFIJO_PRUEBA.length;
+
+/** El perfil real al que pertenece un id de prueba (o null si no lo es). */
+export const perfilDePrueba = (id) => (esIdDePrueba(id) ? id.slice(PREFIJO_PRUEBA.length) : null);
+
+/** La ficha de prueba de un perfil: sirve donde se pide un perfil o una ficha (`contenidoDe` da el perfil real). */
+export function fichaDePrueba(perfil) {
+  const cursoId = typeof perfil === 'string' ? perfil : perfil?.id;
+  if (typeof cursoId !== 'string' || !cursoId) throw new Error('La ficha de prueba necesita un perfil');
+  return { id: idDePrueba(cursoId), cursoId, nombre: 'Perfil de prueba', esPrueba: true, estado: null };
+}
+
+/** ¿Este registro (progreso, nivel, sesión, respuesta…) es de un perfil de prueba? */
+export const esDePrueba = (registro) => esIdDePrueba(registro?.perfilId);
+
+/** De una lista de registros, los de la prueba de ese perfil (para «Borrar los datos de prueba») o, sin perfil, todos los de prueba. */
+export const registrosDePrueba = (registros, perfilId) => (registros ?? []).filter((r) => (perfilId === undefined ? esDePrueba(r) : r?.perfilId === idDePrueba(perfilId)));
 
 /** Los almacenes con registros del alumno que el adulto guarda bajo la ficha. */
 export const ALMACENES_DE_FICHA = Object.freeze(['progresos', 'niveles', 'sesiones', 'respuestas', 'calcomanias', 'movimientos']);

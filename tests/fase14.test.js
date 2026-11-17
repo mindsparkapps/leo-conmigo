@@ -312,12 +312,12 @@ test('ajustes nuevos: valores por defecto y límites', () => {
   const a = normalizarAjustes();
   assert.equal(a.avanceRapido, true);
   assert.equal(a.palabrasNuevasPorSesion, 2);
-  assert.deepEqual(a.automaticos, { ensayosPorSesion: true, maxOpciones: true, etapa: true, palabrasNuevas: true });
+  assert.deepEqual(a.automaticos, { ensayosPorSesion: true, maxOpciones: true, etapa: true, palabrasNuevas: true, nivelEscritura: true, palabrasEscritura: true, silabasExtra: true });
   assert.equal(AJUSTES_POR_DEFECTO.palabrasNuevasPorSesion, 2);
   assert.equal(normalizarAjustes({ palabrasNuevasPorSesion: 9 }).palabrasNuevasPorSesion, 2);
   assert.equal(normalizarAjustes({ palabrasNuevasPorSesion: 0 }).palabrasNuevasPorSesion, 1);
   assert.equal(normalizarAjustes({ avanceRapido: false }).avanceRapido, false);
-  assert.deepEqual(normalizarAjustes({ automaticos: { etapa: false, basura: 1 } }).automaticos, { ensayosPorSesion: true, maxOpciones: true, etapa: false, palabrasNuevas: true });
+  assert.deepEqual(normalizarAjustes({ automaticos: { etapa: false, basura: 1 } }).automaticos, { ensayosPorSesion: true, maxOpciones: true, etapa: false, palabrasNuevas: true, nivelEscritura: true, palabrasEscritura: true, silabasExtra: true });
 });
 
 test('palabrasNuevasPorSesion = 1 limita las palabras nuevas por sesión', () => {

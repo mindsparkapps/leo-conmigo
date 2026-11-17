@@ -341,7 +341,7 @@ test('el alumno nunca publica lo del adulto, y un ajuste del curso no pisa lo qu
   assert.deepEqual(Object.keys(doc.almacenes).sort(), ['calcomanias', 'movimientos', 'niveles', 'perfiles', 'progresos', 'respuestas', 'sesiones']);
   // del perfil publica SOLO lo suyo: nada del curso (ni nombre, ni foto, ni álbumes, ni ajustes manuales)
   assert.deepEqual(Object.keys(doc.almacenes.perfiles[0]).sort(), ['ajustes', 'cambiosAutomaticos', 'etapaActual', 'id', 'updatedAt']);
-  assert.deepEqual(doc.almacenes.perfiles[0].ajustes, { ensayosPorSesion: 6, maxOpciones: 4, palabrasNuevasPorSesion: 2 });
+  assert.deepEqual(doc.almacenes.perfiles[0].ajustes, { ensayosPorSesion: 6, maxOpciones: 4, palabrasNuevasPorSesion: 2, escritura: { nivelEscritura: 'E01', palabrasPorSesion: 6 } });
   assert.equal(doc.almacenes.perfiles[0].etapaActual, 3);
 
   // el adulto cambia un ajuste MANUAL del curso (y también uno automático, que NO debe pisar al alumno)

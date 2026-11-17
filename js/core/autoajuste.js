@@ -6,8 +6,11 @@
 // Las constantes están arriba para poder afinarlas.
 
 import { normalizarAjustes } from './modelos.js';
-import { OPCIONES_MAX, VENTANA_NIVEL, claveDia, precision } from './progreso.js';
+import { ESTADOS, OPCIONES_MAX, VENTANA_NIVEL, claveDia, precision } from './progreso.js';
 import { mediana } from './analisis.js';
+import { esDeEscritura } from './escritura/comun.js';
+import { esIdDePrueba } from './curso.js';
+import { siguienteNivelAbierto, nivelesDisponibles } from './escritura/elementos.js';
 
 export const SESIONES_A_MIRAR = 3;
 export const MAX_CAMBIOS_GUARDADOS = 30;
@@ -32,11 +35,23 @@ export const INDICE_PARA_DOS_NUEVAS = 30;
 export const PROPORCION_PARA_SUBIR_ETAPA = 0.8;
 export const PRECISION_PARA_SUGERIR_BAJAR = 0.5;
 
+// Escritura (Ampliación 5): lo que mira y cuándo cambia (se mide en sesiones de escritura, nunca en las de lectura)
+export const PASO_PALABRAS_ESCRITURA = 1;
+export const MAX_PALABRAS_AUTOMATICO = 10; // el tope del adulto es 12; solo él lo pasa de 10
+export const MIN_PALABRAS_AUTOMATICO = 4;
+export const MINUTOS_ESCRITURA_SUBIR = 10; // una palabra tarda más en escribirse que un ensayo de lectura
+export const MINUTOS_ESCRITURA_BAJAR = 15;
+export const PROPORCION_PARA_SUBIR_NIVEL = 0.8; // palabras del nivel dominadas o aprendidas
+export const MIN_PALABRAS_PARA_SUBIR_NIVEL = 4; // con menos palabras en el nivel no se sube solo
+export const SESIONES_PARA_SUGERIR = 3; // sesiones del mismo nivel con < 50 % → solo una sugerencia
+
 const NOMBRES = {
   ensayosPorSesion: 'ensayos por sesión',
   maxOpciones: 'máximo de opciones',
   palabrasNuevas: 'palabras nuevas por sesión',
   etapa: 'etapa',
+  nivelEscritura: 'nivel de escritura',
+  palabrasEscritura: 'palabras por sesión de escritura',
 };
 export const nombreDeAjuste = (ajuste) => NOMBRES[ajuste] ?? ajuste;
 
@@ -45,9 +60,15 @@ const minutosDe = (s) => {
   return Number.isFinite(ms) ? ms / 60000 : null;
 };
 
-/** Las últimas `n` sesiones (más reciente primero), sin las borradas. */
-export function ultimasSesiones(sesiones, n = SESIONES_A_MIRAR) {
-  return sesiones.filter((s) => !s.deleted).sort((a, b) => String(b.inicio).localeCompare(String(a.inicio))).slice(0, n);
+/**
+ * Las últimas `n` sesiones (más reciente primero), sin las borradas. Las de lectura y las de escritura no se mezclan: por defecto
+ * solo cuentan las de lectura; con `{ escritura: true }`, solo las de escritura.
+ */
+export function ultimasSesiones(sesiones, n = SESIONES_A_MIRAR, { escritura = false } = {}) {
+  return sesiones
+    .filter((s) => !s.deleted && esDeEscritura(s) === escritura)
+    .sort((a, b) => String(b.inicio).localeCompare(String(a.inicio)))
+    .slice(0, n);
 }
 
 /** Aciertos al primer intento de varias sesiones (sin «leo en voz alta», que decide el adulto). null si no hubo ensayos. */
@@ -115,7 +136,7 @@ export function evaluarAutoajuste({
     if (
       auto.etapa && !yaCambioHoy('etapa') && aciertos !== null && aciertos < PRECISION_PARA_SUGERIR_BAJAR && etapaActual > 0 &&
       !(etapaSiguienteAbierta && proporcionEtapa >= PROPORCION_PARA_SUBIR_ETAPA) &&
-      !previos.some((c) => c.sugerencia && (c.dia === dia || !c.visto))
+      !previos.some((c) => c.ajuste === 'etapa' && c.sugerencia && (c.dia === dia || !c.visto))
     ) {
       anotar('etapa', etapaActual, null, `acertó solo ${Math.round(aciertos * 100)} % sin ayuda en las últimas ${SESIONES_A_MIRAR} sesiones: quizá convenga volver a la etapa anterior (en Ajustes)`, { sugerencia: true });
     }
@@ -129,7 +150,7 @@ export function evaluarAutoajuste({
 
   // ---- máximo de opciones: solo sube ----
   if (auto.maxOpciones && !yaCambioHoy('maxOpciones') && ajustes.maxOpciones < OPCIONES_MAX) {
-    const enUso = niveles.filter((n) => !n.deleted && (n.ultimos?.length ?? 0) > 0);
+    const enUso = niveles.filter((n) => !n.deleted && !esDeEscritura(n) && (n.ultimos?.length ?? 0) > 0); // los niveles de escritura son sílabas extra, no opciones
     const todosEnElMaximo = enUso.length > 0 && enUso.every(
       (n) => n.opciones >= ajustes.maxOpciones && n.ultimos.length >= VENTANA_NIVEL && precision(n.ultimos) >= PRECISION_PARA_MAS_OPCIONES,
     );
@@ -164,6 +185,94 @@ export function evaluarAutoajuste({
   };
 }
 
+// ---------- escritura (Ampliación 5) ----------
+
+const AJUSTES_DE_ESCRITURA = { nivelEscritura: 'nivelEscritura', palabrasEscritura: 'palabrasPorSesion' }; // aviso -> campo de `ajustes.escritura`
+
+/** Proporción de las palabras activas de un nivel que están dominadas (o aprendidas), con su total. */
+export function avanceDeNivel({ elementos, progresos, perfilId, nivel }) {
+  const activos = elementos.filter((e) => e.nivel === nivel && e.activa !== false && !e.deleted);
+  const porId = new Map(progresos.filter((p) => !p.deleted && p.actividad === nivel && p.perfilId === perfilId).map((p) => [p.elementoId, p]));
+  const dominadas = activos.filter((e) => porId.get(e.id)?.estado === ESTADOS.DOMINADA).length;
+  return { total: activos.length, dominadas, proporcion: activos.length ? dominadas / activos.length : null };
+}
+
+/**
+ * Autoajuste de la escritura: solo mira sesiones `tipo: 'escritura'` (las de lectura no cuentan) y cambia, como máximo una vez por día
+ * y solo si el adulto lo dejó en «Automático», el nivel y las palabras por sesión. Las sílabas extra las lleva el nivel de cada
+ * actividad (`niveles`), no este módulo. Sin efecto en un perfil de prueba: sus sesiones nunca cuentan para el perfil real.
+ * @param perfil     el perfil (curso o alumno ya combinado) con sus ajustes
+ * @param sesiones   sesiones del perfil (las de lectura y las de otros perfiles se ignoran)
+ * @param elementos  elementos de escritura (`elementosDeEscritura`)
+ * @param progresos  progresos del perfil (solo importan los `E*`)
+ * @returns { perfil, cambios } igual que `evaluarAutoajuste`
+ */
+export function evaluarAutoajusteEscritura({ perfil, sesiones = [], elementos = [], progresos = [], hoy = new Date() }) {
+  if (esIdDePrueba(perfil.id)) return { perfil, cambios: [] };
+  const ajustes = normalizarAjustes(perfil.ajustes);
+  const esc = ajustes.escritura;
+  const auto = ajustes.automaticos;
+  const dia = claveDia(hoy);
+  const previos = perfil.cambiosAutomaticos ?? [];
+  const yaCambioHoy = (ajuste) => previos.some((c) => c.ajuste === ajuste && !c.sugerencia && c.dia === dia);
+  const propias = sesiones.filter((s) => !s.perfilId || s.perfilId === perfil.id); // nunca las de otro perfil (ni las de prueba)
+  const ultimas = ultimasSesiones(propias, SESIONES_A_MIRAR, { escritura: true });
+  const nuevos = { ...esc };
+  const cambios = [];
+  const anotar = (ajuste, antes, despues, motivo, extra = {}) =>
+    cambios.push({ fecha: hoy.toISOString(), dia, ajuste, antes, despues, motivo, visto: false, ...extra });
+
+  // ---- palabras por sesión (±1, entre 4 y 10) ----
+  if (auto.palabrasEscritura && !yaCambioHoy('palabrasEscritura') && ultimas.length >= SESIONES_A_MIRAR) {
+    const duracion = mediana(ultimas.map(minutosDe).filter((m) => m !== null));
+    const fatigas = ultimas.filter((s) => s.fatiga).length;
+    const interrumpidas = ultimas.filter((s) => s.interrumpida).length;
+    const aciertos = precisionDeSesiones(ultimas);
+    const actual = esc.palabrasPorSesion;
+    if (actual > MIN_PALABRAS_AUTOMATICO && (fatigas >= FATIGAS_PARA_BAJAR || (duracion ?? 0) > MINUTOS_ESCRITURA_BAJAR || interrumpidas > 0)) {
+      nuevos.palabrasPorSesion = Math.max(MIN_PALABRAS_AUTOMATICO, actual - PASO_PALABRAS_ESCRITURA);
+      anotar('palabrasEscritura', actual, nuevos.palabrasPorSesion, fatigas >= FATIGAS_PARA_BAJAR
+        ? `se cansó en ${fatigas} de las últimas ${SESIONES_A_MIRAR} sesiones de escritura`
+        : interrumpidas > 0 ? 'una de las últimas sesiones de escritura se interrumpió' : `las últimas sesiones de escritura duraron más de ${MINUTOS_ESCRITURA_BAJAR} minutos`);
+    } else if (
+      actual < MAX_PALABRAS_AUTOMATICO && fatigas === 0 && interrumpidas === 0 && aciertos !== null && aciertos >= ACIERTOS_PARA_SUBIR &&
+      duracion !== null && duracion < MINUTOS_ESCRITURA_SUBIR
+    ) {
+      nuevos.palabrasPorSesion = Math.min(MAX_PALABRAS_AUTOMATICO, actual + PASO_PALABRAS_ESCRITURA);
+      anotar('palabrasEscritura', actual, nuevos.palabrasPorSesion, `terminó ${SESIONES_A_MIRAR} sesiones de escritura seguidas sin cansarse`);
+    }
+  }
+
+  // ---- nivel: solo sube; si va mal, solo se sugiere ----
+  if (auto.nivelEscritura && !yaCambioHoy('nivelEscritura')) {
+    const nivel = esc.nivelEscritura;
+    const { total, dominadas, proporcion } = avanceDeNivel({ elementos, progresos, perfilId: perfil.id, nivel });
+    const siguiente = siguienteNivelAbierto({
+      nivel, disponibles: nivelesDisponibles(elementos.filter((e) => e.activa !== false && !e.deleted)), bloqueados: esc.nivelesBloqueados, forzados: esc.nivelesForzados,
+    });
+    if (siguiente && total >= MIN_PALABRAS_PARA_SUBIR_NIVEL && proporcion >= PROPORCION_PARA_SUBIR_NIVEL) {
+      nuevos.nivelEscritura = siguiente;
+      anotar('nivelEscritura', nivel, siguiente, `ya domina o aprendió ${dominadas} de las ${total} palabras del nivel ${nivel}`);
+    } else {
+      const delNivel = ultimasSesiones(propias, SESIONES_PARA_SUGERIR, { escritura: true }).filter((s) => s.nivel === nivel);
+      const aciertos = delNivel.length >= SESIONES_PARA_SUGERIR ? precisionDeSesiones(delNivel) : null;
+      if (aciertos !== null && aciertos < PRECISION_PARA_SUGERIR_BAJAR && !previos.some((c) => c.ajuste === 'nivelEscritura' && c.sugerencia && (c.dia === dia || !c.visto))) {
+        anotar('nivelEscritura', nivel, null, `acertó solo ${Math.round(aciertos * 100)} % sin ayuda en las últimas ${SESIONES_PARA_SUGERIR} sesiones del nivel ${nivel}: quizá convenga volver a un nivel anterior (en el menú Escritura)`, { sugerencia: true });
+      }
+    }
+  }
+
+  if (!cambios.length) return { perfil, cambios };
+  return {
+    cambios,
+    perfil: {
+      ...perfil,
+      ajustes: { ...ajustes, escritura: nuevos },
+      cambiosAutomaticos: [...previos, ...cambios].slice(-MAX_CAMBIOS_GUARDADOS),
+    },
+  };
+}
+
 // ---------- avisos para el adulto ----------
 
 /** Cambios (y sugerencias) que el adulto todavía no vio, con su posición en `perfil.cambiosAutomaticos`. */
@@ -188,6 +297,7 @@ export function deshacerCambio(perfil, indice) {
   let etapaActual = perfil.etapaActual ?? 1;
   if (cambio.ajuste === 'etapa') etapaActual = cambio.antes;
   else if (cambio.ajuste === 'palabrasNuevas') ajustes.palabrasNuevasPorSesion = cambio.antes;
+  else if (cambio.ajuste in AJUSTES_DE_ESCRITURA) ajustes.escritura = { ...ajustes.escritura, [AJUSTES_DE_ESCRITURA[cambio.ajuste]]: cambio.antes };
   else ajustes[cambio.ajuste] = cambio.antes;
   ajustes.automaticos = { ...ajustes.automaticos, [cambio.ajuste]: false };
   const lista = perfil.cambiosAutomaticos.map((c, i) => (i === indice ? { ...c, visto: true, deshecho: true } : c));

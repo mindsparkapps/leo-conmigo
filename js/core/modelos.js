@@ -3,6 +3,23 @@
 import { nuevoId } from './id.js';
 import { silabear } from './silabas.js';
 import { normalizarAlbum } from './album.js';
+import { IDS_DE_NIVELES } from './escritura/niveles.js';
+
+/** Ajustes del modo Escritura (Ampliación 5). Todo es del curso salvo `nivelEscritura` y `palabrasPorSesion` (los calcula el alumno). */
+export const AJUSTES_ESCRITURA_POR_DEFECTO = Object.freeze({
+  habilitada: false, // «Escritura (experimental)»: el niño ve el botón solo si está en true
+  nivelEscritura: 'E01', // nivel actual (E01 a E20)
+  palabrasPorSesion: 6, // 4 a 12
+  maxSilabasExtra: 4, // sílabas que no son de la palabra: tope, 0 a 4
+  silabasExtraManual: null, // con «Lo elijo yo»: número fijo de sílabas extra (null = el nivel automático)
+  colorError: 'suave', // 'suave' (la pieza se atenúa) | 'rojo'
+  formaDeMover: 'tocar', // 'tocar' | 'arrastrar'
+  eleccionNino: 'alcanzados', // qué niveles puede elegir el niño: 'alcanzados' | 'todos' | 'ninguno'
+  piezasOracion: 'palabras', // E18: 'palabras' | 'silabas'
+  nivelesBloqueados: Object.freeze([]),
+  nivelesForzados: Object.freeze([]),
+  bancoApagado: Object.freeze([]), // ids `esc:<texto>` de palabras del banco que el adulto apagó
+});
 
 export const AJUSTES_POR_DEFECTO = Object.freeze({
   ensayosPorSesion: 8, // 4 a 15
@@ -21,14 +38,45 @@ export const AJUSTES_POR_DEFECTO = Object.freeze({
   avanceRapido: true, // fase 14: si acierta los 3 primeros ensayos de una actividad, queda dominada provisional
   palabrasNuevasPorSesion: 2, // fase 14: 1 o 2 (el tope del §2 sigue siendo 2)
   // fase 14: qué ajustes puede cambiar la app sola (true = «Automático», false = «Lo elijo yo»)
-  automaticos: Object.freeze({ ensayosPorSesion: true, maxOpciones: true, etapa: true, palabrasNuevas: true }),
+  automaticos: Object.freeze({
+    ensayosPorSesion: true, maxOpciones: true, etapa: true, palabrasNuevas: true,
+    nivelEscritura: true, palabrasEscritura: true, silabasExtra: true, // Ampliación 5
+  }),
+  escritura: AJUSTES_ESCRITURA_POR_DEFECTO,
 });
 
-export const AJUSTES_AUTOMATICOS = Object.freeze(['ensayosPorSesion', 'maxOpciones', 'etapa', 'palabrasNuevas']);
+export const AJUSTES_AUTOMATICOS = Object.freeze([
+  'ensayosPorSesion', 'maxOpciones', 'etapa', 'palabrasNuevas', 'nivelEscritura', 'palabrasEscritura', 'silabasExtra',
+]);
 
 const limitar = (n, min, max) => Math.min(max, Math.max(min, n));
 const entero = (valor, porDefecto) => (Number.isFinite(Number(valor)) ? Math.round(Number(valor)) : porDefecto);
 const dentroDe = (valor, permitidos, porDefecto) => (permitidos.includes(valor) ? valor : porDefecto);
+
+const listaDe = (valor, valido) => [...new Set((Array.isArray(valor) ? valor : []).filter(valido))];
+
+/** Completa y acota los ajustes de escritura (nunca devuelve valores fuera de rango). */
+export function normalizarAjustesEscritura(entrada) {
+  const e = { ...AJUSTES_ESCRITURA_POR_DEFECTO, ...(entrada && typeof entrada === 'object' ? entrada : {}) };
+  const esNivel = (id) => IDS_DE_NIVELES.includes(id);
+  const crudo = e.silabasExtraManual;
+  const manual = crudo === null || crudo === undefined || crudo === '' ? NaN : Number(crudo);
+  const forzados = listaDe(e.nivelesForzados, esNivel).sort();
+  return {
+    habilitada: Boolean(e.habilitada),
+    nivelEscritura: dentroDe(e.nivelEscritura, IDS_DE_NIVELES, 'E01'),
+    palabrasPorSesion: limitar(entero(e.palabrasPorSesion, 6), 4, 12),
+    maxSilabasExtra: limitar(entero(e.maxSilabasExtra, 4), 0, 4),
+    silabasExtraManual: Number.isFinite(manual) ? limitar(Math.round(manual), 0, 4) : null,
+    colorError: dentroDe(e.colorError, ['suave', 'rojo'], 'suave'),
+    formaDeMover: dentroDe(e.formaDeMover, ['tocar', 'arrastrar'], 'tocar'),
+    eleccionNino: dentroDe(e.eleccionNino, ['alcanzados', 'todos', 'ninguno'], 'alcanzados'),
+    piezasOracion: dentroDe(e.piezasOracion, ['palabras', 'silabas'], 'palabras'),
+    nivelesForzados: forzados,
+    nivelesBloqueados: listaDe(e.nivelesBloqueados, esNivel).filter((id) => !forzados.includes(id)).sort(), // si hay duda, se abre
+    bancoApagado: listaDe(e.bancoApagado, (id) => typeof id === 'string' && id !== '').sort(),
+  };
+}
 
 /** Completa y acota los ajustes de un perfil (nunca devuelve valores fuera de rango). */
 export function normalizarAjustes(ajustes = {}) {
@@ -52,6 +100,7 @@ export function normalizarAjustes(ajustes = {}) {
   a.palabrasNuevasPorSesion = limitar(entero(a.palabrasNuevasPorSesion, 2), 1, 2);
   const automaticos = a.automaticos && typeof a.automaticos === 'object' ? a.automaticos : {};
   a.automaticos = Object.fromEntries(AJUSTES_AUTOMATICOS.map((clave) => [clave, automaticos[clave] !== false]));
+  a.escritura = normalizarAjustesEscritura(a.escritura);
   return a;
 }
 

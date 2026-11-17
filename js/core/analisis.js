@@ -5,6 +5,7 @@
 // Las constantes están arriba para poder afinarlas.
 
 import { claveDia, sumarDias } from './progreso.js';
+import { esDeEscritura } from './escritura/comun.js';
 
 export const DIAS_VENTANA = 60; // solo cuentan las respuestas de los últimos 60 días
 export const MIN_ENSAYOS = 5; // con menos ensayos, «pocos datos» (no confiable)
@@ -35,11 +36,12 @@ export function mediana(numeros) {
 /**
  * Respuestas que cuentan para el análisis: sin las `esFacil`, sin L6 ni preguntas de cuentos, sin las borradas
  * y (si se pide) solo las de los últimos `dias` días. Orden cronológico.
+ * Las de lectura y las de escritura no se mezclan: por defecto solo cuentan las de lectura; con `{ escritura: true }`, solo las de escritura.
  */
-export function respuestasAnalizables(respuestas, { hoy = new Date(), dias = DIAS_VENTANA } = {}) {
+export function respuestasAnalizables(respuestas, { hoy = new Date(), dias = DIAS_VENTANA, escritura = false } = {}) {
   const desde = dias == null ? null : sumarDias(claveDia(hoy), -dias);
   return respuestas
-    .filter((r) => !r.deleted && !r.esFacil && !ACTIVIDADES_SIN_ANALISIS.includes(r.actividad) && !TIPOS_SIN_ANALISIS.includes(r.tipo))
+    .filter((r) => !r.deleted && esDeEscritura(r) === escritura && !r.esFacil && !ACTIVIDADES_SIN_ANALISIS.includes(r.actividad) && !TIPOS_SIN_ANALISIS.includes(r.tipo))
     .filter((r) => desde === null || (r.dia ?? '') >= desde)
     .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
 }
@@ -300,11 +302,11 @@ export function construirExportacion({ perfil, sesiones = [], respuestas = [], h
     confusiones: analisis.confusiones,
     porActividad: analisis.porActividad,
     porHora: analisis.porHora,
-    sesiones: vivas(sesiones).map(({ id, inicio, fin, fatiga, ensayos }) => ({
+    sesiones: vivas(sesiones).filter((s) => !esDeEscritura(s)).map(({ id, inicio, fin, fatiga, ensayos }) => ({
       id, inicio, fin, fatiga: Boolean(fatiga), ensayos: (ensayos ?? []).length,
       aciertosPrimerIntento: (ensayos ?? []).filter((e) => e.correctoAlPrimerIntento).length,
     })),
-    respuestas: vivas(respuestas).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha))),
+    respuestas: vivas(respuestas).filter((r) => !esDeEscritura(r)).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha))),
   };
   return ocultarNombre ? ocultarNombreEn(exportacion, perfil.nombre) : exportacion;
 }

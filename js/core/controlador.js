@@ -29,6 +29,10 @@ import { construirRespuesta } from './registro.js';
 import { construirRegistroSesion, crearSesion, ensayoActual, iniciarCurso, registrarRespuesta, resumenDeSesion } from './sesion.js';
 import { tieneImagen } from './vocabulario.js';
 
+// El cuarto modo de ensayo, `escritura` (armar la palabra con sílabas en cajas), vive en `escritura/controlador.js`: comparte con este
+// el avance de la sesión, los elogios y el motor de progreso, pero no las etapas ni las actividades visuales de la lectura.
+export { crearControladorEscritura, hayQueEscribir } from './escritura/controlador.js';
+
 export const MAX_LECTURAS_POR_SESION = 2; // «Leo en voz alta» (L6) por sesión, como máximo
 
 const MODOS = {

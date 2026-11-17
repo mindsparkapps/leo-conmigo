@@ -3,6 +3,7 @@
 import { ACTIVIDADES_POR_ETAPA } from './etapas.js';
 import { ESTADOS, claveDia, desmarcarAprendida, estaAprendida, nuevoProgreso, sumarDias } from './progreso.js';
 import { ordenadas } from './vocabulario.js';
+import { esDeEscritura } from './escritura/comun.js';
 
 export const ACTIVIDADES_ETAPA_1 = ACTIVIDADES_POR_ETAPA[1];
 export const ACTIVIDAD_LEER = 'L4'; // «palabra leída» = dominada en L4
@@ -64,7 +65,8 @@ export function volverAPracticar({ elementoId, existentes = [] }) {
 }
 
 /** Números grandes del panel: palabras, leídas, en práctica, sesiones y la última. */
-export function resumenGeneral({ filas, sesiones }) {
+export function resumenGeneral({ filas, sesiones: todas }) {
+  const sesiones = todas.filter((s) => !esDeEscritura(s)); // la escritura tiene su propio resumen
   const iLeer = ACTIVIDADES_ETAPA_1.indexOf(ACTIVIDAD_LEER);
   const ultima = sesiones.reduce((max, s) => (s.inicio > max ? s.inicio : max), '');
   return {
@@ -92,12 +94,13 @@ export function lunesDe(fecha) {
  * Las semanas sin ensayos llevan `precision: null`.
  * @returns [{ inicio, ensayos, aciertos, precision }]
  */
-export function precisionSemanal(sesiones, { hoy = new Date(), semanas = 8 } = {}) {
+export function precisionSemanal(sesiones, { hoy = new Date(), semanas = 8, escritura = false } = {}) {
   const actual = lunesDe(hoy);
   const lista = [];
   for (let i = semanas - 1; i >= 0; i--) lista.push({ inicio: sumarDias(actual, -7 * i), ensayos: 0, aciertos: 0 });
   const porInicio = new Map(lista.map((s) => [s.inicio, s]));
   for (const sesion of sesiones) {
+    if (esDeEscritura(sesion) !== escritura) continue; // lectura y escritura no se mezclan
     const semana = porInicio.get(lunesDe(sesion.inicio));
     if (!semana) continue; // fuera del rango mostrado
     for (const e of sesion.ensayos ?? []) {
@@ -125,9 +128,9 @@ export function resumenDeSesion(sesion) {
 }
 
 /** Las últimas sesiones, la más reciente primero. */
-export function historialDeSesiones(sesiones, limite = 20) {
+export function historialDeSesiones(sesiones, limite = 20, { escritura = false } = {}) {
   return [...sesiones]
-    .filter((s) => !s.deleted)
+    .filter((s) => !s.deleted && esDeEscritura(s) === escritura)
     .sort((a, b) => b.inicio.localeCompare(a.inicio))
     .slice(0, limite)
     .map(resumenDeSesion);

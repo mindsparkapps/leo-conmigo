@@ -98,7 +98,7 @@ test('perfilPublicable: solo lo del alumno; lo manual y lo del curso no salen', 
     automaticos: { ensayosPorSesion: true, maxOpciones: false, palabrasNuevas: true, etapa: true },
   });
   const p = perfilPublicable(perfil);
-  assert.deepEqual(p, { id: 'C1', ajustes: { ensayosPorSesion: 10, palabrasNuevasPorSesion: 1 }, etapaActual: 2, cambiosAutomaticos: [{ ajuste: 'etapa' }], updatedAt: t(5) });
+  assert.deepEqual(p, { id: 'C1', ajustes: { ensayosPorSesion: 10, palabrasNuevasPorSesion: 1, escritura: { nivelEscritura: 'E01', palabrasPorSesion: 6 } }, etapaActual: 2, cambiosAutomaticos: [{ ajuste: 'etapa' }], updatedAt: t(5) });
   for (const k of ['nombre', 'fotoMedioId', 'album', 'colecciones', 'base']) assert.equal(k in p, false, k);
   const manual = perfilPublicable(curso({}, { automaticos: { etapa: false } }));
   assert.equal('etapaActual' in manual, false);
@@ -182,7 +182,7 @@ test('aFicha: dos alumnos del mismo curso no chocan en progresos ni niveles ni p
   assert.equal(ra.almacenes.movimientos[1].id, 'pago-a');
   assert.equal(ra.almacenes.progresos[0].updatedAt, t(1));
   // el estado de perfil del alumno sale aparte y nunca como un perfil
-  assert.deepEqual(ra.estado.ajustes, { ensayosPorSesion: 10, maxOpciones: 4, palabrasNuevasPorSesion: 2 }); // lo no indicado queda en «Automático»
+  assert.deepEqual(ra.estado.ajustes, { ensayosPorSesion: 10, maxOpciones: 4, palabrasNuevasPorSesion: 2, escritura: { nivelEscritura: 'E01', palabrasPorSesion: 6 } }); // lo no indicado queda en «Automático»
   assert.equal(ra.estado.etapaActual, 2);
   assert.equal(ra.almacenes.perfiles, undefined);
 });
