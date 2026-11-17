@@ -120,7 +120,7 @@ const esc = (s) => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
 function errorDeCarpeta(estado) {
   if (estado === 403 || estado === 404) {
-    return new ErrorDrive('No tienes acceso al aula. Pídele a tu adulto que la comparta contigo.', { estado, sinAcceso: true });
+    return new ErrorDrive('No tienes acceso al curso. Pídele a tu adulto que lo comparta contigo.', { estado, sinAcceso: true });
   }
   return errorDeEstado(estado);
 }

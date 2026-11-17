@@ -8,7 +8,7 @@ Guía para el dueño del proyecto. Sirve para que Google **no rechace** a los al
 
 Mientras la app está en estado **«Prueba»** (*Testing*), solo pueden entrar las cuentas agregadas a mano como **usuarios de prueba** (hasta 100). Cualquier otro Gmail recibe un error de acceso denegado. Para que entre cualquier alumno sin agregarlo uno por uno, hay que **publicar la app** (estado **«En producción»**).
 
-Además, el aula usa el permiso de Drive completo (`https://www.googleapis.com/auth/drive`), que Google clasifica como **restringido**. Eso decide qué pasa al publicar (ver las opciones más abajo).
+Además, la Biblioteca, los cursos y las carpetas de los alumnos usan el permiso de Drive completo (`https://www.googleapis.com/auth/drive`), que Google clasifica como **restringido**. Eso decide qué pasa al publicar (ver las opciones más abajo).
 
 ## Paso 1. Orígenes autorizados del cliente
 
@@ -22,7 +22,8 @@ Consola → **Google Auth Platform** (o *APIs y servicios*) → **Clientes** →
 **Google Auth Platform → Acceso a los datos** (*Data access*) → **Agregar o quitar permisos**. Deben estar:
 
 - `.../auth/drive.appdata` (sincronización personal; ya estaba)
-- `.../auth/drive` (aulas de alumnos; es el mismo que ya usa ZenBan)
+- `.../auth/drive` (Biblioteca, cursos y carpetas de los alumnos; es el mismo que ya usa ZenBan)
+- `.../auth/drive.appdata` (la carpeta oculta de la app: respaldo del adulto y también el del alumno en SU propio Drive)
 - `openid`, `email`, `profile`
 
 Comprueba también que la **API de Google Drive** esté habilitada en el proyecto (*APIs y servicios → Biblioteca*).
@@ -33,7 +34,7 @@ Comprueba también que la **API de Google Drive** esté habilitada en el proyect
 
 - Nombre de la app, correo de asistencia y logo (opcional; un logo nuevo puede pedir revisión).
 - **Página principal:** `https://mindsparkapps.github.io/leo-conmigo/`
-- **Política de privacidad:** `https://mindsparkapps.github.io/leo-conmigo/privacidad.html` (ya existe: `privacidad.html` en la raíz de la app, con los datos que usa, el uso de `appDataFolder` y de las carpetas de aula, y cómo borrar todo; ZenBan tiene la suya aparte).
+- **Política de privacidad:** `https://mindsparkapps.github.io/leo-conmigo/privacidad.html` (ya existe: `privacidad.html` en la raíz de la app, con los datos que usa, el uso de `appDataFolder`, de la Biblioteca, de los cursos y de las carpetas de los alumnos, lo que agrega la familia y cómo borrar todo; ZenBan tiene la suya aparte).
 - **Dominios autorizados:** `mindsparkapps.github.io`.
 
 ## Paso 4. Publicar la app
@@ -63,7 +64,7 @@ Necesario solo si se va a usar con muchas familias. Para un permiso restringido 
 
 ### Opción C (a futuro): evitar el permiso restringido
 
-Rediseñar el aula con el permiso `drive.file` (no restringido) más **Google Picker**: el alumno elegiría la carpeta compartida una vez con el selector de Google. Evita la evaluación CASA, pero cambia el diseño de las fases 16 y 18 y hay que confirmar antes que Picker da acceso al contenido de una carpeta compartida. Está **fuera de alcance** de la Ampliación 3: preguntar antes de hacerlo.
+Rediseñar la Biblioteca y los cursos con el permiso `drive.file` (no restringido) más **Google Picker**: el alumno elegiría la carpeta compartida una vez con el selector de Google. Evita la evaluación CASA, pero cambia el diseño de las fases 16 y 18 y hay que confirmar antes que Picker da acceso al contenido de una carpeta compartida. Está **fuera de alcance** de la Ampliación 3: preguntar antes de hacerlo.
 
 ## Si mientras tanto prefieres seguir en «Prueba»
 

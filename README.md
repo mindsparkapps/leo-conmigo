@@ -34,19 +34,25 @@ En Google Cloud Console, el cliente OAuth «MindSpark» debe tener como **oríge
 - `https://mindsparkapps.github.io`
 - `http://localhost:8080` (o el puerto que se use para probar)
 
-Para la sincronización personal la app solo pide el permiso `drive.appdata` (más identidad): no puede ver nada más del Drive. El permiso `drive` (carpetas compartidas de los alumnos) se pide aparte, y solo cuando el adulto habilita a un alumno. Mientras `CLIENT_ID` esté vacío, la pantalla «Cuenta de Google» avisa que falta configurarlo y la app funciona igual, solo en el dispositivo.
+Para la sincronización personal la app solo pide el permiso `drive.appdata` (más identidad): no puede ver nada más del Drive. El permiso `drive` (Biblioteca, cursos y carpetas de los alumnos) se pide aparte, y solo cuando el adulto habilita a un alumno. Mientras `CLIENT_ID` esté vacío, la pantalla «Cuenta de Google» avisa que falta configurarlo y la app funciona igual, solo en el dispositivo.
 
 Para que cualquier alumno pueda entrar con su Gmail hay que configurar el proyecto de Google Cloud (orígenes autorizados, permisos, política de privacidad y publicar la app): sigue la guía [docs/google-cloud.md](docs/google-cloud.md). La política de privacidad pública está en [privacidad.html](privacidad.html) (`https://mindsparkapps.github.io/leo-conmigo/privacidad.html`).
 
 ## Alumnos con su propio celular
 
-Un alumno usa la app en SU dispositivo, con su propio Gmail, sin ninguna pantalla de configuración. El adulto lo habilita así:
+Un **perfil es un curso**: define qué se ve (palabras, frases, libros, álbumes, premios y ajustes). Un **alumno** usa la app en SU dispositivo, con su propio Gmail, y varios alumnos pueden usar el mismo perfil: cada uno tiene su **ficha** con su avance y sus estadísticas. El adulto lo habilita así:
 
-1. Modo adulto → **Alumnos** (con la sesión de Google iniciada en «Cuenta») → dar el permiso de Drive → **Habilitar alumno** en el niño → escribir el Gmail del alumno → **Invitar**.
-2. En el dispositivo del niño: instalar la app, tocar **«Este dispositivo es de un alumno»**, entrar con ese Gmail y esperar la descarga. Después funciona sin conexión.
-3. En «Alumnos» el adulto ve «Invitado» → «Conectado», ve sus estadísticas, puede **Quitar acceso** y **Desvincular** un dispositivo. Un dispositivo del adulto con datos se puede convertir en «Cuenta» → «Convertir este dispositivo en celular de alumno».
+1. Modo adulto → **Alumnos** (con la sesión de Google iniciada en «Cuenta») → dar el permiso de Drive → **Habilitar alumno** en el perfil → escribir el Gmail de cada alumno → **Invitar**.
+2. En el dispositivo del alumno: instalar la app, tocar **«Este dispositivo es de un alumno»**, entrar con ese Gmail y esperar la descarga. Después funciona sin conexión.
+3. En «Alumnos» el adulto ve «Invitado» → «Conectado», abre la **ficha** de cada alumno (Progreso, «Qué le cuesta» y Álbum, solo lectura), puede **Quitar acceso** y **Desvincular** un dispositivo. Un dispositivo del adulto con datos se puede convertir en «Cuenta» → «Convertir este dispositivo en celular de alumno».
 
-El aula es una carpeta del Drive del adulto compartida **en solo lectura** con los correos invitados; el alumno solo escribe en su subcarpeta `del-alumno/` (más en [PLAN.md](PLAN.md), «Ampliación 3»). Para probar con dos orígenes (adulto en `localhost:8080`, alumno en `127.0.0.1:8080`) con Google y Drive simulados: `python tests/servidor.py 8080` y `tests/navegador/simular-aulas.js`.
+En el Drive del adulto, dentro de «Leo Conmigo»: la **Biblioteca** (una sola copia de las fotos y voces propias, compartida en solo lectura con todos los alumnos invitados), un **curso** por perfil (compartido en solo lectura con sus alumnos) y, aparte, una **carpeta por alumno** (`Alumnos · <perfil>/<correo>/`, donde solo escribe ese alumno y nadie más la ve). Las voces del catálogo vienen en la app: no se suben. La tabla completa de quién puede tocar qué está en [PLAN.md](PLAN.md), «Ampliación 4».
+
+**El celular del alumno y la familia.** El candado «Config» abre el mismo panel del adulto con el **menú reducido** (Vocabulario, Frases, Libros, Álbum, Tienda, Progreso, «Qué le cuesta» y Ayuda). Lo del curso solo se ve («Del curso»); la familia agrega lo suyo («De la familia»): palabras, frases, libros, álbumes completos, premios y monedas. Eso se guarda en el celular del alumno y en el **Drive del alumno** (su carpeta oculta y `familia/` dentro de su carpeta), nunca en el del adulto; el adulto recibe las estadísticas en la ficha y solo baja las fotos y voces con **«Traer el material de la familia»**. El alumno respalda su avance en su propio Drive y lo recupera al reinstalar.
+
+**Actualizar con alumnos ya habilitados.** La primera vez que el adulto abre «Alumnos» con la versión nueva, la app reorganiza las carpetas (crea la Biblioteca, **mueve** las fotos y voces sin volver a subirlas, crea la carpeta de cada alumno y pasa su avance a su ficha). No se borra nada de Drive; la limpieza de repetidos es la fase 26 de [PLAN.md](PLAN.md).
+
+Para probar con tres orígenes (adulto en `localhost:8080`, alumnos en `127.0.0.1:8080` y `127.0.0.2:8080`) con Google y Drive simulados: `python tests/servidor.py 8080` y `tests/navegador/simular-aulas.js`.
 
 ### Cada vez que se publica una versión nueva
 

@@ -131,7 +131,7 @@ export async function descargarAula(aula, alProgreso = () => {}) {
     await olvidarTodo({ recargar: false });
     throw new Error('El adulto desvinculó este dispositivo. Pídele que lo vuelva a invitar.');
   }
-  if (!(await store.obtener('perfiles', aula.perfilId))) throw new Error('El aula todavía no tiene los datos del niño. Pídele a tu adulto que la sincronice.');
+  if (!(await store.obtener('perfiles', aula.perfilId))) throw new Error('El curso todavía no tiene sus datos. Pídele a tu adulto que lo sincronice.');
   aplicarApariencia(r.aula);
   await fijarPerfilActivo(aula.perfilId);
   await store.escribirMeta('rol', 'alumno');

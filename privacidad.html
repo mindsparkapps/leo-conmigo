@@ -55,7 +55,7 @@
 <body>
   <main>
     <h1>Política de privacidad</h1>
-    <p class="updated">Leo Conmigo, una app de MindSpark para que un niño aprenda a leer. Última actualización: 16 de noviembre de 2026.</p>
+    <p class="updated">Leo Conmigo, una app de MindSpark para que un niño aprenda a leer. Última actualización: 17 de noviembre de 2026.</p>
 
     <div class="card">
       <p><strong>En resumen:</strong> las fotos, las voces y el progreso del niño se guardan en su dispositivo y en el Google Drive del adulto que prepara la app. MindSpark no tiene una base de datos con esa información, no la vende, no la comparte con terceros, no usa analítica ni publicidad y no la usa para nada distinto de que la app funcione.</p>
@@ -72,13 +72,14 @@
 
     <h2>Cómo se usa Google Drive</h2>
     <p>Si el adulto inicia sesión con Google, la app guarda una copia de los datos en una <strong>carpeta oculta de la app</strong> dentro de su Drive (<code>appDataFolder</code>, permiso <code>drive.appdata</code>), para tener lo mismo en varios dispositivos. Esa carpeta no aparece entre sus archivos y no se puede compartir.</p>
-    <p>Si el adulto <strong>habilita a un alumno</strong>, la app crea en su Drive una carpeta «Leo Conmigo» y dentro una carpeta de aula por niño. Para esto se pide el permiso de Drive (<code>https://www.googleapis.com/auth/drive</code>), que solo se solicita cuando el adulto habilita a un alumno. Con él la app solo crea, lee y escribe sus propias carpetas y archivos; no lee ni modifica el resto del Drive.</p>
+    <p>Si el adulto <strong>habilita a un alumno</strong>, la app crea en su Drive una carpeta «Leo Conmigo» con: una <strong>Biblioteca</strong> (una sola copia de las fotos y voces propias del adulto), una carpeta de <strong>curso</strong> por perfil (lo que el alumno ve: palabras, frases, libros, álbumes, premios y ajustes) y una carpeta por <strong>alumno</strong> dentro de «Alumnos · &lt;perfil&gt;». Para esto se pide el permiso de Drive (<code>https://www.googleapis.com/auth/drive</code>), que solo se solicita cuando el adulto habilita a un alumno. Con él la app solo crea, lee y escribe sus propias carpetas y archivos; no lee ni modifica el resto del Drive.</p>
     <ul>
-      <li><strong>El aula se comparte únicamente con los correos que el adulto invita</strong>, uno por uno, y <strong>en solo lectura</strong>: el alumno ve las palabras, fotos y voces de su niño, pero no puede cambiarlas.</li>
-      <li>El alumno puede <strong>escribir solo en una subcarpeta propia («del-alumno»)</strong>: sus sesiones, respuestas y progreso.</li>
-      <li>Nunca se usa «cualquiera con el enlace» ni se comparte con un dominio. El alumno no ve el resto del Drive del adulto ni las aulas de otros niños.</li>
+      <li><strong>La Biblioteca y el curso se comparten únicamente con los correos que el adulto invita</strong>, uno por uno, y <strong>en solo lectura</strong>: el alumno ve las palabras, fotos y voces de su curso, pero no puede cambiarlas. La Biblioteca la puede leer todo alumno invitado a cualquier curso del adulto: la app solo le muestra lo de su curso, pero fuera de la app podría abrir cualquiera de sus archivos.</li>
+      <li>Cada alumno puede <strong>escribir solo en su propia carpeta</strong> (compartida únicamente con su correo; ningún otro alumno la ve, tampoco los del mismo curso): su avance, sus sesiones y respuestas, y lo que agrega su familia.</li>
+      <li>Nunca se usa «cualquiera con el enlace» ni se comparte con un dominio. El alumno no ve el resto del Drive del adulto ni los cursos de otros perfiles.</li>
       <li>La app avisa al adulto si aparece un acceso que ella no puso y es el adulto quien decide si lo quita.</li>
     </ul>
+    <p><strong>Lo que agrega la familia en el celular del alumno</strong> (palabras, frases, libros, álbumes, premios, monedas y sus fotos y voces) se guarda en ese celular y en el <strong>Drive del propio alumno</strong> (su carpeta oculta de la app y la carpeta «familia» dentro de su carpeta), nunca en el Drive del adulto ni en la Biblioteca. Al adulto le llegan solo las estadísticas de eso (avance, saldo, monedas dadas, premios canjeados y avance en los álbumes), sin fotos ni voces. Las fotos y voces de la familia solo llegan al celular del adulto si él toca «Traer el material de la familia», y puede quitarlas de su celular cuando quiera.</p>
     <p>El uso de la información recibida de las APIs de Google cumple la <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Política de datos de usuario de los servicios de API de Google</a>, incluidos sus requisitos de uso limitado.</p>
 
     <h2>Terceros</h2>
@@ -90,9 +91,9 @@
 
     <h2>Cómo quitar el acceso y borrar los datos</h2>
     <ul>
-      <li><strong>Quitar acceso a un alumno:</strong> en la app, modo adulto → Alumnos habilitados → «Quitar acceso». También puedes quitarlo desde Drive, en «Compartir» de la carpeta del aula. Para que un dispositivo olvide todo, usa «Desvincular».</li>
+      <li><strong>Quitar acceso a un alumno:</strong> en la app, modo adulto → Alumnos habilitados → «Quitar acceso». También puedes quitarlo desde Drive, en «Compartir» de la carpeta del curso, de la Biblioteca y de su carpeta. Para que un dispositivo olvide todo, usa «Desvincular».</li>
       <li><strong>Quitar el acceso de la app a tu cuenta de Google:</strong> entra a <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a> y elimina Leo Conmigo (o MindSpark).</li>
-      <li><strong>Borrar los datos guardados en Drive:</strong> borra las carpetas «Leo Conmigo» y de aula como cualquier carpeta de tu Drive; para la carpeta oculta, en Google Drive ve a Configuración → Administrar aplicaciones y elige «Borrar datos ocultos de la app».</li>
+      <li><strong>Borrar los datos guardados en Drive:</strong> borra la carpeta «Leo Conmigo» (con la Biblioteca, los cursos y las carpetas de los alumnos) como cualquier carpeta de tu Drive; para la carpeta oculta, en Google Drive ve a Configuración → Administrar aplicaciones y elige «Borrar datos ocultos de la app».</li>
       <li><strong>Borrar los datos de un dispositivo:</strong> borra los datos del sitio en el navegador o desinstala la app. En un celular de alumno, el adulto puede desvincularlo desde la app.</li>
       <li>Puedes descargar una copia de todo en «Copia de seguridad» (modo adulto).</li>
     </ul>

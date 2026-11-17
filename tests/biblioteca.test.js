@@ -218,6 +218,41 @@ test('un aula versión 1 con datos se migra MOVIENDO los archivos (sin volver a 
   assert.equal(mediosEnDrive(m.nube).filter((a) => a.name === 'medio-m-comun.webp').length, 1);
 });
 
+test('actualizar con un alumno ya conectado (fase 25): no se pierde nada, no se borra nada de Drive y el alumno sigue jugando con lo suyo', async () => {
+  const m = await montar();
+  await habilitar(m);
+  await m.a.aulas.sincronizarComoAlumno({ aula: await miAula(m.a), email: A });
+  await m.a.store.guardar('sesiones', { id: 'ses-vieja', perfilId: 'P1', inicio: '2026-11-10T10:00:00.000Z', fin: '2026-11-10T10:05:00.000Z', ensayos: [] });
+  await m.a.store.guardar('progresos', { id: 'P1:w1:L1', perfilId: 'P1', elementoId: 'w1', actividad: 'L1', aciertos: 4 });
+  await m.a.aulas.sincronizarComoAlumno({ aula: await miAula(m.a), email: A });
+  await volverAVersion1(m, 'P1'); // así lo dejó la 0.36 (aula con medios dentro y una sola del-alumno/)
+  const antes = new Set(m.nube.estado.archivos.keys());
+  const palabrasAntes = await ids(m.a.store, 'palabras');
+  m.nube.reiniciarPeticiones();
+
+  // el adulto abre «Alumnos» con la versión nueva
+  const e = await m.adulto.sincronizarAula('P1');
+  assert.deepEqual(e.permisosExtranos, []);
+  const ahora = new Set(m.nube.estado.archivos.keys());
+  for (const id of antes) assert.ok(ahora.has(id), `el archivo ${id} sigue en Drive`);
+  assert.ok(m.nube.peticionesDe(ADULTO).every((p) => p.metodo !== 'DELETE' || p.ruta.includes('/permissions')), 'el adulto no borró ningún archivo (solo retiró permisos de edición de la carpeta de antes)');
+  assert.deepEqual((await m.tienda.listar('sesiones', { perfilId: 'ficha:P1:' + A })).map((s) => s.id), ['ses-vieja'], 'su avance pasó a su ficha');
+  assert.equal((await m.tienda.listar('progresos', { perfilId: 'ficha:P1:' + A }))[0].aciertos, 4);
+  assert.equal((await m.tienda.listar('sesiones', { perfilId: 'P1' })).length, 0, 'y no se mezcló con el curso');
+
+  // el celular del alumno, ya con la versión nueva: conserva todo y sigue sincronizando en su carpeta nueva
+  const r = await m.a.aulas.sincronizarComoAlumno({ aula: await miAula(m.a), email: A });
+  assert.equal(r.desvinculado, false);
+  assert.deepEqual(await ids(m.a.store, 'palabras'), palabrasAntes);
+  assert.deepEqual(await ids(m.a.store, 'sesiones'), ['ses-vieja']);
+  assert.equal((await m.a.store.obtener('medios', 'm-comun')).blob.size > 0, true, 'sus fotos siguen en el celular');
+  await m.a.store.guardar('sesiones', { id: 'ses-nueva', perfilId: 'P1', inicio: '2026-11-17T10:00:00.000Z', fin: '2026-11-17T10:05:00.000Z', ensayos: [] });
+  await m.a.aulas.sincronizarComoAlumno({ aula: await miAula(m.a), email: A });
+  await m.adulto.sincronizarAula('P1');
+  assert.deepEqual((await m.tienda.listar('sesiones', { perfilId: 'ficha:P1:' + A })).map((s) => s.id).sort(), ['ses-nueva', 'ses-vieja']);
+  assert.ok(m.nube.peticionesDe(ADULTO).every((p) => p.metodo !== 'DELETE' || p.ruta.includes('/permissions')));
+});
+
 test('migración: un medio repetido (ya estaba en la Biblioteca) NO se borra: se queda en el aula para la limpieza', async () => {
   const m = await montar();
   const { aula1 } = await habilitar(m);

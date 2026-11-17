@@ -98,7 +98,7 @@ export function montar(contenedor) {
     await cargar();
   }
 
-  const habilitar = (perfil) => accion(perfil.id, 'Preparando la carpeta del aula…', async () => {
+  const habilitar = (perfil) => accion(perfil.id, 'Preparando las carpetas del curso…', async () => {
     if (!tienePermisoAulas()) await pedirPermisoAulas();
     await (await obtenerAulas()).crearAula(perfil, { fondo: leerFondo() });
     await cargar();
@@ -116,7 +116,7 @@ export function montar(contenedor) {
   });
 
   const quitarAcceso = (perfil, correo) => {
-    if (!globalThis.confirm(`¿Quitar el acceso de ${correo} a la versión de ${perfil.nombre}? Dejará de ver el aula y de poder subir cosas. Lo que ya trajo a tu app se queda. Su dispositivo sigue funcionando sin conexión con lo que ya tiene.`)) return null;
+    if (!globalThis.confirm(`¿Quitar el acceso de ${correo} al perfil ${perfil.nombre}? Dejará de ver el curso y de poder subir su avance. Lo que ya trajo a tu app, y su ficha, se quedan. Su dispositivo sigue funcionando sin conexión con lo que ya tiene.`)) return null;
     return accion(perfil.id, 'Quitando el acceso…', async () => {
       await (await obtenerAulas()).quitarAcceso(perfil.id, correo);
       await sincronizarAulaAhora(perfil.id);
@@ -231,7 +231,7 @@ export function montar(contenedor) {
         'div',
         { class: 'panel' },
         el('h2', {}, 'Primero, tu cuenta de Google'),
-        el('p', {}, 'Para habilitar alumnos hay que iniciar sesión con tu cuenta de Google: el aula vive en tu Drive.'),
+        el('p', {}, 'Para habilitar alumnos hay que iniciar sesión con tu cuenta de Google: el curso y la Biblioteca viven en tu Drive.'),
         el('a', { class: 'boton', href: '#/adulto/cuenta' }, 'Iniciar sesión'),
       )];
     }
@@ -240,7 +240,7 @@ export function montar(contenedor) {
         'div',
         { class: 'panel' },
         el('h2', {}, 'Permiso de Drive para las aulas'),
-        el('p', {}, 'Las aulas son carpetas de tu Google Drive que compartes con el Gmail de cada alumno. Para crearlas, la app necesita un permiso más de Google: ver y crear carpetas en tu Drive. Solo lo usa para las carpetas «Leo Conmigo» y nunca comparte nada con quien no invites.'),
+        el('p', {}, 'La Biblioteca, los cursos y las carpetas de los alumnos son carpetas de tu Google Drive que compartes con el Gmail de cada alumno. Para crearlas, la app necesita un permiso más de Google: ver y crear carpetas en tu Drive. Solo lo usa para las carpetas «Leo Conmigo» y nunca comparte nada con quien no invites.'),
         el('p', { class: 'ayuda' }, 'En la ventana de Google, deja marcada la casilla del permiso de Drive.'),
         errorPermiso ? el('p', { class: 'error-texto', role: 'alert' }, errorPermiso) : null,
         el('button', {
@@ -284,17 +284,17 @@ export function montar(contenedor) {
     hecho.push(
       el('p', { class: 'estado-nube', role: 'status' },
         el('span', { class: `punto-estado ${e?.fase === 'error' ? 'aviso' : sincronizando ? 'aviso' : e?.ultimo ? 'ok' : 'apagado'}`, 'aria-hidden': 'true' }),
-        el('strong', {}, sincronizando ? 'Sincronizando…' : e?.fase === 'error' ? 'No se pudo sincronizar' : e?.ultimo ? `Aula al día · ${haceCuanto(ahora - Date.parse(e.ultimo))}` : 'Aula creada, todavía sin sincronizar')),
+        el('strong', {}, sincronizando ? 'Sincronizando…' : e?.fase === 'error' ? 'No se pudo sincronizar' : e?.ultimo ? `Curso al día · ${haceCuanto(ahora - Date.parse(e.ultimo))}` : 'Curso creado, todavía sin sincronizar')),
       sincronizando ? progreso(e.progreso) : null,
       trabajando[perfil.id] ? progreso(trabajando[perfil.id]) : null,
       e?.fase === 'error' && e.mensaje ? el('p', { class: 'error-texto', role: 'alert' }, e.mensaje) : null,
-      !ocupado && pendientes[perfil.id] > 0 ? el('p', { class: 'ayuda' }, `Hay ${cuantos(pendientes[perfil.id], 'cambio', 'cambios')} por subir al aula: se suben solos en unos segundos, o toca «Sincronizar ahora».`) : null,
+      !ocupado && pendientes[perfil.id] > 0 ? el('p', { class: 'ayuda' }, `Hay ${cuantos(pendientes[perfil.id], 'cambio', 'cambios')} por subir al curso: se suben solos en unos segundos, o toca «Sincronizar ahora».`) : null,
       mensaje ? el('p', { class: mensaje.error ? 'error-texto' : 'ayuda', role: mensaje.error ? 'alert' : 'status' }, mensaje.texto) : null,
     );
 
     for (const p of e?.permisosExtranos ?? []) {
       hecho.push(el('div', { class: 'aviso', role: 'alert' },
-        el('p', {}, el('strong', {}, 'Permiso extraño: '), `${p.motivo}${p.email ? ` (${p.email})` : ''}, en ${p.carpeta === 'aula' ? 'la carpeta del aula' : p.carpeta === 'biblioteca' ? 'la Biblioteca' : 'la carpeta del alumno'}. Leo Conmigo no lo puso.`),
+        el('p', {}, el('strong', {}, 'Permiso extraño: '), `${p.motivo}${p.email ? ` (${p.email})` : ''}, en ${p.carpeta === 'aula' ? 'la carpeta del curso' : p.carpeta === 'biblioteca' ? 'la Biblioteca' : 'la carpeta del alumno'}. Leo Conmigo no lo puso.`),
         el('button', { type: 'button', class: 'boton secundario chico', disabled: ocupado, onclick: () => quitarExtrano(perfil, p) }, 'Quitar este permiso')));
     }
     if (e?.avisos?.length) {
@@ -376,10 +376,10 @@ function panelQuePuedeVer() {
     { class: 'panel' },
     el('h2', {}, 'Qué puede ver el alumno'),
     el('ul', { class: 'lista-ayuda' },
-      el('li', {}, 'Solo la carpeta de su aula: sus palabras, frases, libros, álbumes, fotos y voces, en solo lectura. No puede cambiar nada de eso.'),
-      el('li', {}, 'Puede escribir únicamente en su propia carpeta: sus sesiones, respuestas y progreso. Ningún otro alumno la ve, tampoco los del mismo perfil.'),
-      el('li', {}, 'No ve el resto de tu Drive, ni la carpeta «Leo Conmigo», ni las aulas de otros niños.'),
-      el('li', {}, 'Nadie más ve el aula: solo los correos que invites, uno por uno. Nunca «cualquiera con el enlace».'),
+      el('li', {}, 'El curso de su perfil (palabras, frases, libros, álbumes, premios, fotos y voces), en solo lectura. No puede cambiar nada de eso; lo que agrega su familia es aparte y se marca «De la familia».'),
+      el('li', {}, 'Puede escribir únicamente en su propia carpeta: su avance y lo de su familia. Ningún otro alumno la ve, tampoco los del mismo perfil.'),
+      el('li', {}, 'No ve el resto de tu Drive, ni la carpeta «Leo Conmigo», ni los cursos de otros perfiles. Sí puede leer la «Biblioteca» (las fotos y voces de todos tus cursos): la app solo le muestra las de su curso.'),
+      el('li', {}, 'Nadie más ve el curso ni la Biblioteca: solo los correos que invites, uno por uno. Nunca «cualquiera con el enlace».'),
       el('li', {}, 'Si aparece un acceso que Leo Conmigo no puso, te lo mostramos como «Permiso extraño» y tú decides si quitarlo.')),
     el('p', {}, el('strong', {}, 'En el dispositivo del niño: '), 'instala la app, toca «Este dispositivo es de un alumno» y entra con el Gmail que invitaste.'),
   );

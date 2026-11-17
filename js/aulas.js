@@ -55,7 +55,7 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
   const leerAulas = async () => (await store.leerMeta('aulas', {})) ?? {};
   async function aulaDe(perfilId) {
     const info = (await leerAulas())[perfilId];
-    if (!info) throw new ErrorAula('Este perfil todavía no tiene un aula. Habilita al alumno primero.');
+    if (!info) throw new ErrorAula('Este perfil todavía no tiene alumnos habilitados. Toca «Habilitar alumno» primero.');
     return info;
   }
   async function guardarAula(info) {
@@ -67,7 +67,7 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
     const info = await aulaDe(perfilId);
     const cliente = clienteCarpeta(info.carpetaId);
     const archivo = (await cliente.listar()).find((a) => a.name === ARCHIVO_AULA);
-    if (!archivo) throw new ErrorAula('No se encontró aula.json en la carpeta del aula.');
+    if (!archivo) throw new ErrorAula('No se encontró el archivo del curso en su carpeta de Drive. Vuelve a habilitar el perfil.');
     const actual = await cliente.leerJson(archivo.id);
     const error = validarAula(actual, { perfilId });
     if (error) throw new ErrorAula(error);
@@ -436,7 +436,7 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
       const carpetaAula = clienteCarpeta(aula.carpetaId);
       const archivoAula = (await carpetaAula.listar()).find((a) => a.name === ARCHIVO_AULA && minuscula(a.owners?.[0]?.emailAddress) === aula.dueno);
       // Drive muestra vacía una carpeta que no se comparte con esta cuenta: sin aula.json, o ya no hay acceso o el aula no está lista
-      if (!archivoAula) throw new ErrorAula('No se encontró el aula: ya no tienes acceso o tu adulto todavía no la termina de preparar.', { sinAcceso: true });
+      if (!archivoAula) throw new ErrorAula('No se encontró el curso: ya no tienes acceso o tu adulto todavía no lo termina de preparar.', { sinAcceso: true });
       const aulaJson = await carpetaAula.leerJson(archivoAula.id);
       const error = validarAula(aulaJson, { perfilId: aula.perfilId });
       if (error) throw new ErrorAula(error);
