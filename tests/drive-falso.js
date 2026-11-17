@@ -53,7 +53,7 @@ export function crearDriveFalso({ tokenValido = 'token-1', tamanoPagina = 1000 }
       const desde = Number(u.searchParams.get('pageToken') ?? 0);
       const trozo = todos.slice(desde, desde + tamanoPagina);
       const siguiente = desde + tamanoPagina < todos.length ? String(desde + tamanoPagina) : undefined;
-      return respuestaJson({ files: trozo.map(({ id: i, name, modifiedTime }) => ({ id: i, name, modifiedTime })), nextPageToken: siguiente });
+      return respuestaJson({ files: trozo.map(({ id: i, name, modifiedTime, bytes }) => ({ id: i, name, modifiedTime, size: String(bytes?.length ?? 0) })), nextPageToken: siguiente });
     }
     if (metodo === 'GET' && u.searchParams.get('alt') === 'media') {
       const a = estado.archivos.get(id);
@@ -169,6 +169,8 @@ export function crearNubeFalsa() {
   const sinPrivados = (a) => ({
     id: a.id, name: a.name, mimeType: a.mimeType, modifiedTime: a.modifiedTime, parents: a.parents, properties: a.properties,
     owners: [{ emailAddress: a.owner }],
+    size: a.bytes ? String(a.bytes.length) : undefined, // Drive da el tamaño como texto y solo de los archivos
+    md5Checksum: a.bytes ? `md5-${a.bytes.length}-${Array.from(a.bytes.slice(0, 8)).join('.')}` : undefined,
   });
 
   function consultar(cuenta, q) {
@@ -180,6 +182,7 @@ export function crearNubeFalsa() {
     const compartidas = /sharedWithMe/.test(q);
     return [...estado.archivos.values()].filter((a) => {
       if (rango(cuenta, a) < RANGO.reader) return false;
+      if (a.trashed && /trashed = false/.test(q)) return false; // lo que está en la papelera no sale en las listas normales
       if (enPadre && a.parents?.[0] !== enPadre) return false;
       if (mime && a.mimeType !== mime) return false;
       if (prop && a.properties?.[prop[1]] !== prop[2]) return false;
@@ -268,6 +271,14 @@ export function crearNubeFalsa() {
       const nuevoArchivo = { id: nuevoId('archivo'), name: metadatos.name, mimeType: mime, parents: [padre.id], properties: {}, owner: cuenta, bytes: contenido, mime, modifiedTime: new Date().toISOString() };
       estado.archivos.set(nuevoArchivo.id, nuevoArchivo);
       return json({ id: nuevoArchivo.id });
+    }
+    // ---- a la papelera (PATCH con `trashed: true`): se puede recuperar; el archivo sigue existiendo ----
+    if (metodo === 'PATCH' && !subida && archivo && typeof opciones.body === 'string' && opciones.body.includes('"trashed"')) {
+      if (rango(cuenta, archivo) < RANGO.reader) return error(404, 'File not found');
+      registro.padre = archivo.parents?.[0] ?? null;
+      if (rango(cuenta, archivo) < RANGO.writer) return error(403, 'El usuario no tiene permiso para mandar este archivo a la papelera');
+      archivo.trashed = JSON.parse(opciones.body).trashed === true;
+      return json({ id, trashed: archivo.trashed });
     }
     // ---- mover (addParents / removeParents), sin volver a subir ----
     if (metodo === 'PATCH' && !subida && archivo) {

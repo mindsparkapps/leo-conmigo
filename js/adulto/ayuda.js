@@ -107,7 +107,7 @@ export function montar(contenedor) {
         el('h3', {}, 'Si ya tenías alumnos de una versión anterior'),
         lista(
           'Al actualizar no se pierde nada. La primera vez que abres «Alumnos» la app reorganiza sola tus carpetas de Drive: crea la Biblioteca (mueve ahí las fotos y voces sin volver a subirlas) y una carpeta por alumno, y pasa el avance que ya habían enviado a la ficha de cada uno.',
-          'No se borra nada de tu Drive. Pueden quedar archivos repetidos o carpetas que ya no se usan: verlos y limpiarlos con tu confirmación es el siguiente paso (todavía no está en esta versión).',
+          'La app no borra nada sola de tu Drive. Pueden quedar archivos repetidos o carpetas que ya no se usan: en «Cuenta» › «Espacio en Drive» puedes verlos por grupo (voces del catálogo copiadas, restos de versiones anteriores, fotos y voces sin uso, copias repetidas), ver cuánto pesan y elegir cuáles eliminar. Antes de eliminar te pide confirmación; lo que está a la vista en tu Drive va a la papelera de Google Drive (puedes recuperarlo) y el respaldo oculto de la app se borra de verdad. Nunca toca lo que usa un perfil, un curso o un alumno.',
           'Los dispositivos de los alumnos siguen funcionando; para el menú reducido y el respaldo en su propio Drive deben actualizar la app.',
         ),
         el('h3', {}, 'Quitar el acceso, desvincular y convertir un dispositivo'),

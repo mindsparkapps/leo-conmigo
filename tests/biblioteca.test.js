@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { crearAulas } from '../js/aulas.js';
-import { crearDriveAulas, crearDriveCarpeta } from '../js/drive.js';
+import { crearDrive, crearDriveAulas, crearDriveCarpeta } from '../js/drive.js';
 import { crearNubeFalsa } from './drive-falso.js';
 import { bytesDe, crearStoreEnMemoria } from './memoria.js';
 
@@ -266,6 +266,87 @@ test('migración: un medio repetido (ya estaba en la Biblioteca) NO se borra: se
   assert.equal(copias.length, 2, 'las dos copias siguen en Drive');
   assert.ok(copias.some((a) => a.id === dentro.id && a.parents[0] === info.carpetaId), 'la repetida quedó en el aula');
   assert.ok(copias.some((a) => a.id === otra && a.parents[0] === bibliotecaId));
+});
+
+test('«Espacio en Drive»: ve lo que dejó la 0.36 por grupo, manda a la papelera lo marcado y nunca toca lo que se usa ni lo de los alumnos', async () => {
+  const m = await montar();
+  await habilitar(m);
+  await m.a.aulas.sincronizarComoAlumno({ aula: await miAula(m.a), email: A });
+  const infoViva = (await m.adulto.listarAulas()).P1;
+  const info = await volverAVersion1(m, 'P1'); // el aula con los medios dentro y una sola del-alumno/
+  const bibliotecaId = infoViva.bibliotecaId;
+  const subir = (carpetaId, nombre, ...bytes) => crearDriveCarpeta({ ...m.nube.dep(ADULTO), carpetaId }).crear(nombre, new Blob([Uint8Array.from(bytes)], { type: 'image/webp' }), 'image/webp');
+  // un medio repetido en la Biblioteca (la migración lo deja dentro del curso) y uno huérfano en la Biblioteca
+  await subir(bibliotecaId, 'medio-m-solo1.webp', 4);
+  const huerfano = await subir(bibliotecaId, 'medio-huerfano.webp', 9, 9, 9);
+  // el respaldo oculto: una voz del catálogo copiada, un medio borrado y la copia de seguridad de uno que existe
+  const oculto = crearDrive(m.nube.dep(ADULTO));
+  const voz = await oculto.crear('medio-vieja-voz.mp3', new Blob([new Uint8Array(500)], { type: 'audio/mpeg' }), 'audio/mpeg');
+  const borrado = await oculto.crear('medio-ya-borrado.webp', new Blob([new Uint8Array(30)], { type: 'image/webp' }), 'image/webp');
+  const respaldoVivo = await oculto.crear('medio-m-comun.webp', new Blob([new Uint8Array([1])], { type: 'image/webp' }), 'image/webp');
+  await m.tienda.guardar('medios', { id: 'vieja-voz', tipo: 'audio', mime: 'audio/mpeg', origen: 'catalogo', blob: null, deleted: true, conservarEnDrive: true });
+  await m.tienda.guardar('medios', { id: 'ya-borrado', tipo: 'imagen', mime: 'image/webp', origen: 'foto', blob: null });
+  await m.tienda.borrar('medios', 'ya-borrado');
+  await m.adulto.sincronizarAula('P1'); // migra el aula (mueve los medios y deja el duplicado)
+
+  // 1) lo que ve el adulto (solo lectura)
+  m.nube.reiniciarPeticiones();
+  let r = await m.adulto.revisarEspacio();
+  assert.ok(m.nube.peticionesDe(ADULTO).every((p) => p.metodo === 'GET'), 'revisar solo lee');
+  const grupo = (id) => r.grupos.find((g) => g.id === id);
+  const nombres = (id) => grupo(id).archivos.map((a) => `${a.name}@${a.lugar.split(' ·')[0]}`).sort();
+  assert.deepEqual(nombres('catalogo'), ['medio-vieja-voz.mp3@Respaldo personal de la app (carpeta oculta)']);
+  assert.deepEqual(nombres('sinUso'), ['medio-huerfano.webp@Biblioteca', 'medio-ya-borrado.webp@Respaldo personal de la app (carpeta oculta)']);
+  assert.deepEqual(nombres('restos'), ['medio-m-solo1.webp@Curso'], 'el repetido que dejó la migración dentro del curso');
+  assert.equal(grupo('catalogo').bytes, 500);
+  assert.equal(grupo('sinUso').bytes, 33);
+  assert.ok(grupo('restos').bytes > 0);
+  assert.ok(r.cantidad >= 4);
+  const idsListados = new Set(r.grupos.flatMap((g) => g.archivos.map((a) => a.id)));
+  assert.ok(!idsListados.has(respaldoVivo), 'la copia de seguridad de un medio que existe no se ofrece');
+  for (const a of m.nube.estado.archivos.values()) {
+    if (a.name === 'medio-m-comun.webp' && a.parents[0] === bibliotecaId) assert.ok(!idsListados.has(a.id), 'lo que se usa no se ofrece');
+    if (['aula.json', 'adulto.json', 'alumno.json'].includes(a.name) || a.name.startsWith('dispositivo-')) assert.ok(!idsListados.has(a.id), `${a.name} nunca`);
+  }
+  assert.ok(!r.grupos.flatMap((g) => g.archivos).some((a) => a.lugar.includes('alumnos')), 'nada de las carpetas de los alumnos');
+  // la carpeta de antes todavía tiene el avance del alumno sin pasar a su carpeta nueva: no se ofrece
+  assert.ok(!idsListados.has(info.carpetaAlumnoId));
+
+  // 2) el alumno ya actualizó: su avance está en su carpeta nueva, ahora sí se ofrece la carpeta de antes
+  await m.a.aulas.sincronizarComoAlumno({ aula: await miAula(m.a), email: A });
+  r = await m.adulto.revisarEspacio();
+  assert.ok(grupo('restos').archivos.some((a) => a.esCarpeta && a.lugar.includes('del-alumno')), 'la carpeta de antes, ya superada');
+
+  // 3) eliminar: marca el huerfano y el medio en uso por error; se vuelve a comprobar y solo cae lo que sigue siendo eliminable
+  const enUso = [...m.nube.estado.archivos.values()].find((a) => a.name === 'medio-m-comun.webp' && a.parents[0] === bibliotecaId).id;
+  m.nube.reiniciarPeticiones();
+  const sinUso = await m.adulto.eliminarDelEspacio('sinUso', [huerfano, borrado, enUso]);
+  assert.deepEqual(sinUso, { eliminados: 2, liberado: 33, omitidos: 1, fallidos: 0 });
+  assert.equal(m.nube.archivo(huerfano).trashed, true, 'lo visible va a la papelera de Drive (se puede recuperar)');
+  assert.equal(m.nube.archivo(enUso).trashed, undefined, 'lo que se usa sigue ahí');
+  assert.equal(m.nube.archivo(borrado), undefined, 'el respaldo oculto no tiene papelera: se borra');
+  const borrados = m.nube.peticionesDe(ADULTO).filter((p) => p.metodo === 'DELETE');
+  assert.equal(borrados.length, 1, 'el único borrado definitivo es el del respaldo oculto');
+
+  const restos = await m.adulto.eliminarDelEspacio('restos', grupo('restos').archivos.map((a) => a.id));
+  assert.equal(restos.fallidos, 0);
+  assert.ok(restos.eliminados >= 2);
+  assert.equal(m.nube.archivo(info.carpetaAlumnoId).trashed, true, 'la carpeta de antes, a la papelera');
+  assert.equal((await m.adulto.listarAulas()).P1.carpetaAlumnoId, null, 'y la app deja de leerla');
+  await m.adulto.eliminarDelEspacio('catalogo', [voz]);
+  assert.equal(m.nube.archivo(voz), undefined);
+  assert.ok(m.nube.archivo(respaldoVivo), 'la copia de seguridad de lo que existe sigue');
+
+  // 4) después: no queda nada que ofrecer, y la sincronización y el alumno siguen funcionando con todo su avance
+  r = await m.adulto.revisarEspacio();
+  assert.equal(r.cantidad, 0);
+  await m.a.store.guardar('sesiones', { id: 'ses-despues', perfilId: 'P1', inicio: '2026-11-17T10:00:00.000Z', fin: '2026-11-17T10:05:00.000Z', ensayos: [] });
+  const sa = await m.a.aulas.sincronizarComoAlumno({ aula: await miAula(m.a), email: A });
+  assert.equal(sa.desvinculado, false);
+  const e = await m.adulto.sincronizarAula('P1');
+  assert.deepEqual(e.permisosExtranos, []);
+  assert.ok((await m.tienda.listar('sesiones', { perfilId: 'ficha:P1:' + A })).some((s) => s.id === 'ses-despues'));
+  assert.ok(m.nube.json(m.nube.porNombre('alumno.json', (await m.adulto.listarAulas()).P1.carpetasAlumnos[A]).id), 'el alumno.json del alumno intacto');
 });
 
 test('un celular de alumno con un aula versión 1 sin migrar sigue bajando sus medios del aula', async () => {

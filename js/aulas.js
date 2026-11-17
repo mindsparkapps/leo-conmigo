@@ -17,7 +17,8 @@
 // Esta capa solo une las piezas (drive.js, store-perfil.js, sync-aula.js y core/aula.js); la seguridad está en ellas
 // y, sobre todo, en los permisos de Drive que se ponen aquí: `reader` en la Biblioteca y en el aula, `writer` solo en la carpeta de cada alumno.
 
-import { crearDriveAulas, crearDriveCarpeta, esCorreo, ErrorDrive } from './drive.js';
+import { crearDrive, crearDriveAulas, crearDriveCarpeta, esCorreo, ErrorDrive } from './drive.js';
+import { clasificarEspacio, idDeMedioDeArchivo, seleccionVigente } from './core/limpieza.js';
 import { vistaDeFichas, vistaDePerfil } from './store-perfil.js';
 import { crearSincronizadorDeAula } from './sync-aula.js';
 import { ARCHIVO_AULA, aulaComoV2, estadoDeAlumnos, mediosDelPerfil, nuevaAula, validarAula } from './core/aula.js';
@@ -243,6 +244,62 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
     return delDueno.find((c) => c.parents?.[0] !== aula.carpetaId) ?? delDueno.find((c) => c.parents?.[0] === aula.carpetaId) ?? null;
   }
 
+  // ---------------- «Espacio en Drive» (fase 26): ver y limpiar lo repetido o sobrante ----------------
+  // Revisar SOLO lee. Eliminar vuelve a clasificar justo antes de borrar y manda a la PAPELERA de Drive lo que está a la vista
+  // (se puede recuperar); lo del respaldo oculto de la app (`appDataFolder`) no tiene papelera y se borra. Nunca toca las carpetas
+  // de los alumnos, `data.json`, `adulto.json`, `aula.json` ni `alumno.json`.
+  const appData = crearDrive({ obtenerToken, fetchFn });
+
+  async function mediosEnUso() {
+    const usados = new Set();
+    for (const perfil of await store.listar('perfiles')) {
+      const registros = {};
+      for (const almacen of ALMACENES_DEL_PERFIL) registros[almacen] = await store.listar(almacen, { perfilId: perfil.id });
+      for (const id of mediosDelPerfil({ perfil, registros })) usados.add(id);
+    }
+    return usados;
+  }
+
+  /** Lee lo que hay en el Drive del adulto y lo clasifica (no cambia nada). */
+  async function leerEspacio({ alProgreso: avisar = () => {} } = {}) {
+    const aulasInfo = Object.values(await leerAulas());
+    const archivos = [];
+    const comoArchivo = (a, espacio, lugar) => ({ id: a.id, name: a.name, size: Number(a.size) || 0, esCarpeta: false, espacio, lugar });
+    avisar('Mirando el respaldo personal…');
+    for (const a of await appData.listar()) if (idDeMedioDeArchivo(a.name)) archivos.push(comoArchivo(a, 'appdata', { tipo: 'respaldo' }));
+    const bibliotecaId = (await store.leerMeta('bibliotecaId')) ?? aulasInfo.find((i) => i.bibliotecaId)?.bibliotecaId ?? null;
+    if (bibliotecaId) {
+      avisar('Mirando la Biblioteca…');
+      for (const a of await clienteCarpeta(bibliotecaId).listar()) if (idDeMedioDeArchivo(a.name) && !a.mimeType?.includes('folder')) archivos.push(comoArchivo(a, 'drive', { tipo: 'biblioteca' }));
+    }
+    const aulas = [];
+    for (const info of aulasInfo) {
+      const nombre = (await store.obtener('perfiles', info.perfilId))?.nombre ?? '';
+      avisar(`Mirando el curso ${nombre}…`);
+      for (const a of await clienteCarpeta(info.carpetaId).listar()) {
+        if (idDeMedioDeArchivo(a.name) && !a.mimeType?.includes('folder')) archivos.push(comoArchivo(a, 'drive', { tipo: 'curso', cursoId: info.perfilId, nombre }));
+      }
+      // la carpeta `del-alumno/` de antes: solo se ofrece si el avance de cada alumno ya está en su carpeta nueva
+      let legadoSuperado = false;
+      if (info.carpetaAlumnoId) {
+        const delLegado = await clienteCarpeta(info.carpetaAlumnoId).listar();
+        const suyo = (lista, correo) => lista.find((a) => a.name === 'alumno.json' && minuscula(a.owners?.[0]?.emailAddress) === correo);
+        legadoSuperado = Boolean(info.carpetaAlumnosId);
+        for (const correo of info.invitados) {
+          if (!suyo(delLegado, correo)) continue;
+          const nuevos = info.carpetasAlumnos?.[correo] ? await clienteCarpeta(info.carpetasAlumnos[correo]).listar() : [];
+          if (!suyo(nuevos, correo)) legadoSuperado = false;
+        }
+        archivos.push({
+          id: info.carpetaAlumnoId, name: 'del-alumno', size: delLegado.reduce((s, a) => s + (Number(a.size) || 0), 0), esCarpeta: true, espacio: 'drive', lugar: { tipo: 'legado', cursoId: info.perfilId, nombre },
+        });
+      }
+      aulas.push({ cursoId: info.perfilId, migrada: Boolean(info.bibliotecaId), legadoSuperado });
+    }
+    const medios = await store.listar('medios', { conBorrados: true });
+    return { archivos, medios, usados: await mediosEnUso(), aulas };
+  }
+
   const firmasAdulto = new Map(); // (alumno) perfilId -> firma de lo que había del adulto la última vez
 
   return {
@@ -342,6 +399,40 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
       }
       await guardarMaterial(store, idDeFicha(perfilId, dueno), items);
       return { traidos: items.length, sinCarpeta: false };
+    },
+
+    /** «Revisar mi Drive»: qué quedó repetido o sobrante, por grupo, con cuántos archivos y cuánto pesan. Solo lee. */
+    async revisarEspacio(opciones) {
+      return clasificarEspacio(await leerEspacio(opciones));
+    },
+
+    /**
+     * Elimina de UN grupo solo lo que el adulto marcó y que SIGUE siendo eliminable ahora (se vuelve a leer y clasificar antes de
+     * borrar). Lo visible va a la papelera de Drive; el respaldo oculto se borra. Devuelve cuánto se liberó.
+     * @returns {{ eliminados, liberado, omitidos, fallidos }}
+     */
+    async eliminarDelEspacio(grupoId, marcados, opciones = {}) {
+      const grupo = clasificarEspacio(await leerEspacio(opciones)).grupos.find((g) => g.id === grupoId);
+      const aEliminar = seleccionVigente(marcados, grupo);
+      let eliminados = 0;
+      let liberado = 0;
+      let fallidos = 0;
+      for (const a of aEliminar) {
+        try {
+          if (a.espacio === 'appdata') await appData.borrar(a.id);
+          else await drive.papelera(a.id);
+          eliminados += 1;
+          liberado += a.size;
+          if (a.esCarpeta && a.cursoId) {
+            const info = (await leerAulas())[a.cursoId];
+            if (info?.carpetaAlumnoId === a.id) await guardarAula({ ...info, carpetaAlumnoId: null }); // la carpeta de antes ya no se lee
+          }
+        } catch (error) {
+          if (error?.sinConexion || error?.sesion) throw error;
+          fallidos += 1;
+        }
+      }
+      return { eliminados, liberado, omitidos: new Set(marcados).size - aEliminar.length, fallidos };
     },
 
     /** Agrega el dispositivo a `aula.json`: en su siguiente sincronización borrará sus datos. */

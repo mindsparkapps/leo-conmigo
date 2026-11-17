@@ -63,7 +63,7 @@ export function montar(contenedor) {
     }
 
     const r = e.resumen;
-    zona.replaceChildren(
+    zona.replaceChildren(...[
       el(
         'div',
         { class: 'panel' },
@@ -94,7 +94,15 @@ export function montar(contenedor) {
           : null,
         botones.length ? el('div', { class: 'acciones' }, botones) : null,
       ),
-    );
+      // ver y limpiar lo repetido que dejaron las versiones anteriores (solo con la sesión iniciada)
+      vinculada ? el(
+        'div',
+        { class: 'panel' },
+        el('h2', {}, 'Espacio en Drive'),
+        el('p', { class: 'ayuda' }, 'Mira qué copias repetidas o sobrantes dejaron las versiones anteriores en tu Drive, cuánto pesan, y elige cuáles eliminar.'),
+        el('div', { class: 'acciones' }, el('a', { class: 'boton secundario', href: '#/adulto/espacio' }, 'Ver el espacio en Drive')),
+      ) : null,
+    ].filter(Boolean)); // el replaceChildren nativo escribe «null» si recibe null
   };
 
   // Convertir este dispositivo en celular de alumno: borra todo lo suyo (con una confirmación clara)

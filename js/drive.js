@@ -52,12 +52,12 @@ export function crearDrive({ obtenerToken, fetchFn = (...args) => globalThis.fet
   const pedir = crearPedidor({ obtenerToken, fetchFn });
 
   return {
-    /** Todos los archivos de la carpeta de la app: [{ id, name, modifiedTime }]. */
+    /** Todos los archivos de la carpeta de la app: [{ id, name, modifiedTime, size }]. */
     async listar() {
       const archivos = [];
       let pagina = null;
       do {
-        const parametros = { spaces: CARPETA, pageSize: '1000', fields: 'nextPageToken,files(id,name,modifiedTime)' };
+        const parametros = { spaces: CARPETA, pageSize: '1000', fields: 'nextPageToken,files(id,name,modifiedTime,size)' };
         if (pagina) parametros.pageToken = pagina;
         const datos = await (await pedir(`${API}?${consulta(parametros)}`)).json();
         archivos.push(...(datos.files ?? []));
@@ -113,7 +113,7 @@ export function crearDrive({ obtenerToken, fetchFn = (...args) => globalThis.fet
 export const MIME_CARPETA = 'application/vnd.google-apps.folder';
 export const PROPIEDAD = 'leoConmigo'; // propiedad pública de las carpetas de Leo Conmigo (trabajo | biblioteca | aula | del-alumno)
 const ROLES_PERMITIDOS = Object.freeze(['reader', 'writer']);
-const CAMPOS_ARCHIVO = 'id,name,modifiedTime,mimeType,properties,owners(emailAddress)';
+const CAMPOS_ARCHIVO = 'id,name,modifiedTime,mimeType,properties,size,md5Checksum,owners(emailAddress)';
 
 /** Texto seguro dentro de comillas simples de una consulta `q` de Drive. */
 const esc = (s) => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -261,6 +261,18 @@ export function crearDriveAulas({ obtenerToken, fetchFn = (...args) => globalThi
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: '{}',
+      });
+    },
+
+    /**
+     * Manda un archivo o carpeta a la PAPELERA de Drive (se puede recuperar desde allí; no es un borrado definitivo).
+     * Es lo único que usa la pantalla «Espacio en Drive» para lo que está a la vista en Mi unidad.
+     */
+    async papelera(archivoId) {
+      await pedir(`${API}/${encodeURIComponent(archivoId)}?${consulta({ fields: 'id,trashed' })}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trashed: true }),
       });
     },
 
