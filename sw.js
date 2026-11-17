@@ -34,6 +34,7 @@ const PRECACHE = [
   'data/frecuencia.json',
   'data/regiones.json',
   'data/voces/indice.json',
+  'data/voces/tanda-escritura.json',
   'data/voces/silabas/ble.mp3',
   'data/voces/silabas/bla.mp3',
   'data/voces/silabas/blu.mp3',
