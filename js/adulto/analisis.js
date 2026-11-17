@@ -17,6 +17,8 @@ import { registrosDeFamilia } from '../core/curso.js';
 import { materialDe, urlsDeMaterial } from '../material-familia.js';
 import { colorDeIndice, paginar } from '../core/listas.js';
 import { crearPaginacion } from '../ui/paginacion.js';
+import { analizarEscritura } from '../core/escritura/analisis.js';
+import { panelesDeEscritura } from './analisis-escritura.js';
 
 export const titulo = 'Qué le cuesta · Leo Conmigo';
 
@@ -78,6 +80,9 @@ async function pintar(raiz, estaVivo, ruta, { abierta = null, ocultar = false } 
   liberarMaterial = material.liberar;
   const elementos = new Map([...frases, ...palabras].map((e) => [e.id, e]));
   const analisis = analizar(respuestas);
+  // Escritura (experimental): lo suyo va aparte; el «Perfil de prueba» (`…/prueba`) nunca se mezcla con el del niño
+  const analisisEscritura = analizarEscritura(respuestas, { sesiones, perfilId: sujeto.id });
+  const esPrueba = Boolean(sujeto.esPrueba);
   const urls = new Map();
   for (const p of analisis.palabras) {
     const e = elementos.get(p.elementoId);
@@ -202,7 +207,9 @@ async function pintar(raiz, estaVivo, ruta, { abierta = null, ocultar = false } 
   // ---- sin datos suficientes ----
   const piezas = [deFicha ? cabecera('Qué le cuesta', { atras: '#/adulto/alumnos', textoAtras: '← Alumnos' }) : cabecera('Qué le cuesta')];
   if (deFicha) piezas.push(el('div', { class: 'panel' }, el('p', {}, el('strong', {}, sujeto.titulo), ` (${sujeto.ficha.email}). Solo se puede ver: sale de lo que su propio celular registró.`)));
-  if (!analisis.hayDatos) {
+  if (esPrueba) {
+    piezas[0] = cabecera('Qué le cuesta · Perfil de prueba', { atras: '#/adulto/escritura', textoAtras: '← Escritura' });
+  } else if (!analisis.hayDatos) {
     piezas.push(
       el(
         'div',
@@ -264,6 +271,11 @@ async function pintar(raiz, estaVivo, ruta, { abierta = null, ocultar = false } 
     );
   }
 
+  // ---- escritura (si el niño la usó o es el perfil de prueba) ----
+  if (esPrueba || analisisEscritura.ensayos) {
+    piezas.push(...panelesDeEscritura({ analisis: analisisEscritura, prueba: esPrueba, nombre: perfil.nombre }));
+  }
+
   // ---- ayuda ----
   piezas.push(
     el(
@@ -292,11 +304,11 @@ async function pintar(raiz, estaVivo, ruta, { abierta = null, ocultar = false } 
   exportar.addEventListener('click', () => {
     aviso.hidden = true;
     try {
-      const datos = construirExportacion({ perfil, sesiones, respuestas, ocultarNombre: casillaOcultar.checked, version: VERSION });
+      const datos = construirExportacion({ perfil, sesiones, respuestas, ocultarNombre: casillaOcultar.checked, version: VERSION, prueba: esPrueba });
       const blob = new Blob([JSON.stringify(datos, null, 1)], { type: 'application/json' });
       const nombre = nombreDeArchivoAnalisis(perfil, new Date(), casillaOcultar.checked);
       descargarArchivo(blob, nombre);
-      estado.textContent = `Listo: ${nombre} (${datos.respuestas.length} ensayos registrados).`;
+      estado.textContent = `Listo: ${nombre} (${datos.respuestas.length} ensayos de lectura${datos.escritura ? ` y ${datos.escritura.respuestas.length} de escritura${esPrueba ? ' (perfil de prueba)' : ''}` : ''}).`;
     } catch (e) {
       fallar(e);
     }
@@ -305,7 +317,7 @@ async function pintar(raiz, estaVivo, ruta, { abierta = null, ocultar = false } 
   const copiar = el('button', { type: 'button', class: 'boton secundario' }, 'Copiar resumen para IA');
   copiar.addEventListener('click', async () => {
     aviso.hidden = true;
-    const texto = resumenParaIA({ perfil, analisis, ocultarNombre: casillaOcultar.checked });
+    const texto = resumenParaIA({ perfil, analisis, ocultarNombre: casillaOcultar.checked, escritura: analisisEscritura });
     if (await copiarTexto(texto)) estado.textContent = `Resumen copiado (${texto.length} caracteres). Pégalo en el chat con la IA.`;
     else fallar(new Error('Este navegador no deja copiar. Usa «Exportar para analizar con IA».'));
   });

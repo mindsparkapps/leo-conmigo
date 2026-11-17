@@ -3,7 +3,7 @@
 import { abrirStore } from './store.js';
 import { completarVocesIniciales, migrarCatalogoUnaVez } from './medios.js';
 import { esAlumno } from './acceso.js';
-import { contenidoDe } from './core/curso.js';
+import { contenidoDe, idDePrueba } from './core/curso.js';
 import { envolverParaFamilia } from './store-familia.js';
 
 const META_PERFIL = 'perfilActivoId';
@@ -66,6 +66,11 @@ async function elegirPerfil(store) {
  */
 export async function sujetoDeEstadisticas(ruta = '') {
   const encontrada = /\/ficha\/([^/?#]+)$/.exec(ruta);
+  // `…/prueba`: el «Perfil de prueba» de Escritura (ficha `prueba:<perfilId>`; lo juegan los administradores y «Probar Escritura»)
+  if (!encontrada && /\/prueba$/.test(ruta)) {
+    const perfil = await perfilActivo();
+    return perfil ? { perfil, ficha: null, id: idDePrueba(perfil.id), contenidoId: perfil.id, titulo: 'Perfil de prueba', sufijo: '/prueba', esPrueba: true } : null;
+  }
   if (!encontrada) {
     const perfil = await perfilActivo();
     return perfil ? { perfil, ficha: null, id: perfil.id, contenidoId: perfil.id, titulo: perfil.nombre, sufijo: '' } : null;

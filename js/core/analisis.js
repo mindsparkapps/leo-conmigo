@@ -6,6 +6,8 @@
 
 import { claveDia, sumarDias } from './progreso.js';
 import { esDeEscritura } from './escritura/comun.js';
+// Importación circular a propósito: `escritura/analisis.js` usa los ayudantes de este archivo y este arma la exportación; solo se usan dentro de funciones.
+import { PREGUNTA_ESCRITURA, construirSeccionEscritura, lineasDeEscrituraParaIA } from './escritura/analisis.js';
 
 export const DIAS_VENTANA = 60; // solo cuentan las respuestas de los últimos 60 días
 export const MIN_ENSAYOS = 5; // con menos ensayos, «pocos datos» (no confiable)
@@ -283,7 +285,7 @@ export function ocultarNombreEn(objeto, nombre) {
  * Lo que se descarga para analizar con una IA: sin fotos ni audios (solo ids de palabras y textos).
  * @param perfil, sesiones, respuestas   registros del niño tal como están en el almacén
  */
-export function construirExportacion({ perfil, sesiones = [], respuestas = [], hoy = new Date(), ocultarNombre = false, version = null }) {
+export function construirExportacion({ perfil, sesiones = [], respuestas = [], hoy = new Date(), ocultarNombre = false, version = null, prueba = false }) {
   const analisis = analizar(respuestas, { hoy });
   const vivas = (lista) => lista.filter((x) => !x.deleted);
   const exportacion = {
@@ -308,6 +310,9 @@ export function construirExportacion({ perfil, sesiones = [], respuestas = [], h
     })),
     respuestas: vivas(respuestas).filter((r) => !esDeEscritura(r)).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha))),
   };
+  // Escritura (experimental): una sección aparte, solo si hay algo; el perfil de prueba va con `prueba: true` y nunca mezclado con el real
+  const escritura = construirSeccionEscritura({ perfil, sesiones, respuestas, hoy, prueba });
+  if (escritura) exportacion.escritura = escritura;
   return ocultarNombre ? ocultarNombreEn(exportacion, perfil.nombre) : exportacion;
 }
 
@@ -327,7 +332,7 @@ const porciento = (n) => `${Math.round(n * 100)} %`;
 const FLECHA = { mejora: '↑ mejora', igual: '→ igual', empeora: '↓ empeora' };
 
 /** Resumen corto en Markdown (hasta 4 000 caracteres) listo para pegar en un chat con una IA. */
-export function resumenParaIA({ perfil, analisis, hoy = new Date(), ocultarNombre = false }) {
+export function resumenParaIA({ perfil, analisis, hoy = new Date(), ocultarNombre = false, escritura = null }) {
   const nombre = ocultarNombre ? REEMPLAZO_NOMBRE : String(perfil.nombre ?? '').trim().split(/\s+/)[0] || REEMPLAZO_NOMBRE;
   const edad = edadEnAnios(perfil.fechaNacimiento, hoy);
   const fila = (p) => `- ${p.texto}: índice ${p.indice}/100, ${porciento(p.tasa)} sin ayuda en ${p.ensayos} ensayos, ${segundos(p.tiempoMediano)}, ${FLECHA[p.tendencia]}`;
@@ -354,9 +359,10 @@ export function resumenParaIA({ perfil, analisis, hoy = new Date(), ocultarNombr
       ...(analisis.porActividad.length ? analisis.porActividad.map((a) => `- ${a.actividad}: ${porciento(a.tasa)} sin ayuda, ${segundos(a.tiempoMediano)}, ${a.ensayos} ensayos`) : ['- (sin datos)']),
       ...(analisis.actividadMasDificil ? [`La que más le cuesta: ${analisis.actividadMasDificil.actividad}.`] : []),
       ...(analisis.porHora.length ? ['', '## Por momento del día', ...analisis.porHora.map((h) => `- ${h.nombre}: ${porciento(h.tasa)} sin ayuda en ${h.ensayos} ensayos`)] : []),
+      ...(lineasDeEscrituraParaIA(escritura).length ? ['', '## Escritura', ...lineasDeEscrituraParaIA(escritura).map((l) => `- ${l}`)] : []),
       '',
       '## Pregunta',
-      PREGUNTA_PARA_IA,
+      lineasDeEscrituraParaIA(escritura).length ? `${PREGUNTA_PARA_IA} ${PREGUNTA_ESCRITURA}` : PREGUNTA_PARA_IA,
     ];
     return partes.join('\n');
   };

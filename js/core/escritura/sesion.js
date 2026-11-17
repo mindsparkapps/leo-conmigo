@@ -14,6 +14,7 @@ import { crearSesion } from '../sesion.js';
 import { MAX_SILABAS_EXTRA, armarPiezas } from './piezas.js';
 import { IDS_DE_NIVELES, indiceDeNivel } from './niveles.js';
 import { nivelEfectivo, nivelesDisponibles } from './elementos.js';
+import { ajustesDeConfusiones } from './analisis.js';
 
 export const EXTRAS_MIN = 0;
 
@@ -116,11 +117,19 @@ export function crearSesionEscritura({
  * @param ajustes   ajustes del perfil (se normalizan): `escritura.piezasOracion` decide si E18 va por palabras o por sílabas
  * @param evitar    sílabas que no deben salir de distractoras (las que ya confunde; fase 31)
  */
-export function armarEnsayoEscritura({ ensayo, elemento, ajustes, aleatorio = Math.random, evitar = [] }) {
+export function armarEnsayoEscritura({ ensayo, elemento, ajustes, aleatorio = Math.random, evitar = [], analisis = null, yaUsadas = new Set() }) {
   const a = normalizarAjustes(ajustes);
-  const piezas = armarPiezas({
-    palabra: elemento.palabra, extras: ensayo.extras ?? 0, aleatorio, nivel: ensayo.actividad, por: a.escritura.piezasOracion, evitar,
-  });
+  const base = { palabra: elemento.palabra, aleatorio, nivel: ensayo.actividad, por: a.escritura.piezasOracion };
+  // Fase 31: las sílabas que confunde. Mientras falle la caja, su confusión no sale de distractora; con >= 80 % se usa a propósito, una vez por sesión.
+  let incluir = [];
+  if (analisis?.confusiones?.length) {
+    const previa = armarPiezas({ ...base, extras: 0, aleatorio: () => 0.5 }); // solo para saber las cajas; no gasta el azar de la sesión
+    // sin sílabas extra no hay distractoras: la confusión «a propósito» no se gasta
+    const ajuste = ajustesDeConfusiones({ huecos: previa.huecos, analisis, yaUsadas: (ensayo.extras ?? 0) > 0 ? yaUsadas : new Set(yaUsadas) });
+    evitar = [...evitar, ...ajuste.evitar];
+    incluir = (ensayo.extras ?? 0) > 0 ? ajuste.incluir : [];
+  }
+  const piezas = armarPiezas({ ...base, extras: ensayo.extras ?? 0, evitar, incluir });
   return {
     modo: 'escritura',
     elementoId: ensayo.elementoId,

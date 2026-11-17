@@ -246,6 +246,8 @@ const PRECACHE = [
   'js/core/escritura/controlador.js',
   'js/core/escritura/elementos.js',
   'js/core/escritura/estadisticas.js',
+  'js/core/escritura/analisis.js',
+  'js/adulto/analisis-escritura.js',
   'js/adulto/escritura.js',
   'js/adulto/escritura-progreso.js',
   'js/core/escritura/intento.js',

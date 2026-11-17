@@ -1436,6 +1436,10 @@ a.boton-respuesta { text-decoration: none; font-size: 2.4rem; }
 .esc-opcion-ejemplo { font-size: clamp(1.1rem, 4.4vw, 1.7rem); }
 .esc-opcion-texto { font-size: clamp(1.6rem, 6vw, 2.4rem); font-weight: 700; }
 
+/* «Qué le cuesta» de escritura: barras azules, nunca rojas */
+.barra-esc { display: block; height: 12px; margin: 4px 0; overflow: hidden; border-radius: 6px; background: var(--azul-suave); }
+.barra-esc > span { display: block; height: 100%; border-radius: 6px; background: var(--azul); }
+
 @media (prefers-reduced-motion: reduce) {
   .esc-caja.ayuda, .esc-pieza.ayuda { animation: none; border-width: 8px; }
   .esc-caja, .esc-pieza { transition: none; }

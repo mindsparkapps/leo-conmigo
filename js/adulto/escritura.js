@@ -67,7 +67,7 @@ async function pintar(raiz, estaVivo, ir) {
   habilitada.casilla.addEventListener('change', () => cambiar({ escritura: { habilitada: habilitada.casilla.checked } }));
   const zonaPrueba = el('div');
   const pintarPrueba = (n) => zonaPrueba.replaceChildren(
-    n > 0 ? el('p', { class: 'ayuda' }, `Hay ${n} registro${n === 1 ? '' : 's'} del perfil de prueba. `, el('a', { href: '#/adulto/escritura/progreso/prueba' }, 'Ver su progreso')) : el('p', { class: 'ayuda' }, 'Todavía no hay datos de prueba.'),
+    n > 0 ? el('p', { class: 'ayuda' }, `Hay ${n} registro${n === 1 ? '' : 's'} del perfil de prueba. `, el('a', { href: '#/adulto/escritura/progreso/prueba' }, 'Ver su progreso'), ' · ', el('a', { href: '#/adulto/analisis/prueba' }, 'Qué le cuesta')) : el('p', { class: 'ayuda' }, 'Todavía no hay datos de prueba.'),
     n > 0 ? el('button', { type: 'button', class: 'boton secundario', onclick: async () => {
       if (!globalThis.confirm('¿Borrar los datos de prueba de Escritura? Se borran las sesiones, el progreso, las láminas y las monedas del perfil de prueba. No toca nada del perfil del niño.')) return;
       await borrarDatosDePrueba(store, perfil.id);
@@ -81,7 +81,8 @@ async function pintar(raiz, estaVivo, ir) {
     habilitada.elemento,
     el('div', { class: 'acciones' },
       el('button', { type: 'button', class: 'boton', onclick: () => { pedirPrueba(); ir('/nino/escritura'); } }, 'Probar Escritura'),
-      el('a', { class: 'boton secundario', href: '#/adulto/escritura/progreso' }, 'Ver el progreso')),
+      el('a', { class: 'boton secundario', href: '#/adulto/escritura/progreso' }, 'Ver el progreso'),
+      el('a', { class: 'boton secundario', href: '#/adulto/analisis' }, 'Qué le cuesta')),
     el('p', { class: 'ayuda' }, '«Probar Escritura» juega una sesión como el niño pero se guarda en el perfil de prueba, nunca en el del niño.'),
     zonaPrueba,
   );

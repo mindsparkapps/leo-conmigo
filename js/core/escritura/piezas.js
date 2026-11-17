@@ -78,7 +78,7 @@ export function silabasLejanas(silaba, { excluir = [], lejosDe = [] } = {}) {
 const aTexto = (s) => String(s);
 
 /** Elige `cantidad` sílabas que no son, en el orden en que se eligen (la parecida primero si corresponde). */
-function elegirDistractoras({ silabas, cantidad, aleatorio, vetadas }) {
+function elegirDistractoras({ silabas, cantidad, aleatorio, vetadas, incluir = [] }) {
   const elegidas = [];
   const vistas = new Set(vetadas);
   const tomar = (s) => {
@@ -86,6 +86,11 @@ function elegirDistractoras({ silabas, cantidad, aleatorio, vetadas }) {
     vistas.add(claveSilaba(s));
   };
   const base = barajar([...new Set(silabas.map(aTexto))], aleatorio);
+  // Una sílaba que se pidió usar a propósito (una confusión que ya domina, fase 31): va primero
+  if (cantidad >= 1) {
+    const pedida = incluir.find((s) => !vistas.has(claveSilaba(s)));
+    if (pedida) tomar(pedida);
+  }
 
   if (cantidad >= 2) {
     for (const s of base) {
@@ -132,7 +137,7 @@ function mezclar(hechas, huecos, aleatorio) {
  *  - `reserva`: palabras para rellenar las piezas de una oración.
  * Devuelve `{ unidad, huecos: [texto], inicioDePalabra: [bool], fichas: [{ id, texto, distractor }], extras }`.
  */
-export function armarPiezas({ palabra, extras = 0, aleatorio = Math.random, nivel, por, evitar = [], reserva = PALABRAS_DE_RELLENO }) {
+export function armarPiezas({ palabra, extras = 0, aleatorio = Math.random, nivel, por, evitar = [], incluir = [], reserva = PALABRAS_DE_RELLENO }) {
   if (!palabra) throw new Error('armarPiezas: falta la palabra');
   const cantidad = Math.max(0, Math.min(MAX_SILABAS_EXTRA, Math.trunc(Number(extras) || 0)));
   const esOracion = Array.isArray(palabra.palabras);
@@ -168,7 +173,7 @@ export function armarPiezas({ palabra, extras = 0, aleatorio = Math.random, nive
       const otras = VOCALES.filter((v) => !vetadas.includes(claveSilaba(v)));
       distractoras = barajar(otras, aleatorio).slice(0, cantidad);
     } else {
-      distractoras = elegirDistractoras({ silabas: huecos, cantidad, aleatorio, vetadas });
+      distractoras = elegirDistractoras({ silabas: huecos, cantidad, aleatorio, vetadas, incluir });
     }
   }
 

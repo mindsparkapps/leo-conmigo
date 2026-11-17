@@ -22,6 +22,7 @@ import { idDePrueba } from '../core/curso.js';
 import { crearControladorEscritura } from '../core/escritura/controlador.js';
 import { nivelEfectivo, nivelesDisponibles, nivelesElegibles, elementosDeEscritura } from '../core/escritura/elementos.js';
 import { NIVELES } from '../core/escritura/niveles.js';
+import { analizarEscritura, dificultadesDeEscritura } from '../core/escritura/analisis.js';
 import { renderEscritura } from '../actividades/escritura.js';
 import { establecerPremio, lluviaDeEstrellas, terminarLeccion } from './premio.js';
 import { establecerEleccion } from './elegir.js';
@@ -186,16 +187,20 @@ async function iniciar({ vista, area, ir, sesion, prueba: pruebaForzada }) {
       return;
     }
     await guardado;
-    const [progresos, niveles] = await Promise.all([
+    const [progresos, niveles, respuestas] = await Promise.all([
       store.listar('progresos', { perfilId: perfilIdJuego }),
       store.listar('niveles', { perfilId: perfilIdJuego }),
+      store.listar('respuestas', { perfilId: perfilIdJuego }),
     ]);
+    // Lo que le cuesta (fase 31): prioridad a lo difícil y a las sílabas que confunde. Del perfil real o de la ficha de prueba, nunca mezclados.
+    const analisis = analizarEscritura(respuestas, { perfilId: perfilIdJuego });
     if (!sesion.vivo) return;
     const perfilJuego = piezasOracion
       ? { ...perfil, ajustes: { ...perfil.ajustes, escritura: { ...esc, piezasOracion } } }
       : perfil;
     ctl = crearControladorEscritura({
       perfil: perfilJuego, perfilId: perfilIdJuego, palabras: elementos, progresos, niveles, nivel: nivelAJugar, nivelElegidoPorNino: elegidoPorNino,
+      dificultades: dificultadesDeEscritura(analisis), analisisEscritura: analisis,
     });
     if (ctl.terminada) {
       area.replaceChildren(el('p', { class: 'mensaje-nino' }, 'No hay palabras para este nivel.'));

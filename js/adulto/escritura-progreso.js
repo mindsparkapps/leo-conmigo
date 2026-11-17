@@ -8,11 +8,10 @@ import { cabecera, cargando, mostrarError } from '../ui/adulto.js';
 import { crearGraficoSemanal } from '../ui/grafico-semanal.js';
 import { crearPaginacion } from '../ui/paginacion.js';
 import { esAlumno } from '../acceso.js';
-import { obtenerStore, perfilActivo, sujetoDeEstadisticas } from '../contexto.js';
+import { obtenerStore, sujetoDeEstadisticas } from '../contexto.js';
 import { formatearDuracion, precisionSemanal } from '../core/estadisticas.js';
 import { paginar } from '../core/listas.js';
 import { borrarDatosDePrueba, contarDatosDePrueba } from '../core/borrar-perfil.js';
-import { idDePrueba } from '../core/curso.js';
 import { elementosDeEscritura } from '../core/escritura/elementos.js';
 import { NIVELES } from '../core/escritura/niveles.js';
 import { historialDeEscritura, resumenDeEscritura, resumenPorNivel, tablaDeEscritura } from '../core/escritura/estadisticas.js';
@@ -30,13 +29,7 @@ export function montar(contenedor, { ruta = '' } = {}) {
   return () => { vivo = false; };
 }
 
-async function sujetoDe(ruta) {
-  if (/\/prueba$/.test(ruta)) {
-    const perfil = await perfilActivo();
-    return perfil ? { perfil, ficha: null, id: idDePrueba(perfil.id), contenidoId: perfil.id, titulo: 'Perfil de prueba', esPrueba: true, sufijo: '/prueba' } : null;
-  }
-  return sujetoDeEstadisticas(ruta);
-}
+const sujetoDe = (ruta) => sujetoDeEstadisticas(ruta); // activo, ficha de un alumno o `…/prueba`
 
 async function pintar(raiz, estaVivo, ruta, { nivel = 'todos', pagina = 1 } = {}) {
   const store = await obtenerStore();

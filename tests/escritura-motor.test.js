@@ -784,7 +784,10 @@ test('separación: el análisis, la exportación y las estadísticas de lectura 
   assert.equal(respuestasAnalizables([...lectura, ...rs], { hoy, escritura: true }).length, rs.filter((r) => !r.esFacil).length);
   const perfil = { id: PERFIL_ID, nombre: 'Leo', ajustes: {} };
   const exp = (respuestas, sesiones) => construirExportacion({ perfil, sesiones, respuestas, hoy });
-  assert.deepEqual(exp([...lectura, ...rs], [sesionL, sesion]), exp(lectura, [sesionL]));
+  // la parte de lectura de la exportación es la misma; la escritura va en su propia sección `escritura` (fase 31)
+  const { escritura: seccion, ...lecturaConEscritura } = exp([...lectura, ...rs], [sesionL, sesion]);
+  assert.deepEqual(lecturaConEscritura, exp(lectura, [sesionL]));
+  assert.equal(seccion.respuestas.length, rs.length);
 
   const filas = [];
   assert.deepEqual(resumenGeneral({ filas, sesiones: [sesionL, sesion] }), resumenGeneral({ filas, sesiones: [sesionL] }));

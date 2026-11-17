@@ -27,8 +27,9 @@ import {
 
 export function crearControladorEscritura({
   perfil, perfilId = perfil.id, palabras, progresos = [], niveles = [], nivel = null, nivelElegidoPorNino = false, dificultades = new Map(),
-  hoy = new Date(), aleatorio = Math.random, reloj = () => new Date(), sesionId = nuevoId(),
+  hoy = new Date(), aleatorio = Math.random, reloj = () => new Date(), sesionId = nuevoId(), analisisEscritura = null,
 }) {
+  const confusionesUsadas = new Set(); // confusiones puestas a propósito de distractora en ESTA sesión (una vez cada una)
   const ajustes = normalizarAjustes(perfil.ajustes);
   const mapaProgresos = new Map(progresos.map((p) => [p.id, p]));
   const mapaNiveles = new Map(niveles.map((n) => [n.id, n]));
@@ -51,7 +52,7 @@ export function crearControladorEscritura({
       return null;
     }
     const elemento = porClave.get(clave(ensayo.elementoId, ensayo.actividad));
-    visual = armarEnsayoEscritura({ ensayo, elemento, ajustes: perfil.ajustes, aleatorio });
+    visual = armarEnsayoEscritura({ ensayo, elemento, ajustes: perfil.ajustes, aleatorio, analisis: analisisEscritura, yaUsadas: confusionesUsadas });
     visual.ensayo = ensayo;
     visual.elemento = elemento;
     intento = crearIntentoEscritura(visual, ahoraMs);
