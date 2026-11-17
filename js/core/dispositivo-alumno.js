@@ -8,11 +8,11 @@ export const esRutaAdulta = (hash) => /^#?\/adulto(\/|$)/.test(String(hash ?? ''
 
 /**
  * Las pantallas del modo adulto que existen en el celular de un alumno (PLAN.md, Ampliación 4, fase 24): el panel de siempre
- * con el menú reducido. Palabras, frases, libros y álbum (lo del curso se ve pero no se cambia; lo nuevo es «de la familia»),
- * Progreso y «Qué le cuesta» del propio alumno, y la ayuda. NO: Alumnos, Cuenta, Ajustes, Fondo, Tienda, Perfiles, Asistente,
+ * con el menú reducido. Palabras, frases, libros, álbum y tienda (lo del curso se ve pero no se cambia; lo nuevo es «de la familia»),
+ * Progreso y «Qué le cuesta» del propio alumno, y la ayuda. NO: Alumnos, Cuenta, Ajustes, Fondo, Perfiles, Asistente,
  * Copia de seguridad ni Acerca de.
  */
-export const RUTAS_ADULTAS_DEL_ALUMNO = Object.freeze(['vocabulario', 'palabra', 'frases', 'libros', 'album', 'progreso', 'analisis', 'ayuda']);
+export const RUTAS_ADULTAS_DEL_ALUMNO = Object.freeze(['vocabulario', 'palabra', 'frases', 'libros', 'album', 'tienda', 'progreso', 'analisis', 'ayuda']);
 
 /** ¿Puede un alumno abrir esta ruta del modo adulto? (`/adulto` es el panel reducido; `/adulto/palabra/<id>` es el editor.) */
 export function rutaPermitidaAlumno(ruta) {

@@ -7,7 +7,7 @@ import { borrarMedio } from '../medios.js';
 
 /** Almacenes cuyos registros llevan `perfilId` (todos menos `perfiles` y `medios`). */
 export const ALMACENES_DEL_PERFIL = Object.freeze([
-  'palabras', 'progresos', 'niveles', 'frases', 'libros', 'sesiones', 'calcomanias', 'calcomaniasPropias', 'premios', 'movimientos', 'respuestas',
+  'palabras', 'progresos', 'niveles', 'frases', 'libros', 'sesiones', 'calcomanias', 'calcomaniasPropias', 'premios', 'movimientos', 'respuestas', 'colecciones',
 ]);
 
 /**

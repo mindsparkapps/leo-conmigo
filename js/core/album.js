@@ -6,9 +6,12 @@
 //  - El premio es un movimiento con id determinista (`album:<perfil>:<número>`): si dos dispositivos completan el
 //    mismo álbum, es el mismo registro y las monedas no se duplican.
 //  - El saldo NUNCA se guarda: es la suma de los movimientos. Nunca se ganan ni se pierden monedas por acertar.
+//    (Fase 24: en el celular del alumno es UNO solo: ganado jugando + monedas que dio la familia (`regalo`) − lo canjeado.)
 //  - Los álbumes ya completos no cambian si el adulto después cambia el tamaño: el último completo fija un corte.
 
-export const ALBUM_POR_DEFECTO = Object.freeze({ tamano: 12, monedasPorAlbum: 10, monedasPorLeccion: 10, codigos: null });
+import { ordenarPorCreacion } from './colecciones.js';
+
+export const ALBUM_POR_DEFECTO =Object.freeze({ tamano: 12, monedasPorAlbum: 10, monedasPorLeccion: 10, codigos: null });
 export const MONEDAS_LECCION_MIN = 1;
 export const MONEDAS_LECCION_MAX = 50;
 export const TAMANO_MIN = 6;
@@ -151,7 +154,7 @@ export function crearRegalo({ perfilId, cantidad, nota = '', tipo = 'regalo', fe
 export const canjesPendientes = (movimientos) =>
   movimientos.filter((m) => !m.deleted && m.tipo === 'canje' && m.estado === 'pendiente').sort((a, b) => a.fecha.localeCompare(b.fecha));
 
-export function nuevoPremio({ perfilId, nombre, precio, medioImagenId = null, arasaacId = null, emoji = null, activo = true, orden = 0 }) {
+export function nuevoPremio({ perfilId, nombre, precio, medioImagenId = null, arasaacId = null, emoji = null, activo = true, orden = 0, creado = new Date().toISOString() }) {
   if (!perfilId) throw new Error('El premio necesita un perfil');
   const limpio = String(nombre ?? '').trim();
   if (!limpio) throw new Error('El premio necesita un nombre');
@@ -164,12 +167,30 @@ export function nuevoPremio({ perfilId, nombre, precio, medioImagenId = null, ar
     emoji,
     activo,
     orden,
+    creado, // los premios que ya existían no tienen fecha: cuentan como los más antiguos, por su `orden`
   };
 }
 
-/** Premios que el niño ve en la tienda, en el orden del adulto. */
-export const premiosVisibles = (premios) =>
-  premios.filter((p) => !p.deleted && p.activo !== false).sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+/**
+ * Lo que el adulto ve de las monedas de UN alumno (su ficha): el saldo (el mismo cálculo de siempre: lo ganado jugando + lo que dio
+ * la familia (`regalo`) − lo canjeado), cuánto dio la familia y qué premios canjeó.
+ * @param premios  los premios del curso y los de la familia (para poner el nombre si el canje no lo trae)
+ */
+export function resumenDeMonedas({ movimientos = [], premios = [] }) {
+  const vivos = movimientos.filter((m) => !m.deleted);
+  const dadasPorLaFamilia = vivos.filter((m) => m.tipo === 'regalo' && m.estado !== 'anulado').reduce((s, m) => s + m.cantidad, 0);
+  const canjes = vivos
+    .filter((m) => m.tipo === 'canje' && m.estado !== 'anulado')
+    .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)))
+    .map((m) => ({ nombre: m.nota || premios.find((p) => p.id === m.premioId)?.nombre || 'Premio', estado: m.estado ?? 'pendiente', precio: -m.cantidad, fecha: m.fecha }));
+  return { saldo: saldo(movimientos), dadasPorLaFamilia, canjes, entregados: canjes.filter((c) => c.estado === 'entregado').length };
+}
+
+/** Un solo orden para los premios del curso y de la familia: los anteriores por `orden` y los nuevos por fecha de creación. */
+export const ordenarPremios = (premios) => ordenarPorCreacion(premios, (a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+
+/** Premios que el niño ve en la tienda, en un solo orden (ver `ordenarPremios`). */
+export const premiosVisibles = (premios) => ordenarPremios(premios.filter((p) => !p.deleted && p.activo !== false));
 
 /** Un número de monedas dibujadas: hasta `max` (el resto se ve en el número). */
 export const monedasADibujar = (n, max = 20) => Math.max(0, Math.min(max, Math.floor(n)));

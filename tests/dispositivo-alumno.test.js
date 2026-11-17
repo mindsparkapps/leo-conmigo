@@ -100,10 +100,10 @@ test('acceso: en un dispositivo de alumno el candado abre solo el menú reducido
     // con el candado: el panel y el menú reducido, nada más
     acceso.habilitarAdulto();
     assert.equal(acceso.adultoHabilitado(), true);
-    for (const r of ['/adulto', '/adulto/vocabulario', '/adulto/palabra/nueva', '/adulto/frases', '/adulto/libros', '/adulto/album', '/adulto/progreso', '/adulto/analisis', '/adulto/ayuda']) {
+    for (const r of ['/adulto', '/adulto/vocabulario', '/adulto/palabra/nueva', '/adulto/frases', '/adulto/libros', '/adulto/album', '/adulto/tienda', '/adulto/progreso', '/adulto/analisis', '/adulto/ayuda']) {
       assert.equal(acceso.puedeAbrirRutaAdulta(r), true, r);
     }
-    for (const r of ['/adulto/alumnos', '/adulto/cuenta', '/adulto/ajustes', '/adulto/fondo', '/adulto/tienda', '/adulto/perfiles', '/adulto/respaldo', '/adulto/asistente', '/adulto/acerca']) {
+    for (const r of ['/adulto/alumnos', '/adulto/cuenta', '/adulto/ajustes', '/adulto/fondo', '/adulto/perfiles', '/adulto/respaldo', '/adulto/asistente', '/adulto/acerca']) {
       assert.equal(acceso.puedeAbrirRutaAdulta(r), false, r);
     }
     assert.equal(acceso.destinoSiNoPasa(), '/adulto', 'una ruta que no existe lo lleva al panel reducido');

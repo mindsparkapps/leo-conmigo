@@ -18,7 +18,8 @@ test('listas: no se pisan, con los medios cubren todos los almacenes y los medio
   assert.equal(new Set(juntas).size, juntas.length);
   // 'alumnos' (las fichas) es solo del adulto y no viaja por el aula: se guarda en su celular
   // ni las fichas ('alumnos') ni la lista de lo de la familia ('contenidoFamilia') viajan por el aula: se guardan en el celular del adulto
-  assert.deepEqual([...juntas, 'medios', 'alumnos', 'contenidoFamilia'].sort(), [...ALMACENES_RESPALDO].sort());
+  // ('colecciones' son los álbumes de la familia: solo del celular del alumno, llegan al adulto como lista en `contenidoFamilia`)
+  assert.deepEqual([...juntas, 'medios', 'alumnos', 'contenidoFamilia', 'colecciones'].sort(), [...ALMACENES_RESPALDO].sort());
   assert.deepEqual([...ALMACENES_SOLO_ADULTO].sort(), ['calcomaniasPropias', 'frases', 'libros', 'palabras', 'premios']);
   assert.deepEqual([...ALMACENES_DEL_CURSO].sort(), ['calcomaniasPropias', 'frases', 'libros', 'palabras', 'perfiles', 'premios']);
   assert.deepEqual([...ALMACENES_DEL_ALUMNO].sort(), ['calcomanias', 'movimientos', 'niveles', 'perfiles', 'progresos', 'respuestas', 'sesiones']);

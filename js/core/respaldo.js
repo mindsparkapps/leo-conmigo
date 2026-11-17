@@ -22,6 +22,7 @@ export const ALMACENES_RESPALDO = Object.freeze([
   'movimientos',
   'respuestas',
   'alumnos', // fichas de alumno del adulto (Ampliación 4, fase 23): sus registros llevan `perfilId` = id de la ficha
+  'colecciones', // (fase 24) álbumes que agregó la familia en el celular del alumno (su portada y sobre son medios de la familia)
   'contenidoFamilia', // (fase 24) lo que la familia de cada alumno agregó, sin fotos ni voces: solo para mostrar nombres en las estadísticas
 ]);
 

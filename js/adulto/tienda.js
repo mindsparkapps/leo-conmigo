@@ -11,7 +11,8 @@ import { borrarMedio, guardarMedio, liberarUrls, urlDeMedio } from '../medios.js
 import { cargarMonedas } from '../albumes.js';
 import { crearPaginacion } from '../ui/paginacion.js';
 import { filtrarMovimientos, paginar } from '../core/listas.js';
-import { PRECIO_MAX, PRECIO_MIN, canjesPendientes, crearRegalo, nuevoPremio } from '../core/album.js';
+import { PRECIO_MAX, PRECIO_MIN, canjesPendientes, crearRegalo, nuevoPremio, ordenarPremios } from '../core/album.js';
+import { esAlumno } from '../acceso.js';
 
 export const titulo = 'Tienda y monedas · Leo Conmigo';
 
@@ -40,7 +41,8 @@ export function montar(contenedor) {
       return;
     }
     const datos = await cargarMonedas(store, perfil);
-    const premios = datos.premios.filter((p) => !p.deleted).sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+    const premios = ordenarPremios(datos.premios.filter((p) => !p.deleted)); // un solo orden: lo anterior por `orden`, lo nuevo (curso o familia) por fecha
+    const delAlumno = esAlumno(); // en su celular lo del curso solo se ve y lo nuevo es de la familia
     const premiosPorId = new Map(premios.map((p) => [p.id, p]));
     const urls = new Map(await Promise.all(premios.map(async (p) => [p.id, await urlDeMedio(store, p.medioImagenId)])));
     const pendientes = canjesPendientes(datos.movimientos);
@@ -110,7 +112,7 @@ export function montar(contenedor) {
           medioImagenId = null;
           arasaacId = null;
         }
-        const base = nuevoPremio({ perfilId: perfil.id, nombre, precio, medioImagenId, arasaacId, emoji: imagen.emoji, activo: editado?.activo ?? true, orden: editado?.orden ?? premios.length });
+        const base = nuevoPremio({ perfilId: perfil.id, nombre, precio, medioImagenId, arasaacId, emoji: imagen.emoji, activo: editado?.activo ?? true, orden: editado?.orden ?? premios.length, creado: editado ? (editado.creado ?? null) : undefined });
         await store.guardar('premios', editado ? { ...editado, ...base, id: editado.id } : base);
         editandoId = null;
         await pintar();
@@ -134,10 +136,11 @@ export function montar(contenedor) {
         'li',
         { class: 'fila-contenido' },
         crearMiniatura({ url: urls.get(p.id), emoji: p.emoji, texto: p.nombre }),
-        el('div', { class: 'fila-texto' }, el('strong', {}, p.nombre), el('span', { class: 'ayuda' }, `${textoMonedas(p.precio)}${p.activo === false ? ' · en pausa' : ''}`)),
-        el('div', { class: 'acciones' },
-          el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Subir ${p.nombre}`, disabled: i === 0, onclick: reordenar(p, -1) }, '↑'),
-          el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Bajar ${p.nombre}`, disabled: i === premios.length - 1, onclick: reordenar(p, 1) }, '↓'),
+        el('div', { class: 'fila-texto' }, el('strong', {}, p.nombre), el('span', { class: 'ayuda' }, `${textoMonedas(p.precio)}${p.activo === false ? ' · en pausa' : ''}`),
+          delAlumno ? el('span', { class: 'insignias' }, el('span', { class: 'insignia' }, p.origen === 'familia' ? 'De la familia' : 'Del curso')) : null),
+        delAlumno && p.origen !== 'familia' ? null : el('div', { class: 'acciones' },
+          delAlumno ? null : el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Subir ${p.nombre}`, disabled: i === 0, onclick: reordenar(p, -1) }, '↑'),
+          delAlumno ? null : el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Bajar ${p.nombre}`, disabled: i === premios.length - 1, onclick: reordenar(p, 1) }, '↓'),
           el('button', { type: 'button', class: 'boton secundario chico', onclick: accion(() => store.guardar('premios', { ...p, activo: p.activo === false }), mensajePremio) }, p.activo === false ? 'Activar' : 'Pausar'),
           el('button', { type: 'button', class: 'boton secundario chico', onclick: () => { editandoId = p.id; pintar(); } }, 'Editar'),
           el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Quitar ${p.nombre}`, onclick: () => {
@@ -194,11 +197,14 @@ export function montar(contenedor) {
       el('div', { class: 'panel' },
         el('h2', {}, 'Monedas del niño'),
         el('div', { class: 'fila-contenido' }, crearCofre({ saldo: datos.saldo, compacto: true }), el('a', { class: 'boton secundario', href: '#/adulto/album' }, 'Álbum')),
-        el('p', { class: 'ayuda' }, 'El niño gana monedas al completar un álbum; nunca por acertar ni se le quitan por fallar. Las gasta en la tienda.'),
+        el('p', { class: 'ayuda' }, delAlumno
+          ? 'Las monedas que da la familia se suman a las que se ganan jugando: es un solo saldo, del que se descuenta lo que se canjea. Las monedas dadas llegan al adulto como estadística.'
+          : 'El niño gana monedas al completar un álbum; nunca por acertar ni se le quitan por fallar. Las gasta en la tienda.'),
         el('div', { class: 'fila' }, campo('Cantidad', entradaCantidad, 'Para corregir puede ser negativa'), campo('Nota', entradaNota, 'Obligatoria al corregir')),
         el('div', { class: 'acciones' },
-          el('button', { type: 'button', class: 'boton', onclick: mover('regalo') }, 'Regalar monedas'),
-          el('button', { type: 'button', class: 'boton secundario', onclick: mover('correccion') }, 'Corregir el saldo'),
+          el('button', { type: 'button', class: 'boton', onclick: mover('regalo') }, delAlumno ? 'Dar monedas' : 'Regalar monedas'),
+          // la corrección del saldo (quitar monedas) es del adulto del curso; la familia da monedas
+          delAlumno ? null : el('button', { type: 'button', class: 'boton secundario', onclick: mover('correccion') }, 'Corregir el saldo'),
         ),
         mensajeSaldo,
       ),

@@ -169,7 +169,7 @@ export function aFicha(almacenes, { cursoId, fichaId }) {
 // ---------- contenido de la familia ----------
 
 /** Los almacenes en que la familia puede agregar cosas propias (sus medios viajan aparte, en `familia/`). */
-export const CLAVES_FAMILIA = Object.freeze(['palabras', 'frases', 'libros', 'calcomaniasPropias', 'premios']);
+export const CLAVES_FAMILIA = Object.freeze(['palabras', 'frases', 'libros', 'calcomaniasPropias', 'premios', 'colecciones']);
 export const ORIGEN_FAMILIA = 'familia';
 
 const sinBlob = (r) => {

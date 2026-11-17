@@ -182,15 +182,15 @@ async function pintarNino(zona, estaVivo) {
       el('a', { class: 'boton', href: '#/adulto/progreso' }, 'Progreso'),
       el('a', { class: 'boton', href: '#/adulto/analisis' }, 'Qué le cuesta'),
       el('a', { class: 'boton', href: '#/adulto/album' }, 'Álbum'),
-      // menú reducido del celular de un alumno: sin Tienda, Ajustes, Fondo, Perfiles, Alumnos ni Copia de seguridad
-      esAlumno() ? null : el('a', { class: 'boton', href: '#/adulto/tienda' }, 'Tienda'),
+      // menú reducido del celular de un alumno: con Tienda, pero sin Ajustes, Fondo, Perfiles, Alumnos ni Copia de seguridad
+      el('a', { class: 'boton', href: '#/adulto/tienda' }, 'Tienda'),
       esAlumno() ? null : el('a', { class: 'boton secundario', href: '#/adulto/ajustes' }, 'Ajustes'),
       esAlumno() ? null : el('a', { class: 'boton secundario', href: '#/adulto/fondo' }, 'Fondo'),
       esAlumno() ? null : el('a', { class: 'boton secundario', href: '#/adulto/perfiles' }, 'Perfiles'),
       esAlumno() ? null : el('a', { class: 'boton secundario', href: '#/adulto/alumnos', 'data-enlace-alumnos': '' }, textoEnlaceAlumnos(conectadosAhora)),
     ),
     esAlumno()
-      ? el('p', { class: 'ayuda' }, 'Lo del curso lo pone tu adulto y aquí solo se ve. Lo que agregues tú (palabras, frases, libros y láminas) es de la familia: se queda en este celular y en el Drive del alumno.')
+      ? el('p', { class: 'ayuda' }, 'Lo del curso lo pone tu adulto y aquí solo se ve. Lo que agregues tú (palabras, frases, libros, álbumes, premios y monedas) es de la familia: se queda en este celular y en el Drive del alumno.')
       : el('p', { class: 'ayuda' }, el('a', { href: '#/adulto/respaldo' }, 'Copia de seguridad')),
   );
 }

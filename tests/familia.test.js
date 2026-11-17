@@ -9,6 +9,10 @@ import { vistaDeFichas, ErrorVistaPerfil } from '../js/store-perfil.js';
 import { ErrorCurso, aplicarOrigenDeFamilia, idDeFicha, registrosDeFamilia } from '../js/core/curso.js';
 import { rutaPermitidaAlumno } from '../js/core/dispositivo-alumno.js';
 import { planDeMedios } from '../js/core/sync.js';
+import { cargarMonedas, comprarSobre } from '../js/albumes.js';
+import { cargarColecciones } from '../js/colecciones.js';
+import { crearCanje, crearPagoLeccion, crearRegalo, nuevoPremio, premiosVisibles, resumenDeMonedas } from '../js/core/album.js';
+import { listarColecciones, nuevaColeccion } from '../js/core/colecciones.js';
 import { planDeBorradoDePerfil } from '../js/core/borrar-perfil.js';
 import { crearDriveFalso, crearNubeFalsa } from './drive-falso.js';
 import { bytesDe, crearStoreEnMemoria } from './memoria.js';
@@ -22,10 +26,10 @@ const ids = async (store, almacen, conBorrados = false) => (await store.listar(a
 // ---------- reglas puras ----------
 
 test('rutaPermitidaAlumno: el menú reducido del celular del alumno y nada más', () => {
-  for (const r of ['/adulto', '#/adulto', '/adulto/vocabulario', '/adulto/palabra/nueva', '/adulto/palabra/abc', '/adulto/frases', '/adulto/libros', '/adulto/album', '/adulto/progreso', '/adulto/analisis', '/adulto/ayuda']) {
+  for (const r of ['/adulto', '#/adulto', '/adulto/vocabulario', '/adulto/palabra/nueva', '/adulto/palabra/abc', '/adulto/frases', '/adulto/libros', '/adulto/album', '/adulto/tienda', '/adulto/progreso', '/adulto/analisis', '/adulto/ayuda']) {
     assert.equal(rutaPermitidaAlumno(r), true, r);
   }
-  for (const r of ['/adulto/alumnos', '/adulto/cuenta', '/adulto/ajustes', '/adulto/fondo', '/adulto/tienda', '/adulto/perfiles', '/adulto/asistente', '/adulto/respaldo', '/adulto/acerca',
+  for (const r of ['/adulto/alumnos', '/adulto/cuenta', '/adulto/ajustes', '/adulto/fondo', '/adulto/perfiles', '/adulto/asistente', '/adulto/respaldo', '/adulto/acerca',
     '/adulto/progreso/ficha/x', '/adulto/palabra/a/b', '/adultos', '/nino', '', undefined]) {
     assert.equal(rutaPermitidaAlumno(r), false, String(r));
   }
@@ -239,4 +243,116 @@ test('el respaldo del alumno: sube su avance y lo de su familia a su appDataFold
   assert.equal(abuela.origen, 'familia');
   assert.deepEqual(await bytesDe((await tel2.obtener('medios', 'm-fam')).blob), [7, 7], 'y la foto de su familia');
   assert.equal((await tel2.obtener('medios', 'm-img')).blob ?? null, null, 'la del curso se vuelve a bajar de la Biblioteca, no de su respaldo');
+});
+
+// ---------- tienda y álbumes completos para la familia ----------
+
+test('orden de álbumes y premios: lo anterior sin fecha primero y en su orden; lo nuevo, del curso o de la familia, por fecha', () => {
+  const laminas = (id) => [{ id: `${id}-1`, coleccionId: id, nombre: 'a' }];
+  const perfil = {
+    colecciones: [{ id: 'c-viejo-1', nombre: 'Viejo 1' }, { id: 'c-viejo-2', nombre: 'Viejo 2' }, { id: 'c-nuevo-curso', nombre: 'Curso nuevo', creado: '2026-11-10T10:00:00.000Z' }],
+  };
+  const familiares = [
+    { id: 'f-antes', nombre: 'Familia 1', creado: '2026-11-05T10:00:00.000Z' },
+    { id: 'f-despues', nombre: 'Familia 2', creado: '2026-11-12T10:00:00.000Z' },
+  ];
+  const propias = ['c-viejo-1', 'c-viejo-2', 'c-nuevo-curso', 'f-antes', 'f-despues'].flatMap(laminas);
+  const lista = listarColecciones({ perfil, propias, familiares });
+  assert.deepEqual(lista.map((c) => c.id), ['base', 'c-viejo-1', 'c-viejo-2', 'f-antes', 'c-nuevo-curso', 'f-despues']);
+  assert.deepEqual(lista.map((c) => Boolean(c.esFamilia)), [false, false, false, true, false, true]);
+  // sin nada de la familia y sin fechas, todo queda como siempre
+  assert.deepEqual(listarColecciones({ perfil: { colecciones: [{ id: 'a' }, { id: 'b' }] }, propias: [...laminas('a'), ...laminas('b')] }).map((c) => c.id), ['base', 'a', 'b']);
+
+  const premios = [
+    { id: 'p-nuevo-familia', nombre: 'Helado', creado: '2026-11-09T10:00:00.000Z', precio: 5 },
+    { id: 'p-viejo-b', nombre: 'B', orden: 1, precio: 5 },
+    { id: 'p-nuevo-curso', nombre: 'Parque', creado: '2026-11-11T10:00:00.000Z', precio: 5 },
+    { id: 'p-viejo-a', nombre: 'A', orden: 0, precio: 5 },
+    { id: 'p-pausa', nombre: 'Pausa', activo: false, orden: 2, precio: 5 },
+  ];
+  assert.deepEqual(premiosVisibles(premios).map((p) => p.id), ['p-viejo-a', 'p-viejo-b', 'p-nuevo-familia', 'p-nuevo-curso']);
+  assert.ok(nuevoPremio({ perfilId: 'P1', nombre: 'x', precio: 3 }).creado, 'un premio nuevo lleva su fecha');
+  assert.ok(nuevaColeccion({ nombre: 'x' }).creado, 'un álbum nuevo también');
+});
+
+test('la familia crea un álbum completo, un premio, da monedas y canjea: un solo saldo, todo con origen familia y los medios en familia/', async () => {
+  const m = await montar();
+  const aula = await miAula(m.a);
+  await m.a.aulas.sincronizarComoAlumno({ aula, email: A });
+  const perfil = await m.a.store.obtener('perfiles', 'P1');
+
+  // un álbum con portada, sobre y dos láminas, un premio con foto y monedas dadas
+  const medio = async (id, ...bytes) => m.a.store.guardar('medios', { id, tipo: 'imagen', mime: 'image/webp', origen: 'foto', blob: imagen(...bytes) });
+  await medio('m-port', 1); await medio('m-sobre', 2); await medio('m-l1', 3); await medio('m-l2', 4); await medio('m-premio', 5);
+  const album = await m.a.store.guardar('colecciones', { id: 'col-fam', perfilId: 'P1', nombre: 'Los abuelos', medioPortadaId: 'm-port', medioSobreId: 'm-sobre', creado: '2026-11-15T10:00:00.000Z' });
+  await m.a.store.guardar('calcomaniasPropias', { id: 'lam-1', perfilId: 'P1', nombre: 'Abuela', medioImagenId: 'm-l1', coleccionId: 'col-fam' });
+  await m.a.store.guardar('calcomaniasPropias', { id: 'lam-2', perfilId: 'P1', nombre: 'Abuelo', medioImagenId: 'm-l2', coleccionId: 'col-fam' });
+  const premio = await m.a.store.guardar('premios', nuevoPremio({ perfilId: 'P1', nombre: 'Paseo con los abuelos', precio: 30, medioImagenId: 'm-premio' }));
+  assert.equal(album.origen, 'familia');
+  assert.equal(premio.origen, 'familia');
+  await m.a.store.guardar('movimientos', crearRegalo({ perfilId: 'P1', cantidad: 100, nota: 'Del abuelo' }));
+  await m.a.store.guardar('movimientos', crearPagoLeccion({ perfilId: 'P1', cantidad: 10 })); // lo ganado jugando
+
+  // con la lógica de siempre: un solo saldo y el álbum de la familia entre los del niño
+  const datos = await cargarMonedas(m.a.store, perfil);
+  assert.equal(datos.saldo, 110);
+  const { colecciones } = await cargarColecciones(m.a.store, perfil);
+  assert.deepEqual(colecciones.map((c) => [c.id, Boolean(c.esFamilia)]), [['base', false], ['col-fam', true]]);
+  const compra = await comprarSobre(m.a.store, { ...perfil, album: { monedasPorLeccion: 2 } }, { coleccionId: 'col-fam', aleatorio: () => 0 });
+  assert.equal(compra.comprado, true);
+  assert.ok(compra.codigos.every((c) => c.includes('lam-')), 'las láminas del sobre son del álbum de la familia');
+  await m.a.store.guardar('movimientos', crearCanje({ perfilId: 'P1', premio }));
+  const tras = await cargarMonedas(m.a.store, perfil);
+  assert.equal(tras.saldo, 110 - compra.precio - 30, 'ganado + dado − lo gastado − lo canjeado');
+
+  // se publica: la lista (sin imágenes) en alumno.json, los medios en familia/ y el avance (monedas incluidas) en sus registros
+  await m.a.aulas.sincronizarComoAlumno({ aula, email: A });
+  const info = (await m.adulto.listarAulas()).P1;
+  const doc = m.nube.json(m.nube.porNombre('alumno.json', info.carpetasAlumnos[A]).id);
+  assert.deepEqual(doc.contenidoFamilia.colecciones.map((c) => c.id), ['col-fam']);
+  assert.deepEqual(doc.contenidoFamilia.premios.map((p) => p.id), [premio.id]);
+  assert.deepEqual(doc.contenidoFamilia.calcomaniasPropias.map((p) => p.id).sort(), ['lam-1', 'lam-2']);
+  assert.ok(doc.almacenes.movimientos.some((x) => x.tipo === 'regalo' && x.cantidad === 100));
+  const enFamilia = m.nube.hijos(m.nube.porNombre('familia', info.carpetasAlumnos[A]).id).map((f) => f.name).sort();
+  assert.deepEqual(enFamilia, ['medio-m-l1.webp', 'medio-m-l2.webp', 'medio-m-port.webp', 'medio-m-premio.webp', 'medio-m-sobre.webp']);
+  assert.ok(!m.nube.hijos(info.bibliotecaId).some((f) => /m-(port|sobre|l1|l2|premio)/.test(f.name)), 'nada en la Biblioteca');
+
+  // el adulto: estadística en la ficha, sin imágenes ni nada en su tienda
+  await m.adulto.sincronizarAula('P1');
+  assert.deepEqual(await m.tienda.listar('colecciones'), []);
+  assert.deepEqual(await m.tienda.listar('premios', { perfilId: 'P1' }), []);
+  assert.deepEqual(await ids(m.tienda, 'medios'), ['m-img'], 'no bajó ninguna imagen de la familia');
+  const filas = await m.tienda.listar('contenidoFamilia');
+  assert.deepEqual(filas.map((f) => f.almacen).sort(), ['calcomaniasPropias', 'calcomaniasPropias', 'colecciones', 'premios']);
+  const movs = await m.tienda.listar('movimientos', { perfilId: fichaA });
+  const resumen = resumenDeMonedas({ movimientos: movs, premios: registrosDeFamilia(filas, 'premios') });
+  assert.equal(resumen.saldo, tras.saldo, 'el saldo del adulto es el del alumno (mismo cálculo)');
+  assert.equal(resumen.dadasPorLaFamilia, 100);
+  assert.deepEqual(resumen.canjes.map((c) => [c.nombre, c.estado]), [['Paseo con los abuelos', 'pendiente']]);
+  const albumes = listarColecciones({ perfil, propias: registrosDeFamilia(filas, 'calcomaniasPropias'), familiares: registrosDeFamilia(filas, 'colecciones') }).filter((c) => c.esFamilia);
+  assert.deepEqual(albumes.map((c) => [c.nombre, c.codigos.length]), [['Los abuelos', 2]]);
+  assert.equal(await m.tienda.listar('calcomanias', { perfilId: fichaA }).then((c) => c.length), compra.codigos.length, 'su avance en el álbum llega a la ficha');
+
+  // el material solo con el botón
+  const r = await m.adulto.traerMaterialDeFamilia('P1', A);
+  assert.equal(r.traidos, 5);
+  assert.deepEqual(await ids(m.tienda, 'medios'), ['m-img']);
+});
+
+test('el respaldo del alumno incluye álbumes y premios de la familia y se recuperan al reinstalar', async () => {
+  const falso = crearDriveFalso();
+  const drive = () => crearDrive({ obtenerToken: async () => 'token-1', fetchFn: falso.fetch });
+  const tel1 = envolverParaFamilia(crearStoreEnMemoria({ prefijo: 'a' }), () => true);
+  await tel1.guardar('medios', { id: 'm-port', tipo: 'imagen', mime: 'image/webp', origen: 'foto', blob: imagen(1) });
+  await tel1.guardar('colecciones', { id: 'col-fam', perfilId: 'P1', nombre: 'Los abuelos', medioPortadaId: 'm-port', creado: '2026-11-15T10:00:00.000Z' });
+  await tel1.guardar('premios', nuevoPremio({ perfilId: 'P1', nombre: 'Paseo', precio: 9 }));
+  await tel1.guardar('movimientos', crearRegalo({ perfilId: 'P1', cantidad: 40 }));
+  await crearSincronizador({ store: tel1, drive: drive() }).sincronizar();
+  const tel2 = envolverParaFamilia(crearStoreEnMemoria({ prefijo: 'b', desde: 500 }), () => true);
+  await crearSincronizador({ store: tel2, drive: drive() }).sincronizar();
+  assert.deepEqual(await ids(tel2, 'colecciones'), ['col-fam']);
+  assert.equal((await tel2.listar('colecciones'))[0].origen, 'familia');
+  assert.equal((await tel2.listar('premios'))[0].origen, 'familia');
+  assert.equal((await tel2.listar('movimientos')).reduce((s, x) => s + x.cantidad, 0), 40);
+  assert.deepEqual(await bytesDe((await tel2.obtener('medios', 'm-port')).blob), [1]);
 });

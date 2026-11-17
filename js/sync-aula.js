@@ -35,7 +35,8 @@ const LEGADO_DEL_ADULTO = new Set(['medios', ...ALMACENES_DEL_ALUMNO]);
 const enOrden = (nombres) => ALMACENES_RESPALDO.filter((n) => nombres.includes(n));
 // El adulto solo maneja el contenido del curso; el alumno, el contenido del curso (que recibe) y su avance (que publica)
 const ALMACENES_DEL_ADULTO = enOrden(ALMACENES_DEL_CURSO);
-const ALMACENES_DEL_ALUMNO_Y_CURSO = enOrden([...ALMACENES_DEL_CURSO, ...ALMACENES_DEL_ALUMNO]);
+// ('colecciones' son los álbumes que agregó la familia: nunca vienen del adulto ni se publican como curso; solo alimentan `contenidoFamilia`)
+const ALMACENES_DEL_ALUMNO_Y_CURSO = enOrden([...ALMACENES_DEL_CURSO, ...ALMACENES_DEL_ALUMNO, 'colecciones']);
 
 const MIME_JSON = 'application/json';
 const minuscula = (s) => String(s ?? '').trim().toLowerCase();

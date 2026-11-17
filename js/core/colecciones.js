@@ -28,9 +28,21 @@ export function normalizarColecciones(lista) {
       medioPortadaId: c.medioPortadaId ?? null,
       medioSobreId: c.medioSobreId ?? null,
       colorPortada: colorDePortada(c.colorPortada),
+      ...(typeof c.creado === 'string' && c.creado ? { creado: c.creado } : {}), // los que ya existían no tienen fecha: cuentan como los más antiguos
     });
   }
   return salida;
+}
+
+/**
+ * Un solo orden «por fecha de creación» para álbumes y premios del curso y de la familia (PLAN.md, fase 24, respuesta del usuario:
+ * «todo mezclado»). Lo que no tiene `creado` (lo que ya existía) cuenta como lo más antiguo y conserva su orden de siempre
+ * (`sinFecha` lo desempata: por defecto, el orden en que viene); lo nuevo va detrás, por fecha.
+ */
+export function ordenarPorCreacion(lista, sinFecha = () => 0) {
+  const antiguos = lista.filter((x) => !x.creado).sort(sinFecha);
+  const nuevos = lista.filter((x) => x.creado).sort((a, b) => String(a.creado).localeCompare(String(b.creado)));
+  return [...antiguos, ...nuevos];
 }
 
 /**
@@ -47,10 +59,10 @@ export function normalizarBase(base) {
   };
 }
 
-export function nuevaColeccion({ nombre, medioPortadaId = null, medioSobreId = null }) {
+export function nuevaColeccion({ nombre, medioPortadaId = null, medioSobreId = null, creado = new Date().toISOString() }) {
   const limpio = String(nombre ?? '').trim();
   if (!limpio) throw new Error('El álbum necesita un nombre');
-  return { id: nuevoId(), nombre: limpio, medioPortadaId, medioSobreId };
+  return { id: nuevoId(), nombre: limpio, medioPortadaId, medioSobreId, creado };
 }
 
 /** Láminas vigentes (calcomanías propias) de un álbum cargado. */
@@ -59,15 +71,19 @@ export const laminasDeColeccion = (propias, id) => propias.filter((p) => !p.dele
 /**
  * Todos los álbumes que el niño puede usar, el de la app primero:
  * [{ id, nombre, codigos, medioPortadaId, medioSobreId, esBase }]. Un álbum cargado sin láminas no cuenta.
- * @param perfil   perfil activo (`album` y `colecciones`)
- * @param propias  todas las calcomanías propias del perfil
+ * @param perfil     perfil activo (`album` y `colecciones`, que son del curso)
+ * @param propias    todas las calcomanías propias del perfil (las del curso y las de la familia)
+ * @param familiares los álbumes que agregó la familia (almacén `colecciones`, solo en el celular del alumno): `esFamilia: true`
+ * El orden es uno solo, por fecha de creación (ver `ordenarPorCreacion`).
  */
-export function listarColecciones({ perfil, propias = [] }) {
+export function listarColecciones({ perfil, propias = [], familiares = [] }) {
   const vigentes = propias.filter((p) => !p.deleted);
   const base = codigosEnJuego(perfil?.album, vigentes);
   const ajustesBase = normalizarBase(perfil?.base);
   const lista = [];
-  const cargadas = normalizarColecciones(perfil?.colecciones).map((c) => ({ c, codigos: laminasDeColeccion(vigentes, c.id).map((p) => codigoDePropia(p.id)) })).filter((x) => x.codigos.length);
+  const deLaFamilia = normalizarColecciones((familiares ?? []).filter((f) => !f.deleted)).map((c) => ({ ...c, esFamilia: true }));
+  const cargadas = [...normalizarColecciones(perfil?.colecciones), ...deLaFamilia]
+    .map((c) => ({ c, codigos: laminasDeColeccion(vigentes, c.id).map((p) => codigoDePropia(p.id)) })).filter((x) => x.codigos.length);
   // el álbum de la app se puede quitar, pero siempre queda al menos un álbum
   if (!ajustesBase.quitado || !cargadas.length) lista.push({
     id: ID_BASE,
@@ -79,7 +95,7 @@ export function listarColecciones({ perfil, propias = [] }) {
     esBase: true,
   });
   for (const { c, codigos } of cargadas) lista.push({ ...c, codigos, esBase: false });
-  return lista;
+  return ordenarPorCreacion(lista); // el de la app y lo anterior primero, en su orden; lo nuevo (curso o familia) por fecha
 }
 
 /** Cuántas láminas de un álbum aún no están pegadas (las que no tiene y las que tiene sueltas). */

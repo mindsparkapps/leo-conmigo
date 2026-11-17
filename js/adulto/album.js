@@ -11,9 +11,10 @@ import { obtenerStore, perfilActivo, sujetoDeEstadisticas } from '../contexto.js
 import { esAlumno } from '../acceso.js';
 import { borrarMedio, guardarMedio, liberarUrls, urlDeMedio } from '../medios.js';
 import { cargarMonedas, reiniciarAlbumes } from '../albumes.js';
-import { MONEDAS_LECCION_MAX, MONEDAS_LECCION_MIN, MONEDAS_MAX, MONEDAS_MIN, TAMANO_MAX, TAMANO_MIN, calcularAlbumes, crearRegalo, normalizarAlbum, saldo } from '../core/album.js';
+import { MONEDAS_LECCION_MAX, MONEDAS_LECCION_MIN, MONEDAS_MAX, MONEDAS_MIN, TAMANO_MAX, TAMANO_MIN, calcularAlbumes, crearRegalo, normalizarAlbum, resumenDeMonedas, saldo } from '../core/album.js';
+import { registrosDeFamilia } from '../core/curso.js';
 import { CALCOMANIAS, codigoDePropia, rutaCalcomania } from '../core/calcomanias.js';
-import { laminasDeColeccion, listarColecciones, normalizarBase, normalizarColecciones, nuevaColeccion } from '../core/colecciones.js';
+import { faltantesPorPegar, laminasDeColeccion, listarColecciones, normalizarBase, normalizarColecciones, nuevaColeccion } from '../core/colecciones.js';
 import { elegirImagenes } from '../hardware.js';
 import { prepararImagen } from '../imagenes.js';
 import { RUTA_PORTADA } from '../ui/laminas.js';
@@ -41,7 +42,11 @@ function editorDeAlbum({ store, perfil, coleccion, propias, repintar, registrar 
 
   // guarda el cambio en el perfil: en `perfil.base` (álbum de la app) o dentro de `perfil.colecciones`
   async function guardarCambio(cambios) {
-    if (esBase) {
+    if (coleccion.esFamilia) {
+      // un álbum de la familia vive en su propio almacén (el del curso, en el perfil, no se toca)
+      const registro = await store.obtener('colecciones', coleccion.id);
+      await store.guardar('colecciones', { ...registro, ...cambios });
+    } else if (esBase) {
       await store.guardar('perfiles', { ...perfil, base: { ...normalizarBase(perfil.base), ...cambios } });
     } else {
       const lista = normalizarColecciones(perfil.colecciones).map((c) => (c.id === coleccion.id ? { ...c, ...cambios } : c));
@@ -176,8 +181,9 @@ function editorDeAlbum({ store, perfil, coleccion, propias, repintar, registrar 
  * álbum y cuál la del sobre; todas las demás son láminas) y quitar los que ya no se quieran.
  * @param registrar  guarda las URLs de vista previa para soltarlas al salir de la pantalla
  */
-function panelAlbumesCargados({ store, perfil, propias, miniaturas, repintar, registrar }) {
+function panelAlbumesCargados({ store, perfil, propias, familiares = [], miniaturas, repintar, registrar }) {
   const colecciones = normalizarColecciones(perfil.colecciones);
+  const enElCelularDelAlumno = esAlumno(); // ahí lo del curso solo se ve y lo nuevo es de la familia
   const nombre = el('input', { type: 'text', maxlength: 40, autocomplete: 'off', placeholder: 'Por ejemplo: Animales' });
   const estado = el('p', { class: 'ayuda', role: 'status' });
   const selPortada = el('select', { 'aria-label': 'Imagen de la portada del álbum' });
@@ -246,7 +252,7 @@ function panelAlbumesCargados({ store, perfil, propias, miniaturas, repintar, re
       estado.textContent = 'Preparando las portadas…';
       const portada = await subirPortada(archivos[iPortada]);
       const sobre = iSobre === iPortada ? portada : await subirPortada(archivos[iSobre]);
-      const coleccion = nuevaColeccion({ nombre: nombreAlbum, medioPortadaId: portada.id, medioSobreId: sobre.id });
+      const coleccion = { ...nuevaColeccion({ nombre: nombreAlbum, medioPortadaId: portada.id, medioSobreId: sobre.id }), perfilId: perfil.id };
       for (let k = 0; k < laminas.length; k++) {
         estado.textContent = `Cargando láminas: ${k + 1} de ${laminas.length}…`;
         const { blob, mime } = await prepararImagen(laminas[k]);
@@ -256,7 +262,8 @@ function panelAlbumesCargados({ store, perfil, propias, miniaturas, repintar, re
           perfilId: perfil.id, nombre: sinExtension(laminas[k].name), medioImagenId: medio.id, arasaacId: null, emoji: null, coleccionId: coleccion.id,
         }));
       }
-      await store.guardar('perfiles', { ...perfil, colecciones: [...colecciones, coleccion] });
+      if (enElCelularDelAlumno) await store.guardar('colecciones', coleccion); // la familia: su propio almacén, con `origen: 'familia'`
+      else await store.guardar('perfiles', { ...perfil, colecciones: [...colecciones, coleccion] });
       await repintar();
     } catch (error) {
       for (const c of creados) await store.borrar('calcomaniasPropias', c.id).catch(() => {});
@@ -279,7 +286,8 @@ function panelAlbumesCargados({ store, perfil, propias, miniaturas, repintar, re
       }
       await borrarMedio(store, coleccion.medioPortadaId);
       if (coleccion.medioSobreId !== coleccion.medioPortadaId) await borrarMedio(store, coleccion.medioSobreId);
-      await store.guardar('perfiles', { ...perfil, colecciones: colecciones.filter((c) => c.id !== coleccion.id) });
+      if (coleccion.esFamilia) await store.borrar('colecciones', coleccion.id);
+      else await store.guardar('perfiles', { ...perfil, colecciones: colecciones.filter((c) => c.id !== coleccion.id) });
       await repintar();
     } catch (error) {
       estado.textContent = describirError(error);
@@ -287,7 +295,7 @@ function panelAlbumesCargados({ store, perfil, propias, miniaturas, repintar, re
   }
 
   // ----- editar un álbum: nombre, portada, imagen del sobre y sus láminas (se pueden quitar una por una) -----
-  const todos = listarColecciones({ perfil, propias });
+  const todos = listarColecciones({ perfil, propias, familiares });
   const editor = el('div', { hidden: true });
   const abrirEditor = (coleccion) => {
     editandoId = coleccion.id;
@@ -321,11 +329,14 @@ function panelAlbumesCargados({ store, perfil, propias, miniaturas, repintar, re
       'li',
       { class: 'fila-contenido' },
       crearMiniatura({ url: miniaturas.get(c.medioPortadaId) ?? (c.esBase ? RUTA_PORTADA : null), texto: c.nombre }),
-      el('div', { class: 'fila-texto' }, el('strong', {}, c.nombre), el('span', { class: 'ayuda' }, `${c.codigos.length} láminas${c.esBase ? ' · el álbum de la app' : ''}`)),
-      el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Editar el álbum ${c.nombre}`, onclick: () => abrirEditor(c) }, 'Editar'),
-      el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Quitar el álbum ${c.nombre}`, onclick: () => (c.esBase ? quitarBase() : quitar(c)) }, 'Quitar'),
+      el('div', { class: 'fila-texto' }, el('strong', {}, c.nombre),
+        el('span', { class: 'ayuda' }, `${c.codigos.length} láminas${c.esBase ? ' · el álbum de la app' : ''}`),
+        enElCelularDelAlumno ? el('span', { class: 'insignias' }, el('span', { class: 'insignia' }, c.esFamilia ? 'De la familia' : 'Del curso')) : null),
+      // en el celular del alumno lo del curso solo se ve; lo de la familia se edita y se quita
+      enElCelularDelAlumno && !c.esFamilia ? null : el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Editar el álbum ${c.nombre}`, onclick: () => abrirEditor(c) }, 'Editar'),
+      enElCelularDelAlumno && !c.esFamilia ? null : el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Quitar el álbum ${c.nombre}`, onclick: () => (c.esBase ? quitarBase() : quitar(c)) }, 'Quitar'),
     ));
-  const abierto = todos.find((c) => c.id === editandoId);
+  const abierto = todos.find((c) => c.id === editandoId && (!enElCelularDelAlumno || c.esFamilia));
   if (abierto) abrirEditor(abierto);
 
   return el(
@@ -334,7 +345,7 @@ function panelAlbumesCargados({ store, perfil, propias, miniaturas, repintar, re
     el('h2', {}, 'Álbumes'),
     el('p', { class: 'ayuda' }, 'Carga una carpeta de imágenes como un álbum nuevo: tú eliges cuál es la portada del álbum y cuál la de los sobres, y todas las demás son láminas. El niño elige de cuál álbum quiere su premio (hasta 3 al azar) y la tienda tiene un sobre de cada álbum.'),
     el('ul', { class: 'lista-simple' }, lista),
-    base.quitado && !todos.some((c) => c.esBase)
+    base.quitado && !todos.some((c) => c.esBase) && !enElCelularDelAlumno
       ? el('div', { class: 'fila-contenido' }, el('p', { class: 'ayuda' }, 'El álbum de la app está quitado.'), el('button', { type: 'button', class: 'boton secundario chico', onclick: restaurarBase }, 'Restaurar el álbum de la app'))
       : null,
     editor,
@@ -361,14 +372,26 @@ async function pintarFicha(raiz, ruta, estaVivo) {
     raiz.replaceChildren(cabecera('Álbum y monedas', atras), el('div', { class: 'panel' }, el('p', {}, 'Esa ficha de alumno ya no existe.')));
     return;
   }
-  const [calcomanias, movimientos] = await Promise.all([
+  const [calcomanias, movimientos, premiosDelCurso, propiasDelCurso, filasFamilia] = await Promise.all([
     store.listar('calcomanias', { perfilId: sujeto.id }),
     store.listar('movimientos', { perfilId: sujeto.id }),
+    store.listar('premios', { perfilId: sujeto.contenidoId }),
+    store.listar('calcomaniasPropias', { perfilId: sujeto.contenidoId }),
+    store.listar('contenidoFamilia'),
   ]);
   if (!estaVivo()) return;
   const album = normalizarAlbum(sujeto.perfil.album);
   const estado = calcularAlbumes({ calcomanias, movimientos, tamano: album.tamano });
   const dato = (valor, etiqueta) => el('div', { class: 'dato' }, el('strong', {}, String(valor)), el('span', {}, etiqueta));
+  // lo que agregó su familia (la lista llega con su archivo, sin imágenes): premios y álbumes con su avance
+  const suyas = filasFamilia.filter((f) => f.fichaId === sujeto.id);
+  const premiosFamilia = registrosDeFamilia(suyas, 'premios');
+  const monedas = resumenDeMonedas({ movimientos, premios: [...premiosDelCurso, ...premiosFamilia] });
+  const albumesFamilia = listarColecciones({
+    perfil: sujeto.perfil,
+    propias: [...propiasDelCurso, ...registrosDeFamilia(suyas, 'calcomaniasPropias')],
+    familiares: registrosDeFamilia(suyas, 'colecciones'),
+  }).filter((c) => c.esFamilia);
   raiz.replaceChildren(
     cabecera('Álbum y monedas', atras),
     el('div', { class: 'panel' },
@@ -381,6 +404,23 @@ async function pintarFicha(raiz, ruta, estaVivo) {
         dato(`${estado.actual.codigos.length} de ${album.tamano}`, 'en el álbum actual'),
       ),
     ),
+    el('div', { class: 'panel' },
+      el('h2', {}, 'Monedas y tienda'),
+      el('div', { class: 'datos' },
+        dato(monedas.saldo, 'saldo (un solo saldo: jugando + lo que dio la familia − lo canjeado)'),
+        dato(monedas.dadasPorLaFamilia, 'monedas dadas por la familia'),
+        dato(monedas.canjes.length, monedas.canjes.length === 1 ? 'premio canjeado' : 'premios canjeados')),
+      monedas.canjes.length
+        ? el('ul', { class: 'lista-simple' }, monedas.canjes.map((c) => el('li', {}, `${c.nombre} · ${c.precio} ${c.precio === 1 ? 'moneda' : 'monedas'} · ${c.estado === 'entregado' ? 'entregado' : 'por entregar'}`)))
+        : el('p', { class: 'ayuda' }, 'Todavía no canjeó ningún premio.')),
+    el('div', { class: 'panel' },
+      el('h2', {}, 'Álbumes de la familia'),
+      albumesFamilia.length
+        ? el('ul', { class: 'lista-simple' }, albumesFamilia.map((c) => {
+          const pegadas = c.codigos.length - faltantesPorPegar(c, calcomanias);
+          return el('li', {}, el('strong', {}, c.nombre), ` · ${pegadas} de ${c.codigos.length} láminas pegadas`, el('span', { class: 'insignia' }, 'De la familia'));
+        }))
+        : el('p', { class: 'ayuda' }, 'La familia todavía no agregó álbumes. Sus imágenes no se bajan salvo con «Traer el material de la familia» en Alumnos.')),
   );
 }
 
@@ -405,10 +445,11 @@ export function montar(contenedor, { ruta = '' } = {}) {
       return;
     }
     const datos = await cargarMonedas(store, perfil);
+    const familiares = await store.listar('colecciones', { perfilId: perfil.id }); // los álbumes que agregó la familia (solo en el celular del alumno)
     const propias = mapaDePropias(datos.propias);
     const actualesNodos = (await Promise.all(datos.actual.codigos.map((c) => nodoDeCalcomania(store, c, propias)))).filter(Boolean);
     const miniaturasPropias = new Map(await Promise.all([...propias.values()].filter((p) => !p.coleccionId).map(async (p) => [p.id, await urlDeMedio(store, p.medioImagenId)])));
-    const portadasCargadas = new Map(await Promise.all([normalizarBase(perfil.base), ...normalizarColecciones(perfil.colecciones)].map(async (c) => [c.medioPortadaId, await urlDeMedio(store, c.medioPortadaId)])));
+    const portadasCargadas = new Map(await Promise.all([normalizarBase(perfil.base), ...normalizarColecciones(perfil.colecciones), ...normalizarColecciones(familiares)].map(async (c) => [c.medioPortadaId, await urlDeMedio(store, c.medioPortadaId)])));
     if (!vivo) return;
 
     // ----- ajustes del álbum -----
@@ -518,10 +559,12 @@ export function montar(contenedor, { ruta = '' } = {}) {
           actualesNodos.length
             ? el('div', { class: 'album album-adulto', 'aria-label': 'Calcomanías del álbum actual' }, actualesNodos)
             : el('p', { class: 'ayuda' }, 'Aún no tiene calcomanías en este álbum.'),
-          el('p', { class: 'ayuda' }, `Álbumes completos: ${datos.completos.length}. El tamaño y los álbumes los pone el adulto.`),
-          el('div', { class: 'fila-contenido' }, crearCofre({ saldo: datos.saldo, compacto: true }))),
+          el('p', { class: 'ayuda' }, `Álbumes completos: ${datos.completos.length}. El tamaño y las monedas por álbum los pone el adulto del curso.`),
+          el('div', { class: 'fila-contenido' }, crearCofre({ saldo: datos.saldo, compacto: true }), el('a', { class: 'boton secundario', href: '#/adulto/tienda' }, 'Ir a la tienda'))),
+        // los álbumes del curso se ven (sin Editar ni Quitar); la familia carga, edita y quita los suyos, con portada, sobre y láminas
+        panelAlbumesCargados({ store, perfil, propias: [...propias.values()], familiares, miniaturas: portadasCargadas, repintar: pintar, registrar: (url) => urlsTemporales.push(url) }),
         el('div', { class: 'panel' },
-          el('h2', {}, 'Láminas de la familia'),
+          el('h2', {}, 'Láminas sueltas de la familia'),
           el('p', { class: 'ayuda' }, 'Crea láminas con una foto, un pictograma o un emoji. Se quedan en este celular y en el Drive del alumno. Las del curso solo se ven.'),
           listaPropias.length ? el('ul', { class: 'lista-simple' }, listaPropias) : el('p', { class: 'ayuda' }, 'Todavía no hay ninguna.'),
           campo('Nombre', entradaNombre),
@@ -544,7 +587,7 @@ export function montar(contenedor, { ruta = '' } = {}) {
         el('p', { class: 'ayuda' }, `Álbumes completos: ${datos.completos.length}. Cada sesión terminada da una calcomanía; al llenar el álbum el niño gana ${config.monedasPorAlbum} monedas de oro y empieza otro álbum vacío.`),
         el('div', { class: 'fila-contenido' }, crearCofre({ saldo: datos.saldo, compacto: true }), el('a', { class: 'boton secundario', href: '#/adulto/tienda' }, 'Ir a la tienda')),
       ),
-      panelAlbumesCargados({ store, perfil, propias: [...propias.values()], miniaturas: portadasCargadas, repintar: pintar, registrar: (url) => urlsTemporales.push(url) }),
+      panelAlbumesCargados({ store, perfil, propias: [...propias.values()], familiares, miniaturas: portadasCargadas, repintar: pintar, registrar: (url) => urlsTemporales.push(url) }),
       el(
         'div',
         { class: 'panel' },

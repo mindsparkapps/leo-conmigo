@@ -50,13 +50,13 @@ export async function pagarLeccion(store, perfil, { ahora = () => new Date().toI
  * Los códigos de un álbum cargado (`coleccionId`); sin él, los del álbum de la app (lo de siempre).
  * Si el álbum pedido ya no existe, vuelve a los del álbum de la app.
  */
-function codigosParaSacar(perfil, config, propias, coleccionId) {
+function codigosParaSacar(perfil, config, propias, coleccionId, familiares = []) {
   if (coleccionId) {
-    const coleccion = listarColecciones({ perfil, propias }).find((c) => c.id === coleccionId);
+    const coleccion = listarColecciones({ perfil, propias, familiares }).find((c) => c.id === coleccionId);
     if (coleccion) return coleccion.codigos;
   }
   // con el álbum de la app quitado, «sin álbum» es el primero que quede
-  const primero = listarColecciones({ perfil, propias })[0];
+  const primero = listarColecciones({ perfil, propias, familiares })[0];
   if (primero && !primero.esBase) return primero.codigos;
   const enJuego = codigosEnJuego(config, propias);
   return enJuego.length ? enJuego : CODIGOS_CATALOGO;
@@ -71,18 +71,19 @@ export async function comprarSobre(store, perfil, { aleatorio = Math.random, aho
   const filtro = { perfilId: perfil.id };
   const config = normalizarAlbum(perfil.album);
   const precio = precioDeSobre(config);
-  const [calcomanias, propias, movimientos] = await Promise.all([
+  const [calcomanias, propias, movimientos, familiares] = await Promise.all([
     store.listar('calcomanias', filtro),
     store.listar('calcomaniasPropias', filtro),
     store.listar('movimientos', filtro),
+    store.listar('colecciones', filtro),
   ]);
   const actual = saldo(movimientos);
   // un álbum con todas sus láminas pegadas ya no vende sobres
-  const album = listarColecciones({ perfil, propias }).find((c) => c.id === (coleccionId ?? ID_BASE));
+  const album = listarColecciones({ perfil, propias, familiares }).find((c) => c.id === (coleccionId ?? ID_BASE));
   if (album && coleccionCompleta(album, calcomanias)) return { comprado: false, completo: true, faltan: 0, precio };
   if (actual < precio) return { comprado: false, faltan: precio - actual, precio };
 
-  const codigos = sacarSobre(codigosParaSacar(perfil, config, propias, coleccionId), aleatorio);
+  const codigos = sacarSobre(codigosParaSacar(perfil, config, propias, coleccionId, familiares), aleatorio);
   const base = Date.parse(ahora());
   const nuevas = await store.guardarVarios(
     'calcomanias',
@@ -130,14 +131,15 @@ export async function reiniciarAlbumes(store, perfil) {
 export async function ganarCalcomania(store, perfil, { aleatorio = Math.random, ahora = () => new Date().toISOString(), coleccionId = null } = {}) {
   const filtro = { perfilId: perfil.id };
   const config = normalizarAlbum(perfil.album);
-  const [calcomanias, propias, movimientos] = await Promise.all([
+  const [calcomanias, propias, movimientos, familiares] = await Promise.all([
     store.listar('calcomanias', filtro),
     store.listar('calcomaniasPropias', filtro),
     store.listar('movimientos', filtro),
+    store.listar('colecciones', filtro),
   ]);
   const { actual } = calcularAlbumes({ calcomanias, movimientos, tamano: config.tamano });
   // Se prefiere una lámina que el niño aún no tiene (ni suelta ni pegada) del álbum elegido
-  const delAlbum = codigosParaSacar(perfil, config, propias, coleccionId);
+  const delAlbum = codigosParaSacar(perfil, config, propias, coleccionId, familiares);
   const tiene = new Set(calcomanias.filter((c) => !c.deleted).map((c) => c.codigo));
   const sinTener = delAlbum.filter((c) => !tiene.has(c));
   const { codigo, esNueva } = elegirCalcomania(actual.codigos, aleatorio, coleccionId && sinTener.length ? sinTener : delAlbum);

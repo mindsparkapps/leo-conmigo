@@ -183,7 +183,7 @@ export function montar(contenedor) {
     const { urls, liberar } = urlsDeMaterial(traido);
     urlsMaterial.push(liberar);
     return el('div', { class: 'familia-ficha' },
-      el('p', { class: 'ayuda' }, `La familia agregó ${cuantos(cuenta('palabras'), 'palabra', 'palabras')}, ${cuantos(cuenta('frases'), 'frase', 'frases')} y ${cuantos(cuenta('libros'), 'libro', 'libros')}. Sus estadísticas aparecen en su ficha, marcadas «De la familia». Sus fotos y voces están en el Drive del alumno y no se bajan solas.`),
+      el('p', { class: 'ayuda' }, `La familia agregó ${cuantos(cuenta('palabras'), 'palabra', 'palabras')}, ${cuantos(cuenta('frases'), 'frase', 'frases')}, ${cuantos(cuenta('libros'), 'libro', 'libros')}, ${cuantos(cuenta('colecciones'), 'álbum', 'álbumes')} y ${cuantos(cuenta('premios'), 'premio', 'premios')}. Sus estadísticas (también el saldo, las monedas que dio y los premios canjeados) aparecen en su ficha, marcadas «De la familia». Sus fotos y voces están en el Drive del alumno y no se bajan solas.`),
       el('div', { class: 'acciones' },
         trayendo[ficha.id]
           ? progreso(trayendo[ficha.id])
