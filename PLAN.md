@@ -1070,6 +1070,163 @@ ull hasta la fase 23).
 
 ---
 
+## Ampliación 5 — Fases 27 a 32: modo «Escritura» experimental (pedida el 2026-11-17; **pendiente de aprobación del usuario**)
+
+> **Para Sonnet:** no empieces hasta que el usuario apruebe esta ampliación (y conteste las «Preguntas abiertas»). Lee antes §2, §4 con sus «Decisiones de implementación», las fases 12 a 14 (registro, análisis, autoajuste) y la Ampliación 4 (curso, fichas, familia, «Quién puede tocar qué»). Luego `js/core/progreso.js`, `js/core/sesion.js`, `js/core/controlador.js`, `js/core/intento.js`, `js/core/registro.js`, `js/core/analisis.js`, `js/core/autoajuste.js`, `js/core/silabas.js`, `js/core/silabeo.js`, `js/core/curso.js`, `js/silabas-voz.js`, `js/actividades/S3.js`, `js/actividades/secuencia.js`, `js/nino/inicio.js`, `js/nino/sesion.js`, `js/nino/premio.js`, `js/nino/elegir.js`. Usa `graphify query` antes de leer código. Una fase a la vez, en orden, con su lista de aceptación, `npm test` en verde, prueba en el navegador, `graphify update .` y un commit. **No dupliques lógica:** el dominio, Leitner, avance rápido, elogios, premio de fin de sesión, álbumes, monedas, registro y análisis ya existen; el modo Escritura los **reutiliza** (se amplían con parámetros, no se copian).
+
+### Qué pidió el usuario
+1. Un botón nuevo **«Escritura»** en el inicio del niño. Es **experimental**: solo funciona en el modo adulto hasta que el adulto lo habilite con una **casilla por perfil**.
+2. El botón lleva a una pantalla de sílabas con este **orden de aprendizaje** (20 niveles). En el modo adulto se configura en qué nivel va, y dentro del juego hay un **menú para elegir a qué nivel pasar**.
+
+   | Nivel | Categoría | Dificultad |
+   |---|---|---|
+   | `E01` | Vocales | Muy fácil |
+   | `E02` | Sílabas directas | Fácil |
+   | `E03` | Sílabas con CH | Fácil |
+   | `E04` | Sílabas con LL | Fácil |
+   | `E05` | Sílabas con Ñ | Fácil |
+   | `E06` | Sílabas con QU | Media |
+   | `E07` | Sílabas con GU y GÜ | Media |
+   | `E08` | Sílabas con R y RR | Media |
+   | `E09` | Sílabas inversas | Media |
+   | `E10` | Sílabas mixtas | Media |
+   | `E11` | Trabadas con L | Difícil |
+   | `E12` | Trabadas con R | Difícil |
+   | `E13` | Combinaciones TL | Avanzada |
+   | `E14` | Diptongos | Avanzada |
+   | `E15` | Triptongos | Avanzada |
+   | `E16` | Hiatos | Avanzada |
+   | `E17` | Palabras | Progresiva |
+   | `E18` | Oraciones | Progresiva |
+   | `E19` | Lectura de textos | Progresiva |
+   | `E20` | Dictados | Progresiva |
+
+3. Sale una **palabra al azar** del nivel elegido, con su imagen o sonido. Abajo, una caja por sílaba. Se muestran las sílabas de la palabra **más 0 a 4 sílabas que no son** (cuántas, se configura en el modo adulto). El niño las **arrastra** a su caja: si es correcta, la caja se pone **verde**; si no, **roja** y la sílaba **vuelve a su lugar**. Al completar la palabra se **lee sílaba por sílaba** y luego se da el mismo estímulo visual y auditivo que en la lectura. **Tocar** una sílaba (sin arrastrarla) **dice su sonido**.
+4. Al terminar una palabra se pasa a la siguiente. **Avance automático** y configuraciones en un menú **«Escritura»** del adulto.
+5. **Estadísticas**: qué le es más fácil, tiempos de sesión y todo lo necesario para que una IA lo analice y vaya calibrando. En resumen: **todo lo que tiene la lectura, aplicado a la escritura**.
+
+### Base pedagógica (lo que se encontró al investigar)
+- **No hay un método de escritura con evidencia fuerte y específica para el síndrome de Down** como el de lectura global. Lo que sí hay:
+  - **Troncoso y del Cerro** (*Síndrome de Down: lectura y escritura*): después de la etapa global viene la **etapa analítica, que empieza por las sílabas directas**, en pasos muy pequeños, siempre con palabras que el niño ya conoce, y las etapas son **cíclicas** (se vuelve atrás sin problema). Separan **escribir (componer palabras)** de **la caligrafía (el trazo)**: componer con piezas móviles evita la carga motora. El orden pedido (vocales → directas → dígrafos → inversas → mixtas → trabadas → diptongos/hiatos → palabras → frases → textos → dictado) es el orden clásico del método silábico en español y es coherente con ellas.
+  - El español es una **ortografía transparente**: la **sílaba** es la unidad natural para empezar a escribir (por eso se usan sílabas y no letras sueltas, salvo las vocales).
+  - **Cajas de Elkonin**: una caja por unidad sonora, donde el niño pone cada pieza. Es exactamente la franja de cajas que pidió el usuario (aquí, una caja por sílaba).
+  - **Instrucción explícita de deletreo** en niños con síndrome de Down (programas tipo SPARK y MULTILIT, Down Syndrome Education International): mejora la escritura de las palabras enseñadas, pero **generaliza poco a palabras nuevas**. Consecuencias para el diseño: (a) palabras **nuevas** hechas con sílabas ya dominadas (como `S4` en la lectura), (b) **dictado** al final, (c) medir la **generalización** (acierto al primer intento en la **primera vez** que ve una palabra) como métrica propia para la IA.
+  - Se mantienen el **aprendizaje sin error** (§2.1), el **repaso espaciado** (Leitner, §4) y las **palabras con significado personal primero** (§2.3): las palabras del vocabulario del perfil (con sus fotos y voces) tienen prioridad sobre las del banco.
+- Fuentes: [Down Syndrome Education International — hallazgos del programa de lectura y lenguaje](https://www.down-syndrome.org/en-us/research/projects/reading-language-intervention/findings), [revisión de lectura y escritura en síndrome de Down (DSE)](https://cdn.down-syndrome.org/pubs/a/reviews-2128.pdf), [MULTILIT con niños con síndrome de Down (Flinders)](https://researchnow.flinders.edu.au/en/publications/using-the-multilit-literacy-instruction-program-with-children-who/), [cajas de Elkonin](https://en.wikipedia.org/wiki/Elkonin_boxes), [manual del profesor «Síndrome de Down: palabras, palabras»](https://www.orientacionandujar.es/wp-content/uploads/2015/07/Sindrome-de-DOWN-palabras-palabras-Manual_Profesor.pdf).
+
+### Cambios explícitos a las reglas del §2 (los pidió el usuario; valen **solo** en el modo Escritura)
+| Regla | Lo que cambia | Cómo se suaviza |
+|---|---|---|
+| §2.9 «nada de arrastrar» | Las sílabas se **arrastran**. | Ajuste `formaDeMover`: `'arrastrar'` (por defecto) o `'tocar'` (tocar la sílaba la dice y la «toma»; tocar una caja la pone). Con `'arrastrar'` también vale soltar sobre cualquier caja vacía cercana (zona de soltar = la caja + 24 px). Piezas ≥ 88 px, separación generosa, un solo dedo (`esSegundoDedo`), bloqueo de 400 ms. |
+| §2.1 y §5 «nunca rojo» | La caja equivocada se pone **roja** un momento. | Ajuste `colorError`: `'rojo'` (por defecto, como pidió el usuario: rojo suave `#e07a7a`, 600 ms, sin sonido de error, sin vibración, sin cruz) o `'suave'` (la pieza solo se atenúa, como en la lectura). La ayuda sin error sigue: tras **2 errores** en la misma caja, la sílaba correcta se ilumina en amarillo y late, y se dice; la palabra queda «con ayuda». El niño nunca pierde. |
+
+Todo lo demás del §2 sigue igual (sesiones cortas, éxito asegurado, fatiga, sin puntajes ni cronómetro, refuerzo breve, no se evalúa el habla).
+
+### Decisiones tomadas (por defecto; el usuario puede cambiarlas al aprobar)
+| Tema | Decisión |
+|---|---|
+| Habilitar | `ajustes.escritura.habilitada` (por defecto `false`), casilla **«Escritura (experimental)»** en el menú Escritura del adulto y también en la lista de Perfiles (una por perfil). Apagada: el niño **no ve** el botón; el adulto sí puede abrirla con **«Probar Escritura»** desde su panel. Prendida: el botón aparece en el inicio del niño. |
+| Lo que hace «Probar Escritura» | Una sesión completa en la vista del niño, con la marca `prueba: true`: **no guarda** progreso, niveles, respuestas ni da calcomanía. Al salir vuelve al panel del adulto. |
+| De dónde salen las palabras | (1) Las palabras activas del perfil, clasificadas solas por nivel (con su foto y su voz); (2) un **banco incluido** `data/escritura/banco.json` con palabras chilenas y simples por nivel (emoji y búsqueda de ARASAAC). Las del perfil van primero; el banco completa. El adulto puede apagar palabras del banco y agregar las suyas (el editor de palabras de siempre). |
+| A qué nivel pertenece una palabra | Al nivel **más alto** de los rasgos que tiene (p. ej. «chocolate» → `E03` CH; «plátano» → `E11`). En una sesión del nivel N salen ~70 % palabras del nivel N y ~30 % repasos de niveles menores ya practicados. |
+| Unidad de las piezas | `E01`: una **vocal** (la imagen es de algo que empieza con esa vocal: «a» de abeja; una sola caja). `E02`–`E17`: **sílabas**. `E18` Oraciones: las piezas son **palabras** (una caja por palabra, la frase con imagen, como F3 pero arrastrando). `E19` Lectura de textos: un texto corto (2–3 frases, de cuentos y libros del perfil o del banco) donde **una palabra** falta y se arma con sílabas; al completar se lee todo el texto con resaltado. `E20` Dictados: **sin imagen**, solo audio (botón para volver a oír); se arma la palabra con sílabas. |
+| Sílabas que no son (distractoras) | 0 a 4. Ajuste del adulto `maxSilabasExtra` (0–4, por defecto 4) y nivel automático por perfil (como el nivel de opciones del §4): empieza en **0**, sube 1 con ≥ 80 % de palabras al primer intento en las últimas 10, baja 1 con < 50 %; nunca pasa `maxSilabasExtra`. Con «Lo elijo yo», el adulto fija un número. Fáciles primero (otra consonante y otra vocal: «ma» vs «te»); con ≥ 2 extras, una parecida (misma consonante u otra vocal: «ma» vs «me»; en inversas, la invertida: «al» vs «la»). Nunca una sílaba que también esté en la palabra. |
+| Orden de las cajas | El niño puede llenar las cajas **en cualquier orden** (se registra el orden). Es correcta si el texto de la sílaba es el de esa caja (dos cajas con la misma sílaba aceptan cualquiera de las dos piezas iguales). |
+| Al completar | Se lee sílaba por sílaba (cada caja se resalta al sonar; mp3 de `data/voces/silabas/` o voz sintética), luego la palabra entera (su voz grabada o la del catálogo o sintética), luego elogio + animación ≤ 1,5 s (`elogios.js`, misma intensidad de celebración y vibración que la lectura). Después, la siguiente palabra. |
+| Fin de sesión | El **mismo premio** que la lectura: lámina/calcomanía con `terminarLeccion` (y la elección de álbum de `nino/elegir.js` si hay varios). Las monedas siguen saliendo solo de completar álbumes (Ampliación 2). Una sesión de escritura cuenta para el álbum igual que una de lectura. |
+| Palabras por sesión | `palabrasPorSesion` 4–12, por defecto **6** (escribir una palabra tarda más que un ensayo de lectura). Automático como `ensayosPorSesion` (±1, tope 10). |
+| Dominio y repaso | Los mismos del §4 sobre el par (palabra, nivel): `progresos` con `actividad: 'E07'` y `elementoId` = id de la palabra (las del banco: `esc:<texto>`). Acierto al primer intento = todas las piezas puestas sin ningún error. Leitner, avance rápido (3 primeros perfectos → dominada provisional), «aprendida» y control de 30 días, **igual** que la lectura (mismas funciones de `core/progreso.js`). |
+| Avance automático de nivel | `ajustes.automaticos.nivelEscritura` (true): sube al siguiente nivel cuando ≥ 80 % de las palabras disponibles del nivel (mínimo 4) están dominadas o aprendidas. Nunca baja solo: con < 50 % en las últimas 3 sesiones del nivel, solo una **sugerencia** al adulto. Una vez por día. Queda en `cambiosAutomaticos` con «Deshacer» / «Entendido» (como la fase 14). |
+| Niveles bloqueados y forzados | `nivelesBloqueados` / `nivelesForzados` (como las etapas). Un nivel sin al menos 3 palabras disponibles se salta solo y se avisa al adulto. |
+| Menú de niveles en el juego | Botón grande (≥ 88 px) en una esquina de la pantalla de escritura que abre una cuadrícula de niveles; cada uno se muestra con una **pieza de ejemplo** («a e i», «ma», «cha», «lla», «ña», «que», «gue», «rra», «al», «sol», «pla», «tra», «tla», «cie», «guau», «dí·a», una palabra, una frase, un texto, un altavoz) y se dice al tocarlo. Ajuste `eleccionNino`: `'alcanzados'` (por defecto: el actual y los anteriores), `'todos'` o `'ninguno'` (sin botón). Elegir otro nivel **no** cambia el nivel actual guardado: es solo para esa sesión. |
+| Fatiga | Como §2.6: 3 palabras seguidas con error → la siguiente es una ya dominada con 0 extras y la sesión termina tras ella. |
+| Curso y alumno (Ampliación 4) | **Del curso**: todo `ajustes.escritura` salvo lo automático (`habilitada`, `maxSilabasExtra`, `colorError`, `formaDeMover`, `eleccionNino`, `nivelesBloqueados`, `nivelesForzados`, palabras del banco apagadas, `automaticos.nivelEscritura`, `automaticos.palabrasEscritura`). **Del alumno** (mientras estén en «Automático»): `nivelEscritura` y `palabrasPorSesion` de escritura; los niveles de extras van en `niveles` (`id: <perfil>:E07`), que ya es del alumno. Actualizar `CAMPOS_DEL_*` / `AJUSTES_DEL_*` de `core/curso.js` (su prueba falla si un campo queda sin repartir). |
+| Familia en el celular del alumno | Ve Progreso y «Qué le cuesta» de escritura del alumno; **no** ve ni cambia el menú Escritura (es del curso). Las palabras de la familia (`origen: 'familia'`) también entran a la escritura. |
+
+### Datos
+```js
+// sin almacenes nuevos: se reutilizan progresos, niveles, sesiones y respuestas
+perfil.ajustes.escritura = {
+  habilitada: false, nivelEscritura: 'E01', palabrasPorSesion: 6, maxSilabasExtra: 4,
+  colorError: 'rojo' | 'suave', formaDeMover: 'arrastrar' | 'tocar', eleccionNino: 'alcanzados' | 'todos' | 'ninguno',
+  nivelesBloqueados: [], nivelesForzados: [], bancoApagado: ['esc:<texto>', ...], silabasExtraManual: null | 0..4,
+}
+perfil.ajustes.automaticos += { nivelEscritura: true, palabrasEscritura: true, silabasExtra: true }
+progreso   { id: `${perfilId}:${elementoId}:E07`, ..., actividad: 'E07' }          // igual que hoy
+nivel      { id: `${perfilId}:E07`, actividad: 'E07', opciones → extras (0–4), ultimos }  // `extras` en vez de `opciones`
+sesion     { ..., tipo: 'escritura', nivel: 'E07', nivelElegidoPorNino?: true, ensayos: [...] }   // las de lectura no llevan tipo o llevan 'lectura'
+respuesta  { ...lo de la fase 12, modo: 'escritura', actividad: 'E07', unidad: 'vocal'|'silaba'|'palabra',
+             huecos: [texto], fichas: [{ id, texto, distractor }], extras,
+             toques: [{ fichaId, texto, hueco, correcto, ms, forma: 'arrastre'|'toque' }],
+             escuchasPieza: [{ texto, ms }],         // toques para oír una sílaba (no son errores)
+             erroresPorHueco: [n, ...], primeraVez,  // primeraVez: nunca antes vio esta palabra en escritura (generalización)
+             ordenLlenado: [indiceHueco, ...], conAyudaVisual }
+// data/escritura/banco.json: { version, palabras: [{ texto, silabas, nivel, emoji, arasaacBusqueda, voz? }] }
+```
+**Separar lectura y escritura (obligatorio, con pruebas):** todo lo que hoy mira sesiones, respuestas o progresos de la lectura debe **ignorar** las de escritura: `core/estadisticas.js`, `core/analisis.js`, `core/autoajuste.js` (las «últimas 3 sesiones» son de lectura), `crearSesion`, `hayQuePracticar`, desbloqueo de etapas y `estaAprendida` de la lectura. Usar una sola función `esDeEscritura(registro)` (`actividad` que empieza con `E` o `tipo: 'escritura'`) en `core/escritura/comun.js`.
+
+### Fase 27 — Núcleo puro: niveles, banco y piezas (sin DOM)
+- `js/core/escritura/niveles.js`: `NIVELES` (los 20, con nombre, dificultad, pieza de ejemplo y unidad), `rasgosDe(silabas)` y `nivelDe(palabra)` (clasifica por el rasgo más alto: vocal sola; directas = todas CV con consonante simple; `ch`, `ll`, `ñ`, `qu`, `gue/gui/güe/güi`, `r` fuerte/`rr`; inversas = VC; mixtas = CVC; trabadas `pl bl cl gl fl` / `pr br tr dr cr gr fr`; `tl`; diptongo / triptongo dentro de una sílaba; hiato = dos vocales en sílabas vecinas; `E17` = 4 o más sílabas o mezcla de 3 rasgos).
+- `data/escritura/banco.json`: **al menos 12 palabras por nivel** de `E01` a `E17` (`E13` y `E15` tienen pocas en español: mínimo 4), concretas e ilustrables, con su división en sílabas **escrita a mano** (no calculada). Frases cortas para `E18` y 6 textos cortos para `E19`. Sin rojo en los emoji elegidos si hay alternativa.
+- `js/core/escritura/piezas.js`: `armarPiezas({ palabra, extras, aleatorio, nivel })` → huecos y fichas mezcladas (que no queden en orden si se puede evitar, como `S3`); `silabasParecidas` y `silabasLejanas` para las distractoras.
+- `core/silabas.js` no se cambia (la división del banco es explícita; ver la pregunta sobre «tl»).
+- **Acepta si:** pruebas de `nivelDe` con ≥ 60 palabras (todas las del banco caen en su nivel declarado; una prueba lo recorre entero), de `armarPiezas` (0–4 extras, nunca una distractora igual a una sílaba de la palabra, parecidas solo con ≥ 2 extras, reproducible con semilla), y del banco (válido, sin repetidos, cada nivel con su mínimo). `npm test` en verde.
+
+### Fase 28 — Motor de escritura: intento, sesión, progreso, registro y autoajuste (puro)
+- `js/core/escritura/intento.js`: `crearIntentoEscritura(ensayo, ahoraMs)`, `soltar(intento, { fichaId, hueco, forma }, ms)` → `'correcto' | 'incorrecto' | 'ignorado'` (bloqueo 400 ms, hueco ya lleno = ignorado), `escuchar(intento, fichaId, ms)`, ayuda tras `ERRORES_PARA_AYUDA = 2` en la misma caja, `completo`, `correctoAlPrimerIntento`.
+- `js/core/escritura/sesion.js`: `crearSesionEscritura({ perfil, palabras, progresos, niveles, nivel, fecha, aleatorio, dificultades })` con las reglas del §4 adaptadas: máx. 2 palabras nuevas, ~30 % repaso, primera y última fáciles, sin repetir seguidas, fatiga con `reservaFacil`. **Reutiliza** de `core/progreso.js` `registrarEnsayo` (con `avanceRapido`), Leitner y `estaAprendida`; si alguna está atada a las actividades de lectura, se le agrega un parámetro (sin cambiar su comportamiento para la lectura: las pruebas de lectura no se tocan).
+- Nivel de extras: la misma lógica del nivel de opciones con rango 0–4 (`ajustarNivel({ min, max })`), sin duplicarla.
+- `core/controlador.js`: cuarto modo de ensayo `escritura` (o un `crearControladorEscritura` que comparta lo común; elegir lo que menos duplique). `avanzar()` devuelve `guardar.respuesta` con `construirRespuestaEscritura` (en `core/registro.js`).
+- `core/autoajuste.js`: reglas de escritura (nivel, palabras por sesión, extras) que solo miran sesiones `tipo: 'escritura'`, una vez por día, «a mano → Lo elijo yo».
+- `esDeEscritura` y la separación de lectura y escritura (ver «Datos») con pruebas en cada módulo afectado.
+- `tests/simulador.js`: niño simulado escribiendo; medir cuántas sesiones tarda en pasar de `E02` a `E03` (lento / medio / rápido) y dejarlo anotado en «Decisiones de implementación».
+- **Acepta si:** pruebas del intento (correcto, incorrecto vuelve, ayuda tras 2, hueco lleno, piezas iguales intercambiables, bloqueo), de la sesión (nuevas ≤ 2, repasos, fatiga), del dominio y Leitner sobre `E*`, del registro, del autoajuste de escritura y de que **ninguna** estadística, análisis, autoajuste ni sesión de lectura cambia con sesiones de escritura en el almacén.
+
+### Fase 29 — Pantalla del niño
+- Botón **«Escritura»** en `nino/inicio.js` (ícono de lápiz sobre sílabas, color propio con contraste AA, ≥ 88 px), solo si `ajustes.escritura.habilitada` y hay al menos un nivel con 3 palabras.
+- `#/nino/escritura` (`js/nino/escritura.js` + `js/actividades/escritura.js` para dibujar): modelo arriba (imagen y altavoz; en `E20` solo altavoz; en `E19` el texto con la caja), cajas debajo, piezas abajo. Consigna hablada «Arma la palabra» (sin texto escrito). Al empezar dice la palabra.
+- **Arrastre con Pointer Events** (`pointerdown`/`move`/`up`, `setPointerCapture`, `touch-action: none` solo en las piezas): umbral 10 px para distinguir toque de arrastre; un toque dice la sílaba (cuenta en `escuchasPieza`); la pieza sigue al dedo; al soltar sobre una caja se evalúa; fuera de una caja vuelve sin contar como error. Respetar `prefers-reduced-motion` (la vuelta es instantánea). Modo `'tocar'` como alternativa. Teclado: Tab/Enter para tomar y poner (accesibilidad y pruebas sintéticas).
+- Verde al acertar (la pieza queda fija), rojo o suave al errar según `colorError`, ayuda amarilla tras 2 errores. Al completar: lectura por sílaba con resaltado, palabra entera, elogio y animación, y la siguiente.
+- Menú de niveles (ver «Decisiones»), candado de siempre para salir al adulto, mismo premio de fin de sesión, sesión interrumpida guardada con `interrumpida: true`.
+- Funciona en celular vertical y acostado (sin desplazamiento horizontal a 375 px; recordar la regla de CSS de `@media` después de la regla base).
+- `tests/navegador/actividades.html?a=E07&extras=2` muestra cualquier nivel con datos de ejemplo.
+- **Acepta si:** en el navegador una sesión de 6 palabras se juega entera por arrastre simulado (eventos de puntero) y por toques; una pieza equivocada vuelve y la caja se pone roja (o solo se atenúa con `'suave'`); tocar una pieza la dice; al completar se oye sílaba por sílaba (espía de `HTMLMediaElement.prototype.play` / `speechSynthesis.speak`); el fin de sesión da la lámina; con la casilla apagada el niño no ve el botón.
+
+### Fase 30 — Menú «Escritura» del adulto y progreso
+- Panel del adulto: tarjeta **«Escritura (experimental)»** → `#/adulto/escritura`: casilla «Habilitar para este perfil», nivel actual (con «Automático» / «Lo elijo yo»), palabras por sesión, sílabas que no son (máximo y «Automático»), forma de mover, color del error, qué niveles puede elegir el niño, bloquear/forzar niveles, lista de palabras por nivel (del perfil y del banco, con casilla para apagar las del banco) y **«Probar Escritura»**.
+- Casilla «Escritura» también en `#/adulto/perfiles` (una por perfil).
+- `#/adulto/escritura/progreso` (y `/ficha/<id>` para cada alumno): por nivel, palabras nuevas / en práctica / dominadas / aprendidas; tabla por palabra; historial de sesiones de escritura (fecha, duración, nivel, palabras, al primer intento, con ayuda, interrumpida); precisión semanal con `ui/grafico-semanal.js`.
+- Avisos «La app ajustó…» de escritura en el panel con «Deshacer».
+- `rutaPermitidaAlumno`: en el celular del alumno, solo el progreso y el análisis de escritura (no el menú de ajustes).
+- `VERSION` y `PRECACHE` (incluido `data/escritura/banco.json`).
+- **Acepta si:** el adulto habilita un perfil y el botón aparece en el niño; «Probar» no deja ningún registro; los ajustes se guardan y respetan; el progreso y el historial muestran una sesión jugada; la ficha de un alumno muestra su progreso de escritura (nube simulada, `tests/navegador/simular-aulas.js`); el celular del alumno no abre `#/adulto/escritura`.
+
+### Fase 31 — «Qué le cuesta» de escritura y exportación para IA
+- `js/core/escritura/analisis.js` (puro; usa los ayudantes de `core/analisis.js` sin copiarlos): por palabra (índice de dificultad con la misma fórmula, `audioPorEnsayo` = escuchas de la palabra + de piezas), **por sílaba** (cuántas veces se puso bien/mal, tiempo hasta ponerla), **por nivel** (tasa, tiempo mediano por palabra, sesiones), **confusiones de sílabas** («pa → ba: 4 veces», «al → la», con su nivel), **posición del error** (primera / del medio / última sílaba), **generalización** (acierto al primer intento en palabras vistas por primera vez, por nivel), duración de sesiones y franja del día.
+- `#/adulto/analisis`: una pestaña o sección **«Escritura»** con «Le cuestan más», «Le salen fácil», «Sílabas que confunde», «Nivel más difícil», «Palabras nuevas que escribió bien a la primera» (barras azules, nunca rojas).
+- La prioridad a lo difícil y el uso de confusiones como distractoras de la fase 14 valen también aquí (sílaba confundida no se usa de distractora mientras la tasa sea < 80 %; con ≥ 80 % se usa a propósito una vez por sesión).
+- **Exportar para IA:** el JSON de `construirExportacion` suma una sección `escritura` (con su `esquema` y su `metodo`: orden de niveles, regla de dominio, qué es una pieza, que el rojo es solo informativo) y las respuestas de escritura; el resumen Markdown suma 3–5 líneas de escritura sin pasar los 4 000 caracteres; la pregunta sugerida pide también «qué sílabas reforzar y si conviene cambiar el nivel o las sílabas extra». «Ocultar el nombre» también cubre la escritura.
+- **Acepta si:** con un set fijo de respuestas de escritura en `tests/`, las listas, confusiones de sílabas, posiciones y generalización salen exactas; la exportación trae la sección y se vuelve a leer; la sección de lectura no cambia.
+
+### Fase 32 — Voces, ayuda y cierre
+- Script en `herramientas/` (PowerShell o Node) que lista las sílabas del banco **sin mp3** en `data/voces/silabas/` y las palabras sin voz del catálogo, en `data/escritura/faltan-voces.txt`, para que el usuario las genere con sus scripts de voces. Mientras tanto se usa la voz sintética (una sílaba suelta en voz sintética puede sonar mal: avisarlo en la ayuda).
+- Ayuda del adulto (sección «Escritura (experimental)»: qué es, el orden, los dos cambios a las reglas y cómo suavizarlos, qué hace sola), «Acerca de» (fuentes de la base pedagógica), `privacidad.html` (nada nuevo sale del dispositivo), README y CLAUDE.md.
+- **Acepta si:** el script corre y deja la lista; ayuda y textos al día; prueba de punta a punta en el navegador con un perfil nuevo: habilitar, jugar 2 sesiones, ver el progreso, el análisis y exportar.
+
+### Preguntas abiertas (contestar al aprobar)
+1. **«Solo operativo en modo padre»:** se entendió como «apagado para el niño, pero el adulto lo puede probar desde su panel sin que quede registrado». ¿Es así, o la prueba del adulto también debe guardar estadísticas?
+2. **Rojo en el error:** queda rojo suave por defecto, como se pidió, con la opción «suave» (sin rojo) en el menú. ¿Bien, o prefieres «suave» por defecto (más fiel al método sin error)?
+3. **«tl»** (atleta): en Chile se divide «at-le-ta», pero un nivel propio de «TL» supone «a-tle-ta». ¿Cuál usamos en el banco?
+4. **`E18`–`E20`:** oraciones con **palabras** como piezas (no sílabas), textos con **una palabra** que falta, y dictado de **palabras** (sin imagen). ¿Está bien, o el dictado debe ser también de frases?
+5. ¿La sesión de escritura da **lámina del álbum** igual que la de lectura (así se decidió), o el álbum debe ser solo de lectura?
+
+### Fuera de alcance (preguntar antes)
+- Escritura a mano (trazar letras con el dedo) y teclado en pantalla.
+- Letras sueltas como piezas (fuera de las vocales de `E01`).
+- Evaluar lo que el niño dice en voz alta (§2.11 sigue).
+
+---
+
 ## 10. Notas para el desarrollo
 
 - **Git:** commit al cerrar cada fase con un mensaje claro. **No hacer `git push`** (no puede autenticarse desde este equipo): el usuario sube los cambios.
