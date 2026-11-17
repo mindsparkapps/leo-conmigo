@@ -19,6 +19,8 @@ export function rutaPermitidaAlumno(ruta) {
   const partes = String(ruta ?? '').replace(/^#/, '').split(/[?#]/)[0].split('/').filter(Boolean);
   if (partes[0] !== 'adulto') return false;
   if (partes.length === 1) return true;
+  // Escritura (experimental): del alumno solo se ve su progreso (y su análisis, fase 31); el menú de ajustes es del curso
+  if (partes[1] === 'escritura') return partes[2] === 'progreso' && (partes.length === 3 || (partes[3] === 'ficha' && partes.length === 5));
   if (!RUTAS_ADULTAS_DEL_ALUMNO.includes(partes[1])) return false;
   return partes.length === 2 || (partes[1] === 'palabra' && partes.length === 3);
 }

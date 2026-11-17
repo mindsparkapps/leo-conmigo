@@ -34,6 +34,15 @@ async function pintar(raiz, limpiezas, estaVivo) {
 
   const lista = el('ul', { class: 'lista-filas' });
   const repintar = () => pintar(raiz, limpiezas, estaVivo).catch((error) => mostrarError(raiz, error));
+  // «Escritura (experimental)»: una casilla por perfil (la misma que el menú Escritura); se guarda al marcarla
+  const casillaEscritura = (perfil) => {
+    const casilla = el('input', { type: 'checkbox', checked: Boolean(perfil.ajustes?.escritura?.habilitada) });
+    casilla.addEventListener('change', async () => {
+      const actual = (await store.obtener('perfiles', perfil.id)) ?? perfil;
+      await store.guardar('perfiles', { ...actual, ajustes: { ...actual.ajustes, escritura: { ...(actual.ajustes?.escritura ?? {}), habilitada: casilla.checked } } });
+    });
+    return el('label', { class: 'ayuda' }, casilla, ' Escritura (experimental)');
+  };
 
   for (const perfil of perfiles) {
     const fila = el('li', { class: 'fila-perfil' });
@@ -45,7 +54,7 @@ async function pintar(raiz, limpiezas, estaVivo) {
           'div',
           { class: 'fila-contenido' },
           crearMiniatura({ url: urls.get(perfil.id), texto: perfil.nombre }),
-          el('div', { class: 'fila-texto' }, el('strong', {}, perfil.nombre), esActivo ? el('span', { class: 'insignia' }, 'Activo') : null),
+          el('div', { class: 'fila-texto' }, el('strong', {}, perfil.nombre), esActivo ? el('span', { class: 'insignia' }, 'Activo') : null, casillaEscritura(perfil)),
           el(
             'div',
             { class: 'acciones-fila' },

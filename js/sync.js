@@ -7,7 +7,7 @@
 // Es seguro repetirlo: si algo falla a mitad, no se quita nada de la cola y el siguiente intento lo termina.
 
 import {
-  ALMACENES_SYNC, ARCHIVO_DATOS, ErrorSync, armarDocumento, contarRegistros, fusionarAlmacen, planDeMedios, validarDocumento,
+  ALMACENES_SYNC, ARCHIVO_DATOS, ErrorSync, armarDocumento, contarRegistros, fusionarAdministradores, fusionarAlmacen, planDeMedios, validarDocumento,
 } from './core/sync.js';
 import { blobDeApp } from './medios.js';
 
@@ -24,11 +24,21 @@ export function crearSincronizador({ store, drive, ahora = () => new Date(), alP
 
     // ---- lo de Drive ----
     let remotos = {};
+    let administradoresRemotos = null;
     if (archivoDatos) {
       const doc = await drive.leerJson(archivoDatos.id);
       const error = validarDocumento(doc);
       if (error) throw new ErrorSync(error); // nunca se pisa un archivo que no se entiende
       remotos = doc.almacenes;
+      administradoresRemotos = doc.administradores ?? null;
+    }
+    // ---- administradores (meta): gana la lista más reciente ----
+    const listaLocal = await store.leerMeta('administradores', null);
+    const fechaLocal = await store.leerMeta('administradoresFecha', null);
+    const admins = fusionarAdministradores(listaLocal && fechaLocal ? { lista: listaLocal, fecha: fechaLocal } : null, administradoresRemotos);
+    if (admins.cambiaLocal) {
+      await store.escribirMeta('administradores', admins.ganador.lista);
+      await store.escribirMeta('administradoresFecha', admins.ganador.fecha);
     }
 
     // ---- lo de este dispositivo (con borrados) ----
@@ -38,7 +48,7 @@ export function crearSincronizador({ store, drive, ahora = () => new Date(), alP
     // ---- fusión ----
     const fusion = {};
     for (const nombre of ALMACENES_SYNC) fusion[nombre] = fusionarAlmacen(locales[nombre], remotos[nombre] ?? []);
-    const cambiaRemoto = !archivoDatos || ALMACENES_SYNC.some((n) => fusion[n].paraRemoto > 0);
+    const cambiaRemoto = !archivoDatos || admins.cambiaRemoto || ALMACENES_SYNC.some((n) => fusion[n].paraRemoto > 0);
 
     // ---- imágenes y audios ----
     const bloblocales = new Map(locales.medios.filter((m) => m.blob && !m.deleted).map((m) => [m.id, m.blob]));
@@ -101,7 +111,7 @@ export function crearSincronizador({ store, drive, ahora = () => new Date(), alP
       alProgreso('Guardando los datos en Google Drive…');
       const almacenes = {};
       for (const nombre of ALMACENES_SYNC) almacenes[nombre] = fusion[nombre].resultado;
-      const texto = JSON.stringify(armarDocumento({ almacenes, ahora: ahora() }));
+      const texto = JSON.stringify(armarDocumento({ almacenes, ahora: ahora(), administradores: admins.ganador }));
       await store.escribirMeta('syncBytesDatos', new TextEncoder().encode(texto).length); // para avisar en Cuenta si crece demasiado
       if (archivoDatos) await drive.actualizar(archivoDatos.id, texto, MIME_JSON);
       else await drive.crear(ARCHIVO_DATOS, texto, MIME_JSON);

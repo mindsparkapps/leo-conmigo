@@ -53,13 +53,30 @@ const sinBlob = (medio) => {
 /**
  * @param almacenes  { palabras: [...], medios: [{..., blob}], ... } incluidos los borrados
  */
-export function armarDocumento({ almacenes, ahora = new Date() }) {
+export function armarDocumento({ almacenes, ahora = new Date(), administradores = null }) {
   const salida = {};
   for (const nombre of ALMACENES_SYNC) {
     const lista = almacenes[nombre] ?? [];
     salida[nombre] = nombre === 'medios' ? lista.map(sinBlob) : [...lista];
   }
-  return { formato: FORMATO_SYNC, version: VERSION_SYNC, actualizado: ahora.toISOString(), almacenes: salida };
+  const doc = { formato: FORMATO_SYNC, version: VERSION_SYNC, actualizado: ahora.toISOString(), almacenes: salida };
+  if (administradores) doc.administradores = administradores; // { lista, fecha }: viaja entre los dispositivos del adulto (nunca a las aulas)
+  return doc;
+}
+
+/**
+ * Lista de administradores (funciones experimentales): gana la más reciente (`fecha`). Cada lado es `{ lista, fecha } | null`.
+ * @returns { ganador: { lista, fecha } | null, cambiaLocal, cambiaRemoto }
+ */
+export function fusionarAdministradores(local, remoto) {
+  const valido = (x) => (x && Array.isArray(x.lista) && typeof x.fecha === 'string' ? x : null);
+  const l = valido(local);
+  const r = valido(remoto);
+  if (!l && !r) return { ganador: null, cambiaLocal: false, cambiaRemoto: false };
+  if (!r) return { ganador: l, cambiaLocal: false, cambiaRemoto: true };
+  if (!l) return { ganador: r, cambiaLocal: true, cambiaRemoto: false };
+  if (l.fecha === r.fecha) return { ganador: l, cambiaLocal: false, cambiaRemoto: false };
+  return l.fecha > r.fecha ? { ganador: l, cambiaLocal: false, cambiaRemoto: true } : { ganador: r, cambiaLocal: true, cambiaRemoto: false };
 }
 
 /** Mensaje de error en español, o null si el documento de Drive es válido. */

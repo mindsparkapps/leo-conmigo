@@ -98,8 +98,9 @@ async function iniciar({ vista, area, ir, sesion, prueba: pruebaForzada }) {
   const ajustes = normalizarAjustes(perfil.ajustes);
   const esc = ajustes.escritura;
   // Habilitada: la ve todo el mundo. Si no, solo un administrador (o la prueba del adulto), y todo va a la ficha de prueba.
-  const modoPrueba = !esc.habilitada;
-  if (modoPrueba && !esAdministrador() && !pruebaForzada) { ir('/nino'); return; }
+  // «Probar Escritura» del adulto (`pedirPrueba`) también juega en la ficha de prueba, esté o no prendida la casilla.
+  const modoPrueba = !esc.habilitada || pruebaForzada;
+  if (!esc.habilitada && !esAdministrador() && !pruebaForzada) { ir('/nino'); return; }
   const perfilIdJuego = modoPrueba ? idDePrueba(perfil.id) : perfil.id;
   // Para el álbum y las monedas de la ficha de prueba: el mismo perfil, con su id de prueba (su propio álbum y saldo)
   const perfilDelPremio = modoPrueba ? { ...perfil, id: perfilIdJuego } : perfil;

@@ -4,6 +4,7 @@
 // fotos y audios que solo usaban esos registros. Un medio que también usa otro perfil se conserva.
 
 import { borrarMedio } from '../medios.js';
+import { ALMACENES_DE_FICHA, idDePrueba } from './curso.js';
 
 /** Almacenes cuyos registros llevan `perfilId` (todos menos `perfiles` y `medios`). */
 export const ALMACENES_DEL_PERFIL = Object.freeze([
@@ -30,7 +31,29 @@ export async function borrarPerfil(store, perfilId) {
     for (const id of ids) if (await store.borrar(almacen, id)) registros += 1;
   }
   for (const id of plan.medios) await borrarMedio(store, id);
+  registros += (await borrarDatosDePrueba(store, perfilId)).registros; // lo jugado de prueba en Escritura también se va
   return { registros, medios: plan.medios.length };
+}
+
+/** Los registros de la ficha de prueba de un perfil (`prueba:<perfilId>`), por almacén. */
+export async function registrosDeLaPrueba(store, perfilId) {
+  const salida = {};
+  for (const almacen of ALMACENES_DE_FICHA) salida[almacen] = (await store.listar(almacen, { perfilId: idDePrueba(perfilId) })).filter((r) => !r.deleted && r.perfilId === idDePrueba(perfilId));
+  return salida;
+}
+
+/** Cuántos registros de prueba hay (para mostrar o no «Borrar los datos de prueba»). */
+export async function contarDatosDePrueba(store, perfilId) {
+  return Object.values(await registrosDeLaPrueba(store, perfilId)).reduce((n, lista) => n + lista.length, 0);
+}
+
+/** «Borrar los datos de prueba»: quita todo lo que se guardó con `prueba:<perfilId>` (borrado suave). No toca nada del perfil real. */
+export async function borrarDatosDePrueba(store, perfilId) {
+  let registros = 0;
+  for (const [almacen, lista] of Object.entries(await registrosDeLaPrueba(store, perfilId))) {
+    for (const r of lista) if (await store.borrar(almacen, r.id)) registros += 1;
+  }
+  return { registros };
 }
 
 /** Los ids de medios que nombra un registro: fotoMedioId, medioImagenId, medioAudioId, medioSimboloId, páginas de libros… */

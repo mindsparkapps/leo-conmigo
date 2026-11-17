@@ -59,6 +59,14 @@ export async function cargarAdministradores(store) {
   return [...administradores];
 }
 
+/** Guarda la lista (con la fecha, para que la sincronización personal sepa cuál es la más reciente) y la deja en memoria. */
+export async function guardarAdministradores(store, lista, ahora = new Date()) {
+  establecerAdministradores(lista);
+  await store.escribirMeta(CLAVE_ADMINISTRADORES, [...administradores]);
+  await store.escribirMeta(`${CLAVE_ADMINISTRADORES}Fecha`, ahora.toISOString());
+  return [...administradores];
+}
+
 /** El correo de la cuenta de Google con sesión iniciada en este dispositivo (o null). */
 export function correoDeLaCuenta() {
   try {

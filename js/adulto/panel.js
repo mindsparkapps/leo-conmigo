@@ -5,6 +5,7 @@ import { TEXTO_VERSION, VERSION, COMMIT } from '../config.js';
 import { observar, instalar, aplicarActualizacion, versionPublicada, forzarActualizacion } from '../pwa.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { esAlumno } from '../acceso.js';
+import { normalizarAjustes } from '../core/modelos.js';
 import { crearMiniatura } from '../ui/miniatura.js';
 import { describirError } from '../ui/adulto.js';
 import { urlDeMedio, liberarUrls } from '../medios.js';
@@ -181,6 +182,10 @@ async function pintarNino(zona, estaVivo) {
       el('a', { class: 'boton', href: '#/adulto/libros' }, 'Libros'),
       el('a', { class: 'boton', href: '#/adulto/progreso' }, 'Progreso'),
       el('a', { class: 'boton', href: '#/adulto/analisis' }, 'Qué le cuesta'),
+      // Escritura (experimental): el adulto abre el menú; en el celular de un alumno solo su progreso, y solo si el curso la habilitó
+      esAlumno()
+        ? (normalizarAjustes(perfil.ajustes).escritura.habilitada ? el('a', { class: 'boton', href: '#/adulto/escritura/progreso' }, 'Progreso de escritura') : null)
+        : el('a', { class: 'boton', href: '#/adulto/escritura' }, 'Escritura (experimental)'),
       el('a', { class: 'boton', href: '#/adulto/album' }, 'Álbum'),
       // menú reducido del celular de un alumno: con Tienda, pero sin Ajustes, Fondo, Perfiles, Alumnos ni Copia de seguridad
       el('a', { class: 'boton', href: '#/adulto/tienda' }, 'Tienda'),

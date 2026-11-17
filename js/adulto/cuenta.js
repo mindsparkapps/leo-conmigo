@@ -5,6 +5,7 @@ import { el } from '../ui/dom.js';
 import { cabecera } from '../ui/adulto.js';
 import { datosMuyGrandes } from '../core/sync.js';
 import { obtenerStore } from '../contexto.js';
+import { cargarAdministradores, correoDeLaCuenta, guardarAdministradores } from '../acceso.js';
 import { textoConfirmarConversion } from '../core/dispositivo-alumno.js';
 import { convertirEnDispositivoDeAlumno } from '../nube-alumno.js';
 import {
@@ -108,6 +109,7 @@ export function montar(contenedor) {
   // Convertir este dispositivo en celular de alumno: borra todo lo suyo (con una confirmación clara)
   let ultimaFase = null;
   contenedor.querySelector('.vista-adulto').append(
+    panelAdministradores(),
     el(
       'div',
       { class: 'panel' },
@@ -130,6 +132,42 @@ export function montar(contenedor) {
   const dejarDeObservar = observarNube((e) => { ultimaFase = e.fase; pintar(e); });
   if (nubeConfigurada()) refrescarEstado();
   return () => dejarDeObservar();
+}
+
+/**
+ * «Administradores (funciones experimentales)»: los correos de Google que ven los botones en prueba (por ahora, «Escritura»).
+ * La lista se guarda en `meta` y viaja con la sincronización personal; nunca va al aula ni a la Biblioteca.
+ */
+function panelAdministradores() {
+  const zona = el('div', { class: 'panel' });
+  const pintar = async () => {
+    const store = await obtenerStore();
+    const lista = await cargarAdministradores(store);
+    const mio = correoDeLaCuenta();
+    const guardar = async (nueva) => { await guardarAdministradores(store, nueva); await pintar(); };
+    const entrada = el('input', { type: 'email', placeholder: 'correo@gmail.com', autocomplete: 'off', 'aria-label': 'Correo del administrador' });
+    const agregar = async () => {
+      const correo = entrada.value.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) { entrada.setCustomValidity('Escribe un correo válido.'); entrada.reportValidity(); entrada.setCustomValidity(''); return; }
+      await guardar([...lista, correo]);
+    };
+    zona.replaceChildren(...[
+      el('h2', {}, 'Administradores (funciones experimentales)'),
+      el('p', { class: 'ayuda' }, 'Quien inicie sesión con uno de estos correos ve las funciones que todavía no están habilitadas para el niño (por ahora, el botón «Escritura» con la etiqueta «Modo administrador»). Lo que juega ahí se guarda en un perfil de prueba, no en el del niño. Esta lista se sincroniza entre tus dispositivos, no con los alumnos.'),
+      lista.length
+        ? el('ul', { class: 'lista-filas' }, lista.map((correo) => el('li', { class: 'fila-perfil' }, el('div', { class: 'fila-contenido' },
+          el('div', { class: 'fila-texto' }, el('strong', {}, correo), correo === mio ? el('span', { class: 'insignia' }, 'Tú') : null),
+          el('div', { class: 'acciones-fila' }, el('button', { type: 'button', class: 'boton secundario chico', onclick: () => guardar(lista.filter((c) => c !== correo)).catch(console.error) }, 'Quitar'))))))
+        : el('p', { class: 'ayuda' }, 'Todavía no hay administradores.'),
+      !lista.length && mio
+        ? el('p', {}, el('button', { type: 'button', class: 'boton', onclick: () => guardar([mio]).catch(console.error) }, `Hacerme administrador (${mio})`))
+        : null,
+      !lista.length && !mio ? el('p', { class: 'ayuda' }, 'Inicia sesión con Google arriba para poder hacerte administrador con tu cuenta.') : null,
+      el('div', { class: 'acciones' }, entrada, el('button', { type: 'button', class: 'boton secundario', onclick: () => agregar().catch(console.error) }, 'Agregar correo')),
+    ].filter(Boolean));
+  };
+  pintar().catch((error) => console.error(error));
+  return zona;
 }
 
 function boton(texto, clase, alToque, deshabilitado = false) {
