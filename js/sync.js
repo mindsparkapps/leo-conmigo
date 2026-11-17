@@ -9,10 +9,11 @@
 import {
   ALMACENES_SYNC, ARCHIVO_DATOS, ErrorSync, armarDocumento, contarRegistros, fusionarAlmacen, planDeMedios, validarDocumento,
 } from './core/sync.js';
+import { blobDeApp } from './medios.js';
 
 const MIME_JSON = 'application/json';
 
-export function crearSincronizador({ store, drive, ahora = () => new Date(), alProgreso = () => {} }) {
+export function crearSincronizador({ store, drive, ahora = () => new Date(), alProgreso = () => {}, traerDeApp = blobDeApp }) {
   let enCurso = null;
 
   async function ejecutar() {
@@ -56,6 +57,13 @@ export function crearSincronizador({ store, drive, ahora = () => new Date(), alP
       const bajado = await drive.leerBlob(archivoId);
       // Drive puede devolver «application/octet-stream»: se le devuelve su tipo real para que el PC lo reproduzca
       descargados.set(medio.id, medio.mime && bajado.type !== medio.mime ? new Blob([bajado], { type: medio.mime }) : bajado);
+    }
+
+    // ---- voces del catálogo: no hay archivo en Drive, el contenido sale de la propia app y se guarda en local ----
+    for (const medio of plan.deApp) {
+      const blob = await traerDeApp(medio.ruta);
+      if (blob) descargados.set(medio.id, medio.mime && blob.type !== medio.mime ? new Blob([blob], { type: medio.mime }) : blob);
+      // si falla, la palabra usa la voz sintética y se reintenta en la próxima sincronización
     }
 
     // ---- escribir lo nuevo aquí (sin tocar updatedAt ni la cola) ----

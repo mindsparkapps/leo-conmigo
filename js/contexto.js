@@ -1,7 +1,7 @@
 // Acceso compartido al almacén y al perfil activo (el niño que está usando la app).
 
 import { abrirStore } from './store.js';
-import { completarVocesIniciales } from './medios.js';
+import { completarVocesIniciales, migrarCatalogoUnaVez } from './medios.js';
 import { esAlumno } from './acceso.js';
 
 const META_PERFIL = 'perfilActivoId';
@@ -33,6 +33,7 @@ export async function perfilActivo() {
   // El alumno recibe las voces del adulto: no completa palabras por su cuenta (son del adulto y no las publica)
   if (perfil && !esAlumno() && !vocesRevisadas.has(perfil.id)) {
     vocesRevisadas.add(perfil.id);
+    await migrarCatalogoUnaVez(store); // una voz del catálogo = un solo medio para todos los perfiles
     await completarVocesIniciales(store, perfil.id);
   }
   return perfil;

@@ -21,6 +21,8 @@ import {
   aceptaDeV1 as aceptaDe, publicaRolV1 as publicaRol,
 } from './core/aula.js';
 
+import { blobDeApp } from './medios.js';
+
 const MIME_JSON = 'application/json';
 const minuscula = (s) => String(s ?? '').trim().toLowerCase();
 const duenoDe = (archivo) => minuscula(archivo?.owners?.[0]?.emailAddress);
@@ -39,7 +41,7 @@ const soloLeer = (c) => ({ listar: () => c.listar(), leerJson: (id) => c.leerJso
  */
 export function crearSincronizadorDeAula({
   store, rol, aula, carpetaAula, carpetaAlumno, invitados = [], emailPropio = '', duenoEmail = '', dispositivo = null,
-  ahora = () => new Date(), alProgreso = () => {},
+  ahora = () => new Date(), alProgreso = () => {}, traerDeApp = blobDeApp,
 }) {
   if (rol !== 'adulto' && rol !== 'alumno') throw new Error(`Rol desconocido: ${rol}`);
   const esAdulto = rol === 'adulto';
@@ -142,6 +144,12 @@ export function crearSincronizadorDeAula({
       alProgreso(`Bajando imágenes y audios (${++n} de ${bajar.length})…`);
       const bajado = await medios.leerBlob(archivoId);
       descargados.set(medio.id, medio.mime && bajado.type !== medio.mime ? new Blob([bajado], { type: medio.mime }) : bajado);
+    }
+
+    // ---- voces del catálogo: el contenido sale de la propia app y se guarda en local (nunca viaja por el aula) ----
+    for (const medio of plan.deApp) {
+      const blob = await traerDeApp(medio.ruta);
+      if (blob) descargados.set(medio.id, medio.mime && blob.type !== medio.mime ? new Blob([blob], { type: medio.mime }) : blob);
     }
 
     // ---- escribir lo nuevo aquí (sin tocar updatedAt ni la cola) ----

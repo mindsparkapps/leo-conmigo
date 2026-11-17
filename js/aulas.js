@@ -36,7 +36,7 @@ export class ErrorAula extends Error {
  * @param idDispositivo  (alumno) el identificador de este dispositivo
  * @param versionApp     la versión de la app (se anota en el archivo del dispositivo)
  */
-export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idDispositivo = '', nombreDispositivo = '', versionApp = '', ahora = () => new Date(), alProgreso = () => {} }) {
+export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idDispositivo = '', nombreDispositivo = '', versionApp = '', ahora = () => new Date(), alProgreso = () => {}, traerDeApp = undefined }) {
   const drive = crearDriveAulas({ obtenerToken, fetchFn });
   const clienteCarpeta = (carpetaId) => crearDriveCarpeta({ obtenerToken, carpetaId, fetchFn });
   const sincronizando = new Map(); // perfilId -> promesa (una sincronización por aula a la vez)
@@ -178,6 +178,7 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
           const sincronizador = crearSincronizadorDeAula({
             store: vistaDePerfil(store, perfilId, { idsMediosConocidos: conocidos }),
             rol: 'adulto',
+            traerDeApp,
             aula: info,
             carpetaAula: clienteCarpeta(info.carpetaId),
             carpetaAlumno: clienteCarpeta(info.carpetaAlumnoId),
@@ -235,6 +236,7 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
       const sincronizador = crearSincronizadorDeAula({
         store: vistaDePerfil(store, aula.perfilId, { idsMediosConocidos: conocidos }),
         rol: 'alumno',
+        traerDeApp,
         aula,
         carpetaAula,
         carpetaAlumno: clienteCarpeta(aula.carpetaAlumnoId),

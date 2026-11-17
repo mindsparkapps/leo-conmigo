@@ -130,17 +130,25 @@ export function fusionarConAjeno({ locales = [], propios = [], ajenos = [], solo
  * @param medios       los medios ya fusionados (con `deleted`)
  * @param archivos     Map nombre -> { id } de lo que hay en Drive
  * @param conBlobLocal Set de ids de medios cuyo contenido está en este dispositivo
+ * @returns `deApp`: medios del catálogo (con `ruta`) cuyo contenido hay que sacar de la app y guardar en local
  */
 export function planDeMedios({ medios, archivos, conBlobLocal }) {
   const subir = [];
   const bajar = [];
   const borrarRemotos = [];
   const faltantes = [];
+  const deApp = [];
   for (const medio of medios) {
+    // Un medio del catálogo (con `ruta`) viaja solo como registro: su contenido sale de la propia app, nunca de Drive
+    if (medio.ruta) {
+      if (!medio.deleted && !conBlobLocal.has(medio.id)) deApp.push(medio);
+      continue;
+    }
     const nombre = nombreArchivoMedio(medio);
     const remoto = archivos.get(nombre);
     if (medio.deleted) {
-      if (remoto) borrarRemotos.push({ medio, archivoId: remoto.id });
+      // `conservarEnDrive`: copias repetidas que la migración dejó para la pantalla de limpieza (el adulto decide)
+      if (remoto && !medio.conservarEnDrive) borrarRemotos.push({ medio, archivoId: remoto.id });
     } else if (conBlobLocal.has(medio.id)) {
       if (!remoto) subir.push({ medio, nombre });
     } else if (remoto) {
@@ -149,7 +157,7 @@ export function planDeMedios({ medios, archivos, conBlobLocal }) {
       faltantes.push(medio);
     }
   }
-  return { subir, bajar, borrarRemotos, faltantes };
+  return { subir, bajar, borrarRemotos, faltantes, deApp };
 }
 
 /** Cuántos registros hay por almacén (para mostrar el resultado). */
