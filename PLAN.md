@@ -1070,9 +1070,9 @@ ull hasta la fase 23).
 
 ---
 
-## Ampliación 5 — Fases 27 a 32: modo «Escritura» experimental (pedida el 2026-11-17; **pendiente de aprobación del usuario**)
+## Ampliación 5 — Fases 27 a 32: modo «Escritura» experimental (pedida el 2026-11-17, aprobada por el usuario el 2026-11-17 con «Lo que respondió el usuario al aprobar»)
 
-> **Para Sonnet:** no empieces hasta que el usuario apruebe esta ampliación (y conteste las «Preguntas abiertas»). Lee antes §2, §4 con sus «Decisiones de implementación», las fases 12 a 14 (registro, análisis, autoajuste) y la Ampliación 4 (curso, fichas, familia, «Quién puede tocar qué»). Luego `js/core/progreso.js`, `js/core/sesion.js`, `js/core/controlador.js`, `js/core/intento.js`, `js/core/registro.js`, `js/core/analisis.js`, `js/core/autoajuste.js`, `js/core/silabas.js`, `js/core/silabeo.js`, `js/core/curso.js`, `js/silabas-voz.js`, `js/actividades/S3.js`, `js/actividades/secuencia.js`, `js/nino/inicio.js`, `js/nino/sesion.js`, `js/nino/premio.js`, `js/nino/elegir.js`. Usa `graphify query` antes de leer código. Una fase a la vez, en orden, con su lista de aceptación, `npm test` en verde, prueba en el navegador, `graphify update .` y un commit. **No dupliques lógica:** el dominio, Leitner, avance rápido, elogios, premio de fin de sesión, álbumes, monedas, registro y análisis ya existen; el modo Escritura los **reutiliza** (se amplían con parámetros, no se copian).
+> **Para Sonnet:** cada fase se hace en **su propia sesión** (el usuario lo pidió para no llenar el contexto): haz **solo la fase que te pidieron**, ciérrala con su commit y termina. Lee antes §2, §4 con sus «Decisiones de implementación», las fases 12 a 14 (registro, análisis, autoajuste) y la Ampliación 4 (curso, fichas, familia, «Quién puede tocar qué»). Luego `js/core/progreso.js`, `js/core/sesion.js`, `js/core/controlador.js`, `js/core/intento.js`, `js/core/registro.js`, `js/core/analisis.js`, `js/core/autoajuste.js`, `js/core/silabas.js`, `js/core/silabeo.js`, `js/core/curso.js`, `js/silabas-voz.js`, `js/actividades/S3.js`, `js/actividades/secuencia.js`, `js/nino/inicio.js`, `js/nino/sesion.js`, `js/nino/premio.js`, `js/nino/elegir.js`. Usa `graphify query` antes de leer código. Una fase a la vez, en orden, con su lista de aceptación, `npm test` en verde, prueba en el navegador, `graphify update .` y un commit. **No dupliques lógica:** el dominio, Leitner, avance rápido, elogios, premio de fin de sesión, álbumes, monedas, registro y análisis ya existen; el modo Escritura los **reutiliza** (se amplían con parámetros, no se copian).
 
 ### Qué pidió el usuario
 1. Un botón nuevo **«Escritura»** en el inicio del niño. Es **experimental**: solo funciona en el modo adulto hasta que el adulto lo habilite con una **casilla por perfil**.
@@ -1104,6 +1104,22 @@ ull hasta la fase 23).
 3. Sale una **palabra al azar** del nivel elegido, con su imagen o sonido. Abajo, una caja por sílaba. Se muestran las sílabas de la palabra **más 0 a 4 sílabas que no son** (cuántas, se configura en el modo adulto). El niño las **arrastra** a su caja: si es correcta, la caja se pone **verde**; si no, **roja** y la sílaba **vuelve a su lugar**. Al completar la palabra se **lee sílaba por sílaba** y luego se da el mismo estímulo visual y auditivo que en la lectura. **Tocar** una sílaba (sin arrastrarla) **dice su sonido**.
 4. Al terminar una palabra se pasa a la siguiente. **Avance automático** y configuraciones en un menú **«Escritura»** del adulto.
 5. **Estadísticas**: qué le es más fácil, tiempos de sesión y todo lo necesario para que una IA lo analice y vaya calibrando. En resumen: **todo lo que tiene la lectura, aplicado a la escritura**.
+
+### Lo que respondió el usuario al aprobar (obligatorio; manda sobre cualquier otra parte de esta ampliación)
+1. **Botón y administrador.** «Escritura» es un botón del **panel principal del niño**, junto a Tienda y Álbum. Mientras la escritura **no** esté habilitada para el perfil, el botón solo aparece si la **cuenta de Google con sesión iniciada es de un administrador**, y lleva **encima** la etiqueta **«Modo administrador»**. Los administradores se configuran en el **modo adulto**:
+   - Lista `administradores` (correos) en la pantalla **Cuenta** («Administradores (funciones experimentales)»): agregar y quitar correos; la primera vez se ofrece «Hacerme administrador» con la cuenta iniciada. Se guarda en `meta` y viaja en la sincronización personal del adulto (sus otros dispositivos), **nunca** al aula ni a la Biblioteca.
+   - `esAdministrador()` (nuevo, en `js/acceso.js`): `true` solo si hay sesión de Google, el correo está en la lista y **no** es el dispositivo de un alumno (`esAlumno()` → siempre `false`). Sin sesión de Google no hay administrador.
+   - Con la casilla del perfil **habilitada**, el botón aparece para todos y **sin** la etiqueta.
+2. **Se respetan las reglas del §2.** Por defecto `formaDeMover: 'tocar'` (tocar la sílaba la dice y la toma; tocar la caja la pone: sin arrastrar) y `colorError: 'suave'` (sin rojo: la pieza se atenúa y vuelve). «Arrastrar» y «rojo» quedan solo como opciones que el adulto puede elegir a mano en el menú Escritura. **Esto reemplaza los valores por defecto de la tabla «Cambios explícitos a las reglas del §2».**
+3. **Perfil de prueba.** Lo que se juega en **modo administrador** (escritura no habilitada para el perfil, o «Probar Escritura» desde el panel adulto) **sí guarda estadísticas**, pero en un **perfil de prueba** aparte, nunca en el perfil real:
+   - Es una ficha de prueba con id determinista `prueba:<perfilId>` que lee el contenido del perfil con `contenidoDe` (como las fichas de la Ampliación 4) y guarda sus `progresos`, `niveles`, `sesiones`, `respuestas`, `calcomanias` y `movimientos` con `perfilId = prueba:<perfilId>` (usar `aFicha`/`ALMACENES_DE_FICHA`, sin duplicar).
+   - No se publica en el aula ni cuenta para el autoajuste del perfil real; se ve en el progreso y el análisis de escritura como «Perfil de prueba», con un botón «Borrar los datos de prueba» (con confirmación).
+   - Reemplaza la fila «Lo que hace "Probar Escritura"» (ya no es `prueba: true` sin guardar).
+4. **«tl» junto:** el banco divide «a-tle-ta», «a-tlas», «a-tlán-ti-co» (el nivel `E13` lo supone).
+5. **Oraciones (`E18`):** al abrir el nivel aparece un **interruptor** grande «Por palabras / Por sílabas» (también elegible en el menú Escritura del adulto como valor inicial `piezasOracion: 'palabras' | 'silabas'`, por defecto `'palabras'`). Por palabras: una caja por palabra. Por sílabas: una caja por sílaba, con un espacio visible entre palabras. Al completar se lee igual (por palabra o por sílaba, según el interruptor). El dictado (`E20`) sigue siendo de palabras.
+6. **Premios:** la escritura da los mismos premios que la lectura (lámina del álbum al terminar la sesión; las monedas siguen saliendo de completar álbumes). En el perfil de prueba también, pero en su propio álbum y saldo (los de la ficha de prueba).
+7. **Voces que faltan:** la fase 32 deja la lista en `data/escritura/faltan-voces.txt`; **al terminar la fase 32, recuérdale al usuario esa ruta** para que genere las voces.
+8. **Fuentes:** guardadas en [docs/escritura-fuentes.md](docs/escritura-fuentes.md); «Acerca de» y la ayuda las toman de ahí.
 
 ### Base pedagógica (lo que se encontró al investigar)
 - **No hay un método de escritura con evidencia fuerte y específica para el síndrome de Down** como el de lectura global. Lo que sí hay:
@@ -1213,12 +1229,16 @@ respuesta  { ...lo de la fase 12, modo: 'escritura', actividad: 'E07', unidad: '
 - Ayuda del adulto (sección «Escritura (experimental)»: qué es, el orden, los dos cambios a las reglas y cómo suavizarlos, qué hace sola), «Acerca de» (fuentes de la base pedagógica), `privacidad.html` (nada nuevo sale del dispositivo), README y CLAUDE.md.
 - **Acepta si:** el script corre y deja la lista; ayuda y textos al día; prueba de punta a punta en el navegador con un perfil nuevo: habilitar, jugar 2 sesiones, ver el progreso, el análisis y exportar.
 
-### Preguntas abiertas (contestar al aprobar)
-1. **«Solo operativo en modo padre»:** se entendió como «apagado para el niño, pero el adulto lo puede probar desde su panel sin que quede registrado». ¿Es así, o la prueba del adulto también debe guardar estadísticas?
-2. **Rojo en el error:** queda rojo suave por defecto, como se pidió, con la opción «suave» (sin rojo) en el menú. ¿Bien, o prefieres «suave» por defecto (más fiel al método sin error)?
-3. **«tl»** (atleta): en Chile se divide «at-le-ta», pero un nivel propio de «TL» supone «a-tle-ta». ¿Cuál usamos en el banco?
-4. **`E18`–`E20`:** oraciones con **palabras** como piezas (no sílabas), textos con **una palabra** que falta, y dictado de **palabras** (sin imagen). ¿Está bien, o el dictado debe ser también de frases?
-5. ¿La sesión de escritura da **lámina del álbum** igual que la de lectura (así se decidió), o el álbum debe ser solo de lectura?
+### Preguntas abiertas
+Contestadas: ver «Lo que respondió el usuario al aprobar».
+
+### Dónde va cada respuesta del usuario (para no olvidarla en su fase)
+- Fase 27: «tl» junto en el banco (4); fuentes ya en `docs/escritura-fuentes.md` (8).
+- Fase 28: ficha de prueba `prueba:<perfilId>` en el núcleo (3): que sus sesiones no cuenten para el autoajuste del perfil real; piezas por sílaba en oraciones (5).
+- Fase 29: botón en el panel del niño con «Modo administrador» y `esAdministrador()` (1); valores por defecto `tocar` / `suave` (2); interruptor de oraciones (5); premios (6), en la ficha de prueba si es modo administrador (3).
+- Fase 30: lista de administradores en Cuenta (1); «Probar Escritura» con el perfil de prueba y «Borrar los datos de prueba» (3); `piezasOracion` (5).
+- Fase 31: el perfil de prueba en el análisis y la exportación, separado del real (3).
+- Fase 32: `faltan-voces.txt` y recordarle la ruta al usuario (7).
 
 ### Fuera de alcance (preguntar antes)
 - Escritura a mano (trazar letras con el dedo) y teclado en pantalla.
