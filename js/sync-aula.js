@@ -1,42 +1,56 @@
-// Sincronización de un aula (PLAN.md, Ampliación 3 fase 16 y Ampliación 4 fase 22). La lógica pura está en core/aula.js y core/sync.js.
+// Sincronización de un aula (PLAN.md, Ampliación 3 fase 16 y Ampliación 4 fases 22 y 23). La lógica pura está en core/aula.js,
+// core/curso.js y core/sync.js.
 //
 //   const sincronizador = crearSincronizadorDeAula({ store: vistaDePerfil(...), rol: 'adulto' | 'alumno', ... });
 //   const resumen = await sincronizador.sincronizar();
 //
 // Cada lado escribe SOLO su archivo y lee el del otro:
-//   adulto  lee   del-alumno/alumno.json (filtrado)           escribe  adulto.json (el contenido del curso) y los medios en la Biblioteca/
-//   alumno  lee   adulto.json y los medios de la Biblioteca/  escribe  del-alumno/alumno.json y su dispositivo-<id>.json
+//   adulto  lee   alumnos/<correo>/alumno.json de cada invitado (filtrado)   escribe  adulto.json (el contenido del curso) y los medios en la Biblioteca/
+//   alumno  lee   adulto.json y los medios de la Biblioteca/                 escribe  su carpeta alumnos/<su correo>/: alumno.json y dispositivo-<id>.json
+// Perfil = curso: el avance de cada alumno NO se mezcla con el del curso ni con el de otro alumno. El adulto lo guarda bajo la
+// FICHA de cada correo (`aFicha`: `perfilId` = id de la ficha) y su perfil solo lo cambia él; el celular del alumno combina el
+// perfil del curso con lo que él calcula solo (`combinarPerfil`) y publica únicamente su parte (`perfilPublicable`).
 // Los medios (fotos, grabaciones) están UNA vez en la Biblioteca/ aunque los usen varios cursos; las voces del catálogo
 // no van a Drive: el contenido sale de la propia app. El celular del alumno guarda todo en local.
 // Las mismas protecciones que `js/sync.js`: una ejecución a la vez, primero los medios y al final el JSON, gana lo local
 // si cambió durante la sincronización y nunca se pisa un archivo propio que no se entiende.
 //
 // Seguridad (tabla «Quién puede tocar qué»): cada lado recibe del otro cliente SOLO sus métodos de lectura, así que ni un
-// error de programación puede escribir fuera de lo suyo; y lo que llega pasa por `filtrarEntrantes`.
+// error de programación puede escribir fuera de lo suyo; y lo que llega pasa por `filtrarEntrantes`. El adulto escribe en el
+// almacén únicamente a través de `vistaDeFichas` (fichas y registros de fichas de este curso) y de `vistaDePerfil` (el curso).
 
-import { ALMACENES_SYNC, ErrorSync, contarRegistros, fusionarAlmacen, fusionarConAjeno } from './core/sync.js';
+import { ErrorSync, contarRegistros, fusionarAlmacen, fusionarConAjeno, nombreArchivoMedio } from './core/sync.js';
 import {
-  ALMACENES_DEL_ALUMNO, ARCHIVO_ADULTO, ARCHIVO_ALUMNO, aceptaDe, armarArchivoAula, filtrarEntrantes, mediosDelPerfil, nombreArchivoDispositivo, nuevoDispositivo,
-  publicaRol, validarArchivoAula, validarDispositivo,
+  ALMACENES_DEL_ALUMNO, ALMACENES_DEL_CURSO, ARCHIVO_ADULTO, ARCHIVO_ALUMNO, aceptaDe, armarArchivoAula, filtrarEntrantes, mediosDelPerfil, nombreArchivoDispositivo,
+  nuevoDispositivo, publicaRol, validarArchivoAula, validarDispositivo,
 } from './core/aula.js';
-import { nombreArchivoMedio } from './core/sync.js';
+import { ALMACENES_DE_FICHA, aFicha, combinarPerfil, idDeFicha, nuevaFicha, perfilPublicable } from './core/curso.js';
+import { ALMACENES_RESPALDO } from './core/respaldo.js';
 import { blobDeApp } from './medios.js';
 
 // Lo que las aulas versión 1 traían dentro de adulto.json y que ya no se publica: se ignora sin avisar y se limpia
 const LEGADO_DEL_ADULTO = new Set(['medios', ...ALMACENES_DEL_ALUMNO]);
-const ALMACENES_DE_DATOS = ALMACENES_SYNC.filter((n) => n !== 'medios');
+const enOrden = (nombres) => ALMACENES_RESPALDO.filter((n) => nombres.includes(n));
+// El adulto solo maneja el contenido del curso; el alumno, el contenido del curso (que recibe) y su avance (que publica)
+const ALMACENES_DEL_ADULTO = enOrden(ALMACENES_DEL_CURSO);
+const ALMACENES_DEL_ALUMNO_Y_CURSO = enOrden([...ALMACENES_DEL_CURSO, ...ALMACENES_DEL_ALUMNO]);
 
 const MIME_JSON = 'application/json';
 const minuscula = (s) => String(s ?? '').trim().toLowerCase();
 const duenoDe = (archivo) => minuscula(archivo?.owners?.[0]?.emailAddress);
 const soloLeer = (c) => ({ listar: () => c.listar(), leerJson: (id) => c.leerJson(id), leerBlob: (id) => c.leerBlob(id) });
+/** JSON con las claves en orden, para comparar objetos sin que cuente el orden en que se armaron. */
+const estable = (v) => JSON.stringify(v, (_, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => a.localeCompare(b))) : x));
 
 /**
- * @param store          una `vistaDePerfil` (solo ve lo de este perfil)
+ * @param store          una `vistaDePerfil` del curso (el adulto) o del perfil que juega el alumno
+ * @param fichas         (adulto) una `vistaDeFichas` del curso: ahí se guardan las fichas y su avance
  * @param rol            'adulto' | 'alumno'
  * @param aula           { perfilId, … }
  * @param carpetaAula    cliente de Drive atado al aula (`crearDriveCarpeta`)
- * @param carpetaAlumno  cliente atado a `del-alumno/`
+ * @param carpetaAlumno  (alumno) cliente atado a SU carpeta `alumnos/<su correo>/`
+ * @param carpetasAlumnos (adulto) { <correo>: cliente atado a la carpeta de ese alumno }: solo se leen
+ * @param carpetaLegado  (adulto) cliente atado al `del-alumno/` de las aulas anteriores a la fase 23 (solo lectura; puede faltar)
  * @param carpetaMedios  cliente atado a la Biblioteca/ (o, en un aula versión 1 sin migrar, al aula); el alumno solo la lee
  * @param usadosPorOtros (adulto) async () => Set de ids de medios que usan los OTROS cursos (para no borrarlos de la Biblioteca)
  * @param invitados      (adulto) correos invitados: solo se lee lo que ellos son dueños
@@ -45,26 +59,32 @@ const soloLeer = (c) => ({ listar: () => c.listar(), leerJson: (id) => c.leerJso
  * @param dispositivo    (alumno) { idDispositivo, nombre, versionApp }
  */
 export function crearSincronizadorDeAula({
-  store, rol, aula, carpetaAula, carpetaAlumno, carpetaMedios = carpetaAula, usadosPorOtros = async () => new Set(), invitados = [], emailPropio = '', duenoEmail = '', dispositivo = null,
+  store, fichas = null, rol, aula, carpetaAula, carpetaAlumno = null, carpetasAlumnos = {}, carpetaLegado = null, carpetaMedios = carpetaAula,
+  usadosPorOtros = async () => new Set(), invitados = [], emailPropio = '', duenoEmail = '', dispositivo = null,
   ahora = () => new Date(), alProgreso = () => {}, traerDeApp = blobDeApp,
 }) {
   if (rol !== 'adulto' && rol !== 'alumno') throw new Error(`Rol desconocido: ${rol}`);
   const esAdulto = rol === 'adulto';
+  if (esAdulto && !fichas) throw new Error('El adulto necesita la vista de fichas del curso.');
+  if (!esAdulto && !carpetaAlumno) throw new Error('El alumno necesita su carpeta.');
   const perfilId = aula.perfilId;
   const rolOtro = esAdulto ? 'alumno' : 'adulto';
   const correosInvitados = new Set(invitados.map(minuscula));
   const miCorreo = minuscula(emailPropio);
+  const almacenesDeDatos = esAdulto ? ALMACENES_DEL_ADULTO : ALMACENES_DEL_ALUMNO_Y_CURSO;
   let enCurso = null;
 
-  // Lo que cada lado puede hacer en cada carpeta: el alumno no tiene ningún método de escritura en el aula,
-  // y el adulto no escribe nunca en `del-alumno/`.
+  // Lo que cada lado puede hacer en cada carpeta: el alumno no tiene ningún método de escritura en el aula ni en la Biblioteca,
+  // y el adulto no escribe nunca dentro de las carpetas de los alumnos.
   const propia = esAdulto ? carpetaAula : carpetaAlumno;
-  const delOtro = soloLeer(esAdulto ? carpetaAlumno : carpetaAula);
+  const lectoresDeAlumnos = Object.fromEntries(Object.entries(carpetasAlumnos).map(([correo, c]) => [minuscula(correo), soloLeer(c)]));
+  const lectorLegado = carpetaLegado ? soloLeer(carpetaLegado) : null;
+  const lectorAula = soloLeer(carpetaAula);
   const medios = esAdulto ? carpetaMedios : soloLeer(carpetaMedios);
 
-  async function leerArchivoAjeno(archivo, avisos, nombre) {
+  async function leerArchivoAjeno(lector, archivo, avisos, nombre) {
     try {
-      const doc = await delOtro.leerJson(archivo.id);
+      const doc = await lector.leerJson(archivo.id);
       const error = validarArchivoAula(doc, { rolEsperado: rolOtro, perfilId });
       if (error) { avisos.push(`${nombre}: ${error} Se ignoró.`); return null; }
       return doc;
@@ -75,11 +95,21 @@ export function crearSincronizadorDeAula({
     }
   }
 
+  /** El perfil que ve el celular del alumno: el del curso con lo que él calcula solo (ver `combinarPerfil`). */
+  function fusionarPerfilDelAlumno({ locales, ajenos }) {
+    const curso = ajenos.find((p) => p.id === perfilId);
+    const local = locales.find((p) => p.id === perfilId);
+    if (!curso) return { resultado: locales, paraLocal: [], paraPropio: [] };
+    const combinado = { ...combinarPerfil(curso, local), updatedAt: [local?.updatedAt, curso.updatedAt].filter(Boolean).sort().at(-1) };
+    const igual = local && estable(local) === estable(combinado);
+    return { resultado: [combinado], paraLocal: igual ? [] : [combinado], paraPropio: [] };
+  }
+
   async function ejecutar() {
     alProgreso('Mirando qué hay en el aula…');
     const avisos = [];
     const archivosAula = await carpetaAula.listar();
-    const archivosAlumno = await carpetaAlumno.listar();
+    const archivosAlumno = esAdulto ? [] : await carpetaAlumno.listar();
 
     // ---- mi archivo (nunca se pisa uno que no se entiende) ----
     const archivoPropio = esAdulto
@@ -100,42 +130,86 @@ export function crearSincronizadorDeAula({
       if (d.total - legado > 0) avisos.push(`Tu archivo ${archivoPropio.name} traía registros que no son de este perfil o de este lado: se quitaron.`);
     }
 
-    // ---- el archivo del otro lado, filtrado ----
-    const aceptados = aceptaDe(rol, rolOtro);
-    const ajenos = {};
+    // ---- lo que llega del otro lado ----
     const descartados = { total: 0, porAlmacen: {} };
     const sumarDescartados = (d) => {
       descartados.total += d.total;
       for (const [n, c] of Object.entries(d.porAlmacen)) descartados.porAlmacen[n] = (descartados.porAlmacen[n] ?? 0) + c;
     };
-    const candidatos = esAdulto
-      ? archivosAlumno.filter((a) => a.name === ARCHIVO_ALUMNO)
-      : archivosAula.filter((a) => a.name === ARCHIVO_ADULTO && (!duenoEmail || duenoDe(a) === minuscula(duenoEmail)));
-    for (const archivo of candidatos) {
-      if (esAdulto && !correosInvitados.has(duenoDe(archivo))) {
-        avisos.push(`Se ignoró un ${ARCHIVO_ALUMNO} de ${duenoDe(archivo) || 'alguien'} que no está invitado a esta aula.`);
-        continue;
+    const ajenos = {}; // alumno: el contenido del curso
+    const deAlumnos = []; // adulto: { correo, ficha, entrantes, estado }
+    const dispositivos = []; // adulto: los dispositivos de los invitados
+
+    if (esAdulto) {
+      const archivosLegado = lectorLegado ? await lectorLegado.listar().catch((e) => { if (e?.sinConexion || e?.sesion) throw e; return []; }) : [];
+      for (const correo of correosInvitados) {
+        const lector = lectoresDeAlumnos[correo];
+        let archivos = [];
+        if (lector) {
+          try { archivos = await lector.listar(); } catch (e) {
+            if (e?.sinConexion || e?.sesion) throw e;
+            avisos.push(`No se pudo abrir la carpeta de ${correo}. Se ignoró.`);
+          }
+        } else avisos.push(`${correo} todavía no tiene su carpeta en el aula.`);
+        const suyos = (lista) => lista.filter((a) => duenoDe(a) === correo);
+        for (const a of archivos) {
+          if (a.name === ARCHIVO_ALUMNO && duenoDe(a) !== correo) avisos.push(`Se ignoró un ${ARCHIVO_ALUMNO} de ${duenoDe(a) || 'alguien'} dentro de la carpeta de ${correo}: no es de ese alumno.`);
+        }
+        let archivo = suyos(archivos).find((a) => a.name === ARCHIVO_ALUMNO);
+        let origen = lector;
+        // Aulas de la fase 22: hasta que el alumno vuelva a sincronizar, su avance sigue en el `del-alumno/` de antes
+        if (!archivo && lectorLegado) { archivo = suyos(archivosLegado).find((a) => a.name === ARCHIVO_ALUMNO); origen = lectorLegado; }
+        const hallado = { correo, ficha: idDeFicha(perfilId, correo), entrantes: null, estado: null };
+        if (archivo) {
+          const doc = await leerArchivoAjeno(origen, archivo, avisos, `${ARCHIVO_ALUMNO} de ${correo}`);
+          if (doc) {
+            const { almacenes, descartados: d } = filtrarEntrantes({ almacenes: doc.almacenes, perfilId, aceptados: aceptaDe(rol, rolOtro) });
+            sumarDescartados(d);
+            const { almacenes: deLaFicha, estado, descartados: extra } = aFicha(almacenes, { cursoId: perfilId, fichaId: hallado.ficha });
+            descartados.total += extra;
+            hallado.entrantes = deLaFicha;
+            hallado.estado = estado;
+          }
+        }
+        // sus dispositivos (de su carpeta y, si aún no se mudó, del `del-alumno/` de antes): el más reciente de cada uno
+        const porId = new Map();
+        for (const [lectorDe, lista] of [[lector, archivos], [lectorLegado, archivosLegado]]) {
+          if (!lectorDe) continue;
+          for (const d of await leerDispositivos(lectorDe, lista, correo, avisos)) {
+            const previo = porId.get(d.idDispositivo);
+            if (!previo || Date.parse(d.ultimaSync) > Date.parse(previo.ultimaSync)) porId.set(d.idDispositivo, d);
+          }
+        }
+        dispositivos.push(...porId.values());
+        deAlumnos.push(hallado);
       }
-      const doc = await leerArchivoAjeno(archivo, avisos, esAdulto ? `${ARCHIVO_ALUMNO} de ${duenoDe(archivo)}` : ARCHIVO_ADULTO);
-      if (!doc) continue;
-      const { almacenes, descartados: d } = filtrarEntrantes({ almacenes: doc.almacenes, perfilId, aceptados });
-      // El avance y los medios que un adulto de la versión anterior dejó en adulto.json ya no se aceptan: se ignoran sin avisar
-      if (!esAdulto) for (const n of LEGADO_DEL_ADULTO) { d.total -= d.porAlmacen[n] ?? 0; delete d.porAlmacen[n]; }
-      sumarDescartados(d);
-      for (const [n, lista] of Object.entries(almacenes)) ajenos[n] = fusionarAlmacen(ajenos[n] ?? [], lista).resultado;
+    } else {
+      const archivo = archivosAula.find((a) => a.name === ARCHIVO_ADULTO && (!duenoEmail || duenoDe(a) === minuscula(duenoEmail)));
+      const doc = archivo ? await leerArchivoAjeno(lectorAula, archivo, avisos, ARCHIVO_ADULTO) : null;
+      if (doc) {
+        const { almacenes, descartados: d } = filtrarEntrantes({ almacenes: doc.almacenes, perfilId, aceptados: aceptaDe(rol, rolOtro) });
+        // El avance y los medios que un adulto de la versión anterior dejó en adulto.json ya no se aceptan: se ignoran sin avisar
+        for (const n of LEGADO_DEL_ADULTO) { d.total -= d.porAlmacen[n] ?? 0; delete d.porAlmacen[n]; }
+        sumarDescartados(d);
+        for (const [n, lista] of Object.entries(almacenes)) ajenos[n] = fusionarAlmacen(ajenos[n] ?? [], lista).resultado;
+      }
     }
     if (descartados.total > 0) {
       const detalle = Object.entries(descartados.porAlmacen).map(([n, c]) => `${n}: ${c}`).join(', ');
-      avisos.push(`Se descartaron ${descartados.total} registros del ${rolOtro} que no se pueden aceptar (${detalle}).`);
+      avisos.push(`Se descartaron ${descartados.total} registros del ${rolOtro} que no se pueden aceptar${detalle ? ` (${detalle})` : ''}.`);
     }
 
     // ---- lo de este dispositivo (con borrados) y la fusión ----
     const locales = {};
-    for (const nombre of ALMACENES_DE_DATOS) locales[nombre] = await store.listar(nombre, { conBorrados: true });
+    for (const nombre of almacenesDeDatos) locales[nombre] = await store.listar(nombre, { conBorrados: true });
     const fusion = {};
-    for (const nombre of ALMACENES_DE_DATOS) fusion[nombre] = fusionarConAjeno({ locales: locales[nombre], propios: propios[nombre] ?? [], ajenos: ajenos[nombre] ?? [] });
+    for (const nombre of almacenesDeDatos) {
+      fusion[nombre] = !esAdulto && nombre === 'perfiles'
+        ? fusionarPerfilDelAlumno({ locales: locales[nombre], ajenos: ajenos[nombre] ?? [] })
+        : fusionarConAjeno({ locales: locales[nombre], propios: propios[nombre] ?? [], ajenos: ajenos[nombre] ?? [] });
+    }
     const resultado = {};
-    for (const nombre of ALMACENES_DE_DATOS) resultado[nombre] = fusion[nombre].resultado;
+    for (const nombre of almacenesDeDatos) resultado[nombre] = fusion[nombre].resultado;
 
     // ---- qué medios usa este curso (el curso solo dice QUÉ medios usa; los archivos están una vez en la Biblioteca) ----
     const perfilFusionado = resultado.perfiles.find((p) => p.id === perfilId) ?? { id: perfilId };
@@ -183,7 +257,7 @@ export function crearSincronizadorDeAula({
 
     // ---- escribir lo nuevo aquí (sin tocar updatedAt ni la cola) ----
     let traidos = 0;
-    for (const nombre of ALMACENES_DE_DATOS) {
+    for (const nombre of almacenesDeDatos) {
       let aEscribir = fusion[nombre].paraLocal;
       // Si el registro cambió aquí mientras se sincronizaba (p. ej. el niño terminó un ensayo), gana lo local
       const actuales = new Map((await store.listar(nombre, { conBorrados: true })).map((r) => [r.id, r]));
@@ -213,6 +287,34 @@ export function crearSincronizadorDeAula({
       })));
     }
 
+    // ---- el adulto guarda cada alumno bajo SU ficha (nunca bajo el curso ni bajo otro alumno) ----
+    const resumenFichas = [];
+    if (esAdulto) {
+      const fecha = ahora().toISOString();
+      const existentes = new Map((await fichas.fichas({ conBorrados: true })).map((f) => [f.id, f]));
+      for (const h of deAlumnos) {
+        let ficha = existentes.get(h.ficha);
+        const nueva = !ficha;
+        if (!ficha) ficha = nuevaFicha({ cursoId: perfilId, email: h.correo, ahora: ahora() });
+        const cambioEstado = h.estado && estable(h.estado) !== estable(ficha.estado ?? null);
+        if (nueva || cambioEstado || ficha.deleted) {
+          await fichas.importar('alumnos', [{ ...ficha, deleted: false, estado: h.estado ?? ficha.estado ?? null, updatedAt: fecha }]);
+          traidos += 1;
+        }
+        let nuevos = 0;
+        for (const almacen of ALMACENES_DE_FICHA) {
+          const delAlumno = h.entrantes?.[almacen] ?? [];
+          if (!delAlumno.length) continue;
+          const aqui = await fichas.listar(almacen, { fichaId: h.ficha, conBorrados: true });
+          const { paraLocal } = fusionarAlmacen(aqui, delAlumno);
+          if (paraLocal.length) await fichas.importar(almacen, paraLocal);
+          nuevos += paraLocal.length;
+        }
+        traidos += nuevos;
+        resumenFichas.push({ fichaId: h.ficha, email: h.correo, registros: nuevos, conArchivo: Boolean(h.entrantes) });
+      }
+    }
+
     // ---- el adulto quita de la Biblioteca un medio solo cuando ya no lo usa NINGÚN curso ----
     if (esAdulto) {
       const quitar = mediosLocales.filter((m) => m.deleted && !m.conservarEnDrive && !m.ruta && !usados.has(m.id) && porNombre.get(nombreArchivoMedio(m))?.id);
@@ -223,8 +325,11 @@ export function crearSincronizadorDeAula({
     }
 
     // ---- subir mis datos (después de los medios) ----
-    const doc = armarArchivoAula({ rol, perfilId, almacenes: resultado, ahora: ahora() });
+    // El alumno publica solo SU parte del perfil (`perfilPublicable`): nada del curso
+    const paraPublicar = esAdulto ? resultado : { ...resultado, perfiles: resultado.perfiles.map((p) => (p.id === perfilId ? perfilPublicable(p) : p)) };
+    const doc = armarArchivoAula({ rol, perfilId, almacenes: paraPublicar, ahora: ahora() });
     const cambia = !archivoPropio || limpiarPropio || publicaRol(rol).some((nombre) => {
+      if (!esAdulto && nombre === 'perfiles') return estable(propios.perfiles ?? []) !== estable(doc.almacenes.perfiles);
       const enDoc = new Set(doc.almacenes[nombre].map((r) => r.id));
       return fusion[nombre].paraPropio.some((r) => enDoc.has(r.id));
     });
@@ -237,11 +342,9 @@ export function crearSincronizadorDeAula({
       subioDatos = true;
     }
 
-    // ---- el alumno registra su dispositivo; el adulto lee los de los invitados ----
+    // ---- el alumno registra su dispositivo ----
     const fecha = ahora().toISOString();
-    let dispositivos = [];
     if (!esAdulto && dispositivo) await registrarDispositivo(archivosAlumno, fecha);
-    if (esAdulto) dispositivos = await leerDispositivos(archivosAlumno, avisos);
 
     // ---- recordar qué medios ya se sincronizaron (para que un borrado no «resucite») ----
     await store.escribirMeta('idsMediosConocidos', [...conocidos]);
@@ -257,13 +360,14 @@ export function crearSincronizadorDeAula({
       descartados,
       avisos,
       dispositivos,
+      fichas: resumenFichas,
       cuenta: contarRegistros(resultado),
     };
   }
 
-  async function registrarDispositivo(archivosAlumno, fecha) {
+  async function registrarDispositivo(archivosDelAlumno, fecha) {
     const nombre = nombreArchivoDispositivo(dispositivo.idDispositivo);
-    const existente = archivosAlumno.find((a) => a.name === nombre && (!miCorreo || duenoDe(a) === miCorreo));
+    const existente = archivosDelAlumno.find((a) => a.name === nombre && (!miCorreo || duenoDe(a) === miCorreo));
     let primeraConexion = fecha;
     if (existente) {
       try {
@@ -282,12 +386,13 @@ export function crearSincronizadorDeAula({
     else await carpetaAlumno.crear(nombre, texto, MIME_JSON);
   }
 
-  async function leerDispositivos(archivosAlumno, avisos) {
+  /** Los `dispositivo-<id>.json` de un invitado (solo los que son de su cuenta y dicen su correo). */
+  async function leerDispositivos(lector, archivosDeCarpeta, correo, avisos) {
     const lista = [];
-    for (const a of archivosAlumno) {
-      if (!/^dispositivo-.+\.json$/.test(a.name) || !correosInvitados.has(duenoDe(a))) continue;
+    for (const a of archivosDeCarpeta) {
+      if (!/^dispositivo-.+\.json$/.test(a.name) || duenoDe(a) !== correo) continue;
       try {
-        const doc = await delOtro.leerJson(a.id);
+        const doc = await lector.leerJson(a.id);
         if (validarDispositivo(doc)) { avisos.push(`${a.name}: no se entiende. Se ignoró.`); continue; }
         if (minuscula(doc.email) !== duenoDe(a)) { avisos.push(`${a.name}: el correo no coincide con su dueño. Se ignoró.`); continue; }
         lista.push(doc);

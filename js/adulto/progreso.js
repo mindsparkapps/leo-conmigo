@@ -1,10 +1,10 @@
 // Progreso del niño activo: resumen, precisión por semana, tabla por palabra (con marcado manual)
-// e historial de sesiones (PLAN.md §5).
+// e historial de sesiones (PLAN.md §5). Con una ruta `…/ficha/<id>` muestra el avance de UN alumno del curso (solo lectura).
 
 import { el } from '../ui/dom.js';
 import { cabecera, cargando, mostrarError, describirError } from '../ui/adulto.js';
 import { crearGraficoSemanal } from '../ui/grafico-semanal.js';
-import { obtenerStore, perfilActivo } from '../contexto.js';
+import { obtenerStore, sujetoDeEstadisticas } from '../contexto.js';
 import { ACTIVIDADES } from '../actividades/indice.js';
 import {
   ACTIVIDADES_ETAPA_1, formatearDuracion, historialDeSesiones, idsDeProgresoDe, marcarDominada, precisionSemanal,
@@ -25,11 +25,11 @@ const FILTROS = [
 ];
 const NOMBRE_ESTADO = { nueva: 'Nueva', practica: 'En práctica', leida: 'Leída', completa: 'Completa', aprendida: 'Aprendida' };
 
-export function montar(contenedor) {
+export function montar(contenedor, { ruta = '' } = {}) {
   const raiz = el('section', { class: 'vista-adulto' }, cabecera('Progreso'), cargando());
   contenedor.append(raiz);
   let vivo = true;
-  pintar(raiz, () => vivo).catch((error) => mostrarError(raiz, error));
+  pintar(raiz, () => vivo, ruta).catch((error) => mostrarError(raiz, error));
   return () => { vivo = false; };
 }
 
@@ -42,10 +42,18 @@ const dia = (clave) => {
   return new Date(a, m - 1, d).toLocaleDateString('es', { day: 'numeric', month: 'short' }).replace('.', '');
 };
 
-async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null, pagina = 1 } = {}) {
+async function pintar(raiz, estaVivo, ruta, { filtro = 'todas', abierta = null, pagina = 1 } = {}) {
   const store = await obtenerStore();
-  const perfil = await perfilActivo();
-  if (!perfil) {
+  const sujeto = await sujetoDeEstadisticas(ruta);
+  if (sujeto?.faltaFicha) {
+    raiz.replaceChildren(
+      cabecera('Progreso', { atras: '#/adulto/alumnos', textoAtras: '← Alumnos' }),
+      el('div', { class: 'panel' }, el('p', {}, 'Esa ficha de alumno ya no existe.')),
+    );
+    return;
+  }
+  const deFicha = Boolean(sujeto?.ficha); // la ficha de un alumno es de solo lectura
+  if (!sujeto) {
     raiz.replaceChildren(
       cabecera('Progreso'),
       el('div', { class: 'panel' }, el('p', {}, 'Primero crea el perfil del niño.')),
@@ -54,13 +62,13 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null, pagina
     return;
   }
   const [palabras, progresos, sesiones] = await Promise.all([
-    store.listar('palabras', { perfilId: perfil.id }),
-    store.listar('progresos', { perfilId: perfil.id }),
-    store.listar('sesiones', { perfilId: perfil.id }),
+    store.listar('palabras', { perfilId: sujeto.contenidoId }), // lo que se lee es del curso
+    store.listar('progresos', { perfilId: sujeto.id }), // lo que avanzó, del perfil o de la ficha
+    store.listar('sesiones', { perfilId: sujeto.id }),
   ]);
   if (!estaVivo()) return;
 
-  const repintar = (opciones) => pintar(raiz, estaVivo, opciones).catch((error) => mostrarError(raiz, error));
+  const repintar = (opciones) => pintar(raiz, estaVivo, ruta, opciones).catch((error) => mostrarError(raiz, error));
   const aviso = el('p', { class: 'error-texto', role: 'alert', hidden: true });
   const fallar = (error) => {
     console.error(error);
@@ -77,7 +85,8 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null, pagina
   const panelResumen = el(
     'div',
     { class: 'panel' },
-    el('h2', {}, `Resumen de ${perfil.nombre}`),
+    el('h2', {}, `Resumen de ${sujeto.titulo}`),
+    deFicha ? el('p', { class: 'ayuda' }, `Es el avance de ${sujeto.ficha.nombre} (${sujeto.ficha.email}). Solo se puede ver: lo que el alumno practica y avanza lo calcula su propio celular.`) : null,
     el(
       'div',
       { class: 'datos' },
@@ -202,7 +211,7 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null, pagina
     sabe.addEventListener('click', async () => {
       sabe.disabled = true;
       try {
-        await store.guardarVarios('progresos', marcarDominada({ perfilId: perfil.id, elementoId: palabra.id, existentes: progresos }));
+        await store.guardarVarios('progresos', marcarDominada({ perfilId: sujeto.id, elementoId: palabra.id, existentes: progresos }));
         repintar({ filtro, abierta: palabra.id, pagina });
       } catch (e) {
         fallar(e);
@@ -240,8 +249,8 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null, pagina
           ? el('p', { class: 'ayuda' }, 'Aprendida: ya no sale en los repasos normales, solo en un repaso de control cada 30 días. «Volver a practicar» la devuelve a los repasos.')
           : null,
         el('ul', { class: 'lista-ayuda' }, lineas),
-        el('div', { class: 'acciones' }, sabe, reiniciar, fila.estado === 'aprendida' ? repracticar : null),
-        el('p', { class: 'ayuda' }, '«Ya la sabe» deja la palabra como aprendida y se repasa en la próxima sesión.'),
+        deFicha ? null : el('div', { class: 'acciones' }, sabe, reiniciar, fila.estado === 'aprendida' ? repracticar : null),
+        deFicha ? null : el('p', { class: 'ayuda' }, '«Ya la sabe» deja la palabra como aprendida y se repasa en la próxima sesión.'),
       ),
     );
     cuerpo.append(detalle);
@@ -308,7 +317,10 @@ async function pintar(raiz, estaVivo, { filtro = 'todas', abierta = null, pagina
     'p',
     { class: 'ayuda' },
     '¿Qué palabras le cuestan más? ',
-    el('a', { href: '#/adulto/analisis' }, 'Ver «Qué le cuesta»'),
+    el('a', { href: `#/adulto/analisis${sujeto.sufijo}` }, 'Ver «Qué le cuesta»'),
   );
-  raiz.replaceChildren(cabecera('Progreso'), panelResumen, enlaceAnalisis, panelOtras, panelGrafico, panelPalabras, panelHistorial);
+  raiz.replaceChildren(...[
+    deFicha ? cabecera('Progreso', { atras: '#/adulto/alumnos', textoAtras: '← Alumnos' }) : cabecera('Progreso'),
+    panelResumen, enlaceAnalisis, panelOtras, panelGrafico, panelPalabras, panelHistorial,
+  ].filter(Boolean)); // el replaceChildren nativo escribiría «null» en lugar de omitir un panel que no hay
 }

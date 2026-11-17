@@ -8,6 +8,7 @@ import { obtenerStore, fijarPerfilActivo } from '../contexto.js';
 import { leerFondo } from '../ui/fondo.js';
 import { vistaDePerfil } from '../store-perfil.js';
 import { estadoDeAlumnos } from '../core/aula.js';
+import { idDeFicha } from '../core/curso.js';
 import {
   FASES, nubeConfigurada, observarAulas, observarNube, obtenerAulas, pedirPermisoAulas, refrescarEstado, sincronizarAulaAhora, tienePermisoAulas,
 } from '../nube.js';
@@ -39,6 +40,7 @@ export function montar(contenedor) {
   let aulasMeta = {};
   let pendientes = {}; // perfilId -> cambios por subir
   let contenido = {}; // perfilId -> { palabras, medios }: para elegir el perfil que de verdad tiene el material
+  let fichas = {}; // perfilId -> fichas de sus alumnos (cada una con su propio avance)
   const trabajando = {}; // perfilId -> texto mientras una acción corre
   const mensajes = {}; // perfilId -> { texto, error }
   const borradores = {}; // perfilId -> correo a medio escribir
@@ -50,6 +52,9 @@ export function montar(contenedor) {
     aulasMeta = (await store.leerMeta('aulas', {})) ?? {};
     pendientes = {};
     contenido = {};
+    fichas = {};
+    const todasLasFichas = await store.listar('alumnos');
+    for (const p of perfiles) fichas[p.id] = todasLasFichas.filter((f) => f.cursoId === p.id).sort((a, b) => a.email.localeCompare(b.email));
     for (const p of perfiles) {
       contenido[p.id] = {
         palabras: (await store.listar('palabras', { perfilId: p.id })).length,
@@ -124,9 +129,19 @@ export function montar(contenedor) {
     });
   };
 
+  /** El avance que se ha jugado en ESTE celular con el perfil (el adulto no es un alumno: sus estadísticas son aparte de las de cada ficha). */
   const verEstadisticas = async (perfil) => {
     await fijarPerfilActivo(perfil.id);
     location.hash = '#/adulto/progreso';
+  };
+
+  /** Los enlaces a las estadísticas de UN alumno (su ficha): Progreso, «Qué le cuesta» y Álbum. */
+  const enlacesDeFicha = (ficha) => {
+    const sufijo = `/ficha/${encodeURIComponent(ficha.id)}`;
+    return el('span', { class: 'acciones-ficha' },
+      el('a', { class: 'boton chico', href: `#/adulto/progreso${sufijo}` }, 'Ver estadísticas'),
+      el('a', { class: 'boton secundario chico', href: `#/adulto/analisis${sufijo}` }, 'Qué le cuesta'),
+      el('a', { class: 'boton secundario chico', href: `#/adulto/album${sufijo}` }, 'Álbum'));
   };
 
   function pintar() {
@@ -184,7 +199,7 @@ export function montar(contenedor) {
     const mensaje = mensajes[perfil.id];
     const c = contenido[perfil.id];
     const hecho = [
-      el('h2', {}, perfil.nombre),
+      el('h2', {}, `Perfil (curso): ${perfil.nombre}`),
       c ? el('p', { class: 'ayuda' }, `Este perfil tiene ${cuantos(c.palabras, 'palabra', 'palabras')} y ${cuantos(c.medios, 'imagen o audio', 'imágenes y audios')}. Es lo que verá el alumno.`) : null,
     ].filter(Boolean);
     if (!info) {
@@ -224,15 +239,28 @@ export function montar(contenedor) {
         el('ul', { class: 'lista-ayuda' }, ...e.avisos.map((a) => el('li', {}, a)))));
     }
 
-    hecho.push(el('h3', {}, 'Quién tiene acceso'));
+    hecho.push(el('h3', {}, 'Alumnos de este perfil'));
     if (!alumnos.length) hecho.push(el('p', { class: 'ayuda' }, 'Todavía no invitaste a nadie.'));
     else {
-      hecho.push(el('ul', { class: 'lista-alumnos' }, ...alumnos.map((a) => el('li', { class: 'alumno-fila' },
-        el('div', {}, el('strong', {}, a.email), ' · ', ESTADOS[a.estado] ?? a.estado),
+      hecho.push(el('p', { class: 'ayuda' }, 'Todos ven el mismo perfil, pero cada alumno tiene su propia ficha con su avance y sus estadísticas.'));
+      const fichaDe = (correo) => (fichas[perfil.id] ?? []).find((f) => f.id === idDeFicha(perfil.id, correo));
+      hecho.push(el('ul', { class: 'lista-alumnos' }, ...alumnos.map((a) => el('li', { class: 'alumno-fila', 'data-alumno': a.email },
+        el('div', {}, el('strong', {}, fichaDe(a.email)?.nombre ?? a.email), ` (${a.email}) · `, ESTADOS[a.estado] ?? a.estado),
         ...a.dispositivos.map((d) => el('div', { class: 'ayuda alumno-dispositivo' },
           `${d.nombre || d.idDispositivo} · versión ${d.versionApp ?? '?'} · sincronizó ${haceCuanto(d.haceMs)} `,
           el('button', { type: 'button', class: 'boton secundario chico', disabled: ocupado, onclick: () => desvincular(perfil, d) }, 'Desvincular'))),
-        el('button', { type: 'button', class: 'boton secundario chico', disabled: ocupado, onclick: () => quitarAcceso(perfil, a.email) }, 'Quitar acceso')))));
+        el('div', { class: 'acciones' },
+          fichaDe(a.email) ? enlacesDeFicha(fichaDe(a.email)) : null,
+          el('button', { type: 'button', class: 'boton secundario chico', disabled: ocupado, onclick: () => quitarAcceso(perfil, a.email) }, 'Quitar acceso'))))));
+    }
+    // alumnos que ya no tienen acceso pero cuyas estadísticas se conservan
+    const antiguos = (fichas[perfil.id] ?? []).filter((f) => !info.invitados.includes(f.email));
+    if (antiguos.length) {
+      hecho.push(
+        el('h3', {}, 'Antiguos alumnos'),
+        el('p', { class: 'ayuda' }, 'Ya no tienen acceso, pero sus estadísticas se conservan.'),
+        el('ul', { class: 'lista-alumnos' }, ...antiguos.map((f) => el('li', { class: 'alumno-fila', 'data-alumno': f.email }, el('div', {}, el('strong', {}, f.nombre), ` (${f.email})`), el('div', { class: 'acciones' }, enlacesDeFicha(f))))),
+      );
     }
 
     const campo = el('input', { type: 'email', class: 'entrada', placeholder: 'correo@gmail.com', 'aria-label': `Gmail del alumno de ${perfil.nombre}`, autocomplete: 'off', value: borradores[perfil.id] ?? '', disabled: ocupado });
@@ -246,7 +274,7 @@ export function montar(contenedor) {
       el('div', { class: 'acciones' }, campo, el('button', { type: 'button', class: 'boton', disabled: ocupado, onclick: () => invitar(perfil) }, 'Invitar')),
       el('div', { class: 'acciones' },
         el('button', { type: 'button', class: 'boton secundario', disabled: ocupado, onclick: () => accion(perfil.id, 'Sincronizando…', async () => { await sincronizarAulaAhora(perfil.id); }) }, 'Sincronizar ahora'),
-        el('button', { type: 'button', class: 'boton secundario', onclick: () => verEstadisticas(perfil) }, 'Ver estadísticas')),
+        el('button', { type: 'button', class: 'boton secundario', onclick: () => verEstadisticas(perfil) }, 'Ver lo jugado en este celular')),
     );
     return el('div', { class: 'panel', 'data-perfil': perfil.id }, ...hecho);
   }
@@ -283,7 +311,7 @@ function panelQuePuedeVer() {
     el('h2', {}, 'Qué puede ver el alumno'),
     el('ul', { class: 'lista-ayuda' },
       el('li', {}, 'Solo la carpeta de su aula: sus palabras, frases, libros, álbumes, fotos y voces, en solo lectura. No puede cambiar nada de eso.'),
-      el('li', {}, 'Puede escribir únicamente en su propia subcarpeta «del-alumno»: sus sesiones, respuestas y progreso.'),
+      el('li', {}, 'Puede escribir únicamente en su propia carpeta: sus sesiones, respuestas y progreso. Ningún otro alumno la ve, tampoco los del mismo perfil.'),
       el('li', {}, 'No ve el resto de tu Drive, ni la carpeta «Leo Conmigo», ni las aulas de otros niños.'),
       el('li', {}, 'Nadie más ve el aula: solo los correos que invites, uno por uno. Nunca «cualquiera con el enlace».'),
       el('li', {}, 'Si aparece un acceso que Leo Conmigo no puso, te lo mostramos como «Permiso extraño» y tú decides si quitarlo.')),

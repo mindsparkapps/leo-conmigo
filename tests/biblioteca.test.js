@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { crearAulas } from '../js/aulas.js';
-import { crearDriveCarpeta } from '../js/drive.js';
+import { crearDriveAulas, crearDriveCarpeta } from '../js/drive.js';
 import { crearNubeFalsa } from './drive-falso.js';
 import { bytesDe, crearStoreEnMemoria } from './memoria.js';
 
@@ -33,13 +33,14 @@ async function montar() {
 }
 
 async function habilitar(m) {
-  const aula1 = await m.adulto.crearAula(await m.tienda.obtener('perfiles', 'P1'));
-  const aula2 = await m.adulto.crearAula(await m.tienda.obtener('perfiles', 'P2'));
+  await m.adulto.crearAula(await m.tienda.obtener('perfiles', 'P1'));
+  await m.adulto.crearAula(await m.tienda.obtener('perfiles', 'P2'));
   await m.adulto.invitar('P1', A);
   await m.adulto.invitar('P2', B);
   await m.adulto.sincronizarAula('P1');
   await m.adulto.sincronizarAula('P2');
-  return { aula1, aula2 };
+  const aulas = await m.adulto.listarAulas();
+  return { aula1: aulas.P1, aula2: aulas.P2 };
 }
 const miAula = async (x) => (await x.aulas.buscarMiAula())[0];
 const mediosEnDrive = (nube) => [...nube.estado.archivos.values()].filter((a) => a.name.startsWith('medio-'));
@@ -80,10 +81,11 @@ test('A (curso 1) y B (curso 2) bajan solo lo de su curso, lo guardan en local y
   await assert.rejects(() => bib.actualizar(solo2.id, 'x', 'image/webp'), (e) => e.estado === 403);
   await assert.rejects(() => bib.borrar(solo2.id), (e) => e.estado === 403);
   await assert.rejects(() => bib.crear('medio-trampa.webp', 'x', 'image/webp'), (e) => e.estado === 403);
-  // y la app del alumno solo escribió en su `del-alumno/`
+  // y la app del alumno solo escribió en su carpeta
   m.nube.reiniciarPeticiones();
   await m.a.aulas.sincronizarComoAlumno({ aula: await miAula(m.a), email: A });
-  assert.ok(m.nube.peticionesDe(A).filter((p) => p.metodo !== 'GET').every((p) => p.padre === aula1.carpetaAlumnoId));
+  const carpetaDeA = aula1.carpetasAlumnos[A];
+  assert.ok(m.nube.peticionesDe(A).filter((p) => p.metodo !== 'GET').every((p) => p.padre === carpetaDeA));
 });
 
 test('el alumno nunca puede dejar nada en la Biblioteca y un medio suyo no entra a ella', async () => {
@@ -148,9 +150,17 @@ test('alguien que agrega un editor o un enlace público a la Biblioteca aparece 
 
 /** Deja un aula como la dejaba la versión 0.36: sin Biblioteca, con los medio-* y el avance dentro del aula. */
 async function volverAVersion1(m, perfilId) {
-  const info = (await m.adulto.listarAulas())[perfilId];
+  const info = structuredClone((await m.adulto.listarAulas())[perfilId]); // (el almacén en memoria comparte los objetos)
   const todos = [...m.nube.estado.archivos.values()];
   for (const a of todos) if (a.name.startsWith('medio-')) a.parents = [info.carpetaId];
+  // la carpeta única `del-alumno/` dentro del aula, con los invitados como editores y los archivos de los alumnos dentro
+  const drive = crearDriveAulas(m.nube.dep(ADULTO));
+  const legada = await drive.crearCarpeta('del-alumno', { padre: info.carpetaId, propiedades: { leoConmigo: 'del-alumno', perfilId } });
+  for (const correo of info.invitados) await drive.compartir(legada, correo, 'writer', { avisar: false });
+  const propias = new Set(Object.values(info.carpetasAlumnos ?? {}));
+  for (const a of todos) if (propias.has(a.parents?.[0])) a.parents = [legada];
+  for (const id of [...propias, info.carpetaAlumnosId]) { m.nube.estado.archivos.delete(id); m.nube.estado.permisos.delete(id); }
+  info.carpetaAlumnoId = legada;
   const aulaJson = todos.find((a) => a.name === 'aula.json' && a.parents[0] === info.carpetaId);
   const v1 = m.nube.json(aulaJson.id);
   delete v1.alumnos;
@@ -158,8 +168,8 @@ async function volverAVersion1(m, perfilId) {
   v1.version = 1;
   m.nube.reescribir(aulaJson.id, v1);
   // el almacén del adulto no sabe de la Biblioteca (como antes de actualizar la app)
-  const aulas = await m.tienda.leerMeta('aulas');
-  delete aulas[perfilId].bibliotecaId;
+  const aulas = { ...(await m.tienda.leerMeta('aulas')) };
+  aulas[perfilId] = { perfilId, carpetaId: info.carpetaId, carpetaAlumnoId: legada, invitados: info.invitados };
   await m.tienda.escribirMeta('aulas', aulas);
   return info;
 }
@@ -191,13 +201,13 @@ test('un aula versión 1 con datos se migra MOVIENDO los archivos (sin volver a 
   const aulaJson = m.nube.json(m.nube.porNombre('aula.json', info.carpetaId).id);
   assert.equal(aulaJson.version, 2);
   assert.equal(aulaJson.bibliotecaId, migrada.bibliotecaId);
-  assert.deepEqual(aulaJson.alumnos, [{ email: A, carpetaId: null }]);
+  assert.deepEqual(aulaJson.alumnos, [{ email: A, carpetaId: migrada.carpetasAlumnos[A] }]);
   // adulto.json ya no lleva medios ni avance de alumnos
   const adultoJson = m.nube.json(m.nube.porNombre('adulto.json', info.carpetaId).id);
   assert.deepEqual(Object.keys(adultoJson.almacenes).sort(), ['calcomaniasPropias', 'frases', 'libros', 'palabras', 'perfiles', 'premios']);
   // lo que mandó el alumno llegó y sigue en su archivo
-  assert.deepEqual(await ids(m.tienda, 'sesiones'), ['ses-1']);
-  assert.ok(m.nube.porNombre('alumno.json', info.carpetaAlumnoId));
+  assert.deepEqual((await m.tienda.listar('sesiones', { perfilId: 'ficha:P1:' + A })).map((s) => s.id), ['ses-1'], 'ahora bajo su ficha');
+  assert.ok(m.nube.porNombre('alumno.json', info.carpetaAlumnoId), 'su archivo de antes sigue donde estaba (nada se borra)');
   // A sigue pudiendo sincronizar con la Biblioteca nueva
   const r = await m.a.aulas.sincronizarComoAlumno({ aula: await miAula(m.a), email: A });
   assert.equal(r.desvinculado, false);

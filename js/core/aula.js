@@ -260,12 +260,12 @@ const minuscula = (e) => String(e ?? '').trim().toLowerCase();
 function permisosExtranos(invitadosMin, permisos, enBibliotecaMin = invitadosMin) {
   const extranos = [];
   /** `rolesOk(email)`: los roles permitidos a ese correo en esa carpeta. */
-  const revisar = (carpeta, lista, correosOk, rolesOk) => {
+  const revisar = (carpeta, lista, correosOk, rolesOk, motivoAjeno = 'Un correo que no invitaste') => {
     for (const p of Array.isArray(lista) ? lista : []) {
       if (p?.role === 'owner' && p?.type === 'user') continue;
       let motivo = null;
       if (p?.type !== 'user') motivo = p?.type === 'anyone' ? 'Cualquiera con el enlace' : `Acceso de tipo «${p?.type ?? 'desconocido'}»`;
-      else if (!correosOk.has(minuscula(p.emailAddress))) motivo = 'Un correo que no invitaste';
+      else if (!correosOk.has(minuscula(p.emailAddress))) motivo = motivoAjeno;
       else if (!rolesOk(minuscula(p.emailAddress)).includes(p.role)) motivo = `Puede ${p.role === 'writer' ? 'cambiar' : 'tocar'} más de lo debido (${p.role})`;
       if (motivo) extranos.push({ carpeta, id: p?.id ?? null, tipo: p?.type ?? null, rol: p?.role ?? null, email: p?.emailAddress ?? null, motivo });
     }
@@ -273,22 +273,28 @@ function permisosExtranos(invitadosMin, permisos, enBibliotecaMin = invitadosMin
   const soloLector = () => ['reader'];
 
   // Ampliación 4: Biblioteca (lector para los invitados de cualquier curso), curso (lector para sus invitados) y
-  // `alumnos/<correo>/` (editor solo ese correo; los demás, como mucho lectores heredados del curso)
+  // la carpeta de cada alumno (editor solo ese correo)
   revisar('aula', permisos?.aula, invitadosMin, soloLector);
-  // Se compara por id y rol: el id de un permiso de Drive es el de la persona, igual en todas las carpetas
-  const clave = (e) => `${e.id}:${e.rol}`;
-  const yaDelAula = new Set(extranos.filter((e) => e.id).map(clave));
   revisar('biblioteca', permisos?.biblioteca, enBibliotecaMin, soloLector);
-  const heredados = [];
-  const antes = extranos.length;
+  // Fase 23: la carpeta de cada alumno NO está dentro del aula (el lector del aula no heredaría acceso a la de un compañero):
+  // el único con permiso es su dueño (como editor) y nadie más, ni siquiera otro invitado del mismo curso
+  const soloEditor = () => ['writer'];
   for (const [correo, lista] of Object.entries(permisos?.alumnos ?? {})) {
     const dueno = minuscula(correo);
-    revisar(`alumnos/${dueno}`, lista, invitadosMin, (e) => (e === dueno ? ['reader', 'writer'] : ['reader']));
+    revisar(`alumnos/${dueno}`, lista, new Set([dueno]), soloEditor, 'Otro correo con acceso a la carpeta de un alumno');
   }
-  // Hasta la fase 23 los alumnos de un curso comparten una sola carpeta `del-alumno/` donde cualquier invitado puede ser editor
-  revisar('del-alumno', permisos?.delAlumno, invitadosMin, () => ['reader', 'writer']);
-  // un permiso extraño del aula se hereda a las carpetas de dentro: es el mismo, se quita una sola vez desde el aula
-  for (const e of extranos.splice(antes)) if (!(e.id && yaDelAula.has(clave(e)))) heredados.push(e);
+  // la carpeta que contiene las de los alumnos es privada: solo el dueño
+  revisar('alumnos', permisos?.alumnosRaiz, new Set(), soloEditor);
+  // aulas de la fase 22: todos los invitados compartían una sola carpeta `del-alumno/` DENTRO del aula; al migrar solo se lee
+  // (si el aula aún no se migró —no hay `alumnosRaiz`— sus invitados siguen siendo editores)
+  const rolesDelLegado = permisos?.alumnosRaiz ? () => ['reader'] : () => ['reader', 'writer'];
+  const antes = extranos.length;
+  revisar('del-alumno', permisos?.delAlumno, invitadosMin, rolesDelLegado);
+  // un permiso extraño del aula se hereda a la carpeta de dentro: es el mismo, se quita una sola vez desde el aula
+  // (se compara por id y rol: el id de un permiso de Drive es el de la persona, igual en todas las carpetas)
+  const clave = (e) => `${e.id}:${e.rol}`;
+  const yaDelAula = new Set(extranos.filter((e) => e.carpeta === 'aula' && e.id).map(clave));
+  const heredados = extranos.splice(antes).filter((e) => !(e.id && yaDelAula.has(clave(e))));
   return [...extranos, ...heredados];
 }
 

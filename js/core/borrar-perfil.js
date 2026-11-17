@@ -19,7 +19,9 @@ export async function borrarPerfil(store, perfilId) {
   if (!perfiles.some((p) => p.id === perfilId)) return { registros: 0, medios: 0 };
   const todos = {};
   for (const almacen of ALMACENES_DEL_PERFIL) todos[almacen] = await store.listar(almacen);
-  const plan = planDeBorradoDePerfil({ perfilId, perfiles, todos });
+  // Las fichas de los alumnos del curso y sus registros (avance, sesiones…) también se borran
+  const fichas = (await store.listar('alumnos')).filter((f) => f.cursoId === perfilId);
+  const plan = planDeBorradoDePerfil({ perfilId, perfiles, todos, fichas });
   let registros = 0;
   for (const [almacen, ids] of Object.entries(plan.registros)) {
     for (const id of ids) if (await store.borrar(almacen, id)) registros += 1;
@@ -51,18 +53,21 @@ export function mediosDeRegistro(registro) {
  * @param perfilId  el perfil a quitar
  * @param perfiles  los registros del almacén `perfiles` (vivos)
  * @param todos     { almacen: [registros vivos de TODOS los perfiles] } de los almacenes con `perfilId`
+ * @param fichas    las fichas de alumno de este curso (almacén `alumnos`): se borran con sus registros
  * @returns {{ registros: {[almacen]: string[]}, medios: string[] }} ids a borrar
  */
-export function planDeBorradoDePerfil({ perfilId, perfiles, todos }) {
+export function planDeBorradoDePerfil({ perfilId, perfiles, todos, fichas = [] }) {
   const perfil = perfiles.find((p) => p.id === perfilId);
   const registros = { perfiles: perfil ? [perfil.id] : [] };
+  if (perfil && fichas.length) registros.alumnos = fichas.filter((f) => f.cursoId === perfilId).map((f) => f.id);
+  const idsDeFichas = new Set(registros.alumnos ?? []);
   const propios = perfil ? [perfil] : [];
   const ajenos = perfiles.filter((p) => p.id !== perfilId);
   for (const [almacen, lista] of Object.entries(todos)) {
-    const mios = lista.filter((r) => r.perfilId === perfilId);
+    const mios = lista.filter((r) => r.perfilId === perfilId || idsDeFichas.has(r.perfilId));
     registros[almacen] = mios.map((r) => r.id);
     propios.push(...mios);
-    ajenos.push(...lista.filter((r) => r.perfilId !== perfilId));
+    ajenos.push(...lista.filter((r) => !mios.includes(r)));
   }
   const usadosPorOtros = new Set(ajenos.flatMap(mediosDeRegistro));
   const medios = [...new Set(propios.flatMap(mediosDeRegistro))].filter((id) => !usadosPorOtros.has(id));

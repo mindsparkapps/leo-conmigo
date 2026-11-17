@@ -6,12 +6,52 @@
 
 import { ALMACENES_DEL_PERFIL } from './core/borrar-perfil.js';
 import { mediosDelPerfil } from './core/aula.js';
+import { ALMACENES_DE_FICHA } from './core/curso.js';
 
 export class ErrorVistaPerfil extends Error {
   constructor(mensaje) {
     super(mensaje);
     this.name = 'ErrorVistaPerfil';
   }
+}
+
+/**
+ * Una «vista» que solo ve y toca las FICHAS de los alumnos de UN curso y sus registros (PLAN.md, Ampliación 4, fase 23).
+ * Es lo único que el sincronizador del adulto puede escribir de lo que viene de un alumno: nunca el contenido del curso ni
+ * lo de otro curso. Un registro entra solo si su `perfilId` es la ficha de un correo de este curso
+ * (`ficha:<curso>:<correo>`), y una ficha, solo si es de este curso.
+ */
+export function vistaDeFichas(store, cursoId) {
+  const prefijo = `ficha:${cursoId}:`;
+  const esFicha = (r) => r?.cursoId === cursoId && typeof r.id === 'string' && r.id.startsWith(prefijo);
+  const esDeFicha = (almacen, r) => (almacen === 'alumnos' ? esFicha(r) : typeof r?.perfilId === 'string' && r.perfilId.startsWith(prefijo));
+  const comprobar = (almacen) => {
+    if (almacen !== 'alumnos' && !ALMACENES_DE_FICHA.includes(almacen)) throw new ErrorVistaPerfil(`Una ficha no guarda «${almacen}».`);
+  };
+
+  return {
+    cursoId,
+
+    /** Las fichas del curso (con los borrados si se pide). */
+    async fichas({ conBorrados = false } = {}) {
+      return (await store.listar('alumnos', { conBorrados })).filter(esFicha);
+    },
+
+    /** Los registros de una ficha (`alumnos`: las fichas del curso). */
+    async listar(almacen, { fichaId, conBorrados = false } = {}) {
+      comprobar(almacen);
+      if (almacen === 'alumnos') return (await store.listar('alumnos', { conBorrados })).filter(esFicha);
+      if (!fichaId?.startsWith(prefijo)) throw new ErrorVistaPerfil('Esa ficha no es de este curso.');
+      return store.listar(almacen, { perfilId: fichaId, conBorrados });
+    },
+
+    /** Escribe registros tal cual vienen (sin tocar `updatedAt` ni la cola). Rechaza todo si alguno no es de una ficha de este curso. */
+    async importar(almacen, registros) {
+      comprobar(almacen);
+      if (registros.some((r) => !esDeFicha(almacen, r))) throw new ErrorVistaPerfil(`Se rechazó un registro que no es de una ficha de este curso (${almacen}).`);
+      await store.importar(almacen, registros);
+    },
+  };
 }
 
 /**

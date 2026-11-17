@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { crearAulas, ErrorAula } from '../js/aulas.js';
 import { crearDriveAulas, crearDriveCarpeta, ErrorDrive } from '../js/drive.js';
-import { vistaDePerfil, ErrorVistaPerfil } from '../js/store-perfil.js';
+import { vistaDePerfil, vistaDeFichas, ErrorVistaPerfil } from '../js/store-perfil.js';
+import { idDeFicha } from '../js/core/curso.js';
 import { crearNubeFalsa } from './drive-falso.js';
 import { bytesDe, crearStoreEnMemoria } from './memoria.js';
 
@@ -48,14 +49,18 @@ async function montar() {
 async function habilitar(m) {
   const p1 = await m.tienda.obtener('perfiles', 'P1');
   const p2 = await m.tienda.obtener('perfiles', 'P2');
-  const aula1 = await m.adulto.crearAula(p1);
-  const aula2 = await m.adulto.crearAula(p2);
+  await m.adulto.crearAula(p1);
+  await m.adulto.crearAula(p2);
   await m.adulto.invitar('P1', A);
   await m.adulto.invitar('P2', B);
   await m.adulto.sincronizarAula('P1');
   await m.adulto.sincronizarAula('P2');
-  return { aula1, aula2 };
+  const aulas = await m.adulto.listarAulas(); // con las carpetas de cada alumno ya creadas
+  return { aula1: aulas.P1, aula2: aulas.P2 };
 }
+
+const fichaA = idDeFicha('P1', A);
+const fichaC = idDeFicha('P1', C);
 
 const miAula = async (alumno) => (await alumno.aulas.buscarMiAula())[0];
 
@@ -69,7 +74,7 @@ test('el adulto crea dos aulas e invita a A y a B: cada uno encuentra solo la su
   assert.equal(delA.length, 1);
   assert.equal(delA[0].perfilId, 'P1');
   assert.equal(delA[0].carpetaId, aula1.carpetaId);
-  assert.equal(delA[0].carpetaAlumnoId, aula1.carpetaAlumnoId);
+  assert.equal(delA[0].carpetaAlumnoId, aula1.carpetasAlumnos[A], 'cada alumno encuentra SU carpeta');
   assert.equal(delA[0].dueno, ADULTO);
   const delB = await m.b.aulas.buscarMiAula();
   assert.deepEqual(delB.map((x) => x.perfilId), ['P2']);
@@ -79,8 +84,11 @@ test('el adulto crea dos aulas e invita a A y a B: cada uno encuentra solo la su
   // los permisos de Drive son los de la tabla «Quién puede tocar qué»
   const enAula = m.nube.permisosDe(aula1.carpetaId).map((p) => [p.emailAddress, p.role]).sort();
   assert.deepEqual(enAula, [[ADULTO, 'owner'], [A, 'reader']]);
-  const enDelAlumno = m.nube.permisosDe(aula1.carpetaAlumnoId).filter((p) => p.emailAddress === A).map((p) => p.role);
-  assert.deepEqual(enDelAlumno, ['writer']);
+  assert.deepEqual(m.nube.permisosDe(aula1.carpetasAlumnos[A]).map((p) => [p.emailAddress, p.role]).sort(), [[ADULTO, 'owner'], [A, 'writer']], 'solo A escribe en su carpeta y nadie más la ve');
+  assert.equal(m.nube.archivo(aula1.carpetasAlumnos[A]).parents[0], aula1.carpetaAlumnosId, 'la carpeta de A está fuera del aula');
+  assert.notEqual(m.nube.archivo(aula1.carpetaAlumnosId).parents[0], aula1.carpetaId);
+  assert.deepEqual(m.nube.permisosDe(aula1.carpetaAlumnosId).map((p) => p.emailAddress), [ADULTO], 'el contenedor de los alumnos es privado');
+  assert.equal(aula1.carpetaAlumnoId, null, 'un aula nueva ya no tiene la carpeta única del-alumno');
   const trabajo = m.nube.archivo(aula1.carpetaId).parents[0];
   assert.deepEqual(m.nube.permisosDe(trabajo).map((p) => p.emailAddress), [ADULTO], 'la carpeta de trabajo no se comparte con nadie');
   assert.ok(m.nube.permisosDe(aula1.carpetaId).every((p) => p.type === 'user'), 'nunca «cualquiera con el enlace»');
@@ -107,7 +115,7 @@ test('A baja todo (palabra con foto y voz, libro, álbum con portada y sobre) y 
   assert.equal(r.mediosBajados, 8);
 
   // se registró: su archivo de dispositivo está en del-alumno/ y es de su cuenta
-  const disp = m.nube.porNombre('dispositivo-disp-a.json', aula1.carpetaAlumnoId);
+  const disp = m.nube.porNombre('dispositivo-disp-a.json', aula1.carpetasAlumnos[A]);
   assert.ok(disp);
   assert.equal(disp.owner, A);
   assert.equal(m.nube.json(disp.id).email, A);
@@ -143,27 +151,28 @@ test('A no puede escribir en el aula, en la carpeta de trabajo ni en el aula de 
   assert.deepEqual((await crearDriveCarpeta({ ...dep, carpetaId: trabajo }).listar()).map((x) => x.id).sort(), [aula1.bibliotecaId, aula1.carpetaId].sort(), 'de la carpeta de trabajo solo se ve su propia aula y la Biblioteca');
   assert.deepEqual(await crearDriveCarpeta({ ...dep, carpetaId: aula2.carpetaId }).listar(), [], 'el aula de B se ve vacía');
   await assert.rejects(() => crearDriveCarpeta({ ...dep, carpetaId: aula2.carpetaId }).crear('x.json', '{}', 'application/json'), (e) => e.sinAcceso === true, 'aula de B');
-  await assert.rejects(() => crearDriveCarpeta({ ...dep, carpetaId: aula2.carpetaAlumnoId }).crear('x.json', '{}', 'application/json'), (e) => e.sinAcceso === true, 'del-alumno de B');
+  await assert.rejects(() => crearDriveCarpeta({ ...dep, carpetaId: aula2.carpetasAlumnos[B] }).crear('x.json', '{}', 'application/json'), (e) => e.sinAcceso === true, 'carpeta de B');
+  await assert.rejects(() => crearDriveCarpeta({ ...dep, carpetaId: aula1.carpetaAlumnosId }).crear('x.json', '{}', 'application/json'), (e) => e.sinAcceso === true, 'contenedor de los alumnos');
 
-  // la app: lo único que A escribió fue dentro de su `del-alumno/`
+  // la app: lo único que A escribió fue dentro de SU carpeta
   m.nube.reiniciarPeticiones();
   await m.a.aulas.sincronizarComoAlumno({ aula: await miAula(m.a), email: A });
   const escrituras = m.nube.peticionesDe(A).filter((p) => p.metodo !== 'GET');
   assert.ok(escrituras.length > 0);
-  assert.ok(escrituras.every((p) => p.padre === aula1.carpetaAlumnoId), JSON.stringify(escrituras));
+  assert.ok(escrituras.every((p) => p.padre === aula1.carpetasAlumnos[A]), JSON.stringify(escrituras));
   // y B tampoco ve ni toca lo de A
   const aulaB = await m.b.aulas.buscarMiAula();
   assert.ok(aulaB.every((x) => x.carpetaId !== aula1.carpetaId));
 });
 
-test('el adulto nunca escribe dentro de `del-alumno/` al sincronizar', async () => {
+test('el adulto nunca escribe dentro de la carpeta de un alumno al sincronizar', async () => {
   const m = await montar();
   const { aula1 } = await habilitar(m);
   await m.a.aulas.sincronizarComoAlumno({ aula: await miAula(m.a), email: A });
   m.nube.reiniciarPeticiones();
   await m.adulto.sincronizarAula('P1');
   const escrituras = m.nube.peticionesDe(ADULTO).filter((p) => p.metodo !== 'GET' && !p.ruta.includes('/permissions'));
-  assert.ok(escrituras.every((p) => p.padre !== aula1.carpetaAlumnoId), JSON.stringify(escrituras));
+  assert.ok(escrituras.every((p) => !Object.values(aula1.carpetasAlumnos).includes(p.padre)), JSON.stringify(escrituras));
 });
 
 test('A juega sin conexión y al volver sube sesión y respuestas, que aparecen en el adulto con el mismo perfilId', async () => {
@@ -184,12 +193,17 @@ test('A juega sin conexión y al volver sube sesión y respuestas, que aparecen 
 
   await m.a.aulas.sincronizarComoAlumno({ aula, email: A });
   await m.adulto.sincronizarAula('P1');
+  // llegan al adulto bajo la FICHA de A (nunca bajo el curso)
   for (const [almacen, id] of [['sesiones', 's1'], ['respuestas', 'r1'], ['progresos', 'g1'], ['movimientos', 'mv1'], ['calcomanias', 'k1']]) {
     const r = await m.tienda.obtener(almacen, id);
-    assert.equal(r?.perfilId, 'P1', `${almacen} llegó al adulto`);
+    assert.equal(r?.perfilId, fichaA, `${almacen} llegó al adulto bajo la ficha de A`);
   }
-  // lo del alumno no toca a Sofía
-  assert.equal((await m.tienda.listar('sesiones')).filter((s) => s.perfilId !== 'P1').length, 0);
+  assert.deepEqual(await ids(m.tienda, 'sesiones'), ['s1']);
+  assert.equal((await m.tienda.listar('sesiones', { perfilId: 'P1' })).length, 0, 'el curso no recibe avance de alumnos');
+  assert.equal((await m.tienda.listar('progresos', { perfilId: 'P1' })).length, 0);
+  const ficha = await m.tienda.obtener('alumnos', fichaA);
+  assert.equal(ficha.cursoId, 'P1');
+  assert.equal(ficha.email, A);
 });
 
 test('un alumno.json manipulado (palabra, medio, registro de B, perfil ajeno) no cambia nada en el adulto y deja un aviso', async () => {
@@ -199,7 +213,7 @@ test('un alumno.json manipulado (palabra, medio, registro de B, perfil ajeno) no
   await m.a.store.guardar('sesiones', { id: 's1', perfilId: 'P1' });
   await m.a.aulas.sincronizarComoAlumno({ aula, email: A });
 
-  const archivo = m.nube.porNombre('alumno.json', aula1.carpetaAlumnoId);
+  const archivo = m.nube.porNombre('alumno.json', aula1.carpetasAlumnos[A]);
   const doc = m.nube.json(archivo.id);
   const futuro = '2099-01-01T00:00:00.000Z';
   doc.almacenes.palabras = [{ id: 'w-trampa', perfilId: 'P1', texto: 'trampa', updatedAt: futuro }, { id: 'w-perro', perfilId: 'P1', texto: 'CAMBIADA', updatedAt: futuro }];
@@ -222,7 +236,8 @@ test('un alumno.json manipulado (palabra, medio, registro de B, perfil ajeno) no
   assert.equal(await m.tienda.obtener('sesiones', 's-ajena'), undefined);
   assert.equal(await m.tienda.obtener('sesiones', 's-sin-perfil'), undefined);
   assert.deepEqual(await m.tienda.obtener('perfiles', 'P2'), sofia);
-  assert.equal((await m.tienda.obtener('sesiones', 's1')).perfilId, 'P1', 'lo legítimo sí llega');
+  assert.equal((await m.tienda.obtener('sesiones', 's1')).perfilId, fichaA, 'lo legítimo sí llega, bajo la ficha de A');
+  assert.equal((await m.tienda.listar('progresos', { perfilId: fichaA })).length, 0, 'g-ajeno no entró a ninguna ficha');
   assert.ok(resumen.avisos.length > 0);
   assert.deepEqual(Object.keys(resumen.descartados.porAlmacen).sort(), ['libros', 'medios', 'palabras', 'perfiles', 'progresos', 'sesiones']);
   assert.equal(resumen.descartados.porAlmacen.palabras, 2);
@@ -237,7 +252,7 @@ test('si el propio alumno.json de A trae registros ajenos (manipulado con su cue
   const { aula1 } = await habilitar(m);
   const aula = await miAula(m.a);
   await m.a.aulas.sincronizarComoAlumno({ aula, email: A });
-  const archivo = m.nube.porNombre('alumno.json', aula1.carpetaAlumnoId);
+  const archivo = m.nube.porNombre('alumno.json', aula1.carpetasAlumnos[A]);
   const doc = m.nube.json(archivo.id);
   doc.almacenes.progresos.push({ id: 'g-ajeno', perfilId: 'P2', updatedAt: '2099-01-01T00:00:00.000Z' });
   doc.almacenes.palabras = [{ id: 'w-x', perfilId: 'P1', updatedAt: '2099-01-01T00:00:00.000Z' }];
@@ -255,7 +270,7 @@ test('un alumno.json de otro dueño, de otro perfil o dañado se ignora con un a
   const m = await montar();
   const { aula1 } = await habilitar(m);
   await m.a.aulas.sincronizarComoAlumno({ aula: await miAula(m.a), email: A });
-  const archivo = m.nube.porNombre('alumno.json', aula1.carpetaAlumnoId);
+  const archivo = m.nube.porNombre('alumno.json', aula1.carpetasAlumnos[A]);
   const bueno = m.nube.json(archivo.id);
 
   m.nube.reescribir(archivo.id, { ...bueno, perfilId: 'P2' });
@@ -268,11 +283,11 @@ test('un alumno.json de otro dueño, de otro perfil o dañado se ignora con un a
   r = (await m.adulto.sincronizarAula('P1')).resumen;
   assert.ok(r.avisos.some((a) => /no lo escribió el alumno/.test(a)));
 
-  // un alumno.json cuyo dueño no está invitado (p. ej. alguien con acceso que no debería) no se lee
+  // un alumno.json dentro de la carpeta de A pero de otro dueño (alguien con acceso que no debería) no se lee
   m.nube.archivo(archivo.id).owner = C;
   m.nube.reescribir(archivo.id, bueno);
   r = (await m.adulto.sincronizarAula('P1')).resumen;
-  assert.ok(r.avisos.some((a) => /no está invitado/.test(a)));
+  assert.ok(r.avisos.some((a) => /no es de ese alumno/.test(a)));
 });
 
 test('el adulto agrega un álbum y A lo recibe; un medio borrado por el adulto desaparece en A y no vuelve', async () => {
@@ -310,7 +325,7 @@ test('el adulto agrega un álbum y A lo recibe; un medio borrado por el adulto d
   assert.deepEqual(await bytesDe((await m.a.store.obtener('medios', 'm-img')).blob), [4, 5, 6, 13, 10], 'lo demás sigue intacto');
 });
 
-test('si el adulto cambia un ajuste y A también, gana el más reciente; el alumno nunca publica lo del adulto', async () => {
+test('el alumno nunca publica lo del adulto, y un ajuste del curso no pisa lo que el alumno calcula solo (ni al revés)', async () => {
   const m = await montar();
   const { aula1 } = await habilitar(m);
   const aula = await miAula(m.a);
@@ -318,11 +333,43 @@ test('si el adulto cambia un ajuste y A también, gana el más reciente; el alum
   // el alumno cambia una palabra localmente: nunca viaja (es del adulto)
   const w = await m.a.store.obtener('palabras', 'w-perro');
   await m.a.store.guardar('palabras', { ...w, texto: 'CAMBIO DEL ALUMNO' });
+  // y su celular sube su etapa y sus ensayos por sesión (ajustes automáticos)
+  const perfilA = await m.a.store.obtener('perfiles', 'P1');
+  await m.a.store.guardar('perfiles', { ...perfilA, etapaActual: 3, ajustes: { ...perfilA.ajustes, ensayosPorSesion: 6 }, cambiosAutomaticos: [{ id: 'x', ajuste: 'ensayosPorSesion' }] });
   await m.a.aulas.sincronizarComoAlumno({ aula, email: A });
-  const doc = m.nube.json(m.nube.porNombre('alumno.json', aula1.carpetaAlumnoId).id);
+  const doc = m.nube.json(m.nube.porNombre('alumno.json', aula1.carpetasAlumnos[A]).id);
   assert.deepEqual(Object.keys(doc.almacenes).sort(), ['calcomanias', 'movimientos', 'niveles', 'perfiles', 'progresos', 'respuestas', 'sesiones']);
+  // del perfil publica SOLO lo suyo: nada del curso (ni nombre, ni foto, ni álbumes, ni ajustes manuales)
+  assert.deepEqual(Object.keys(doc.almacenes.perfiles[0]).sort(), ['ajustes', 'cambiosAutomaticos', 'etapaActual', 'id', 'updatedAt']);
+  assert.deepEqual(doc.almacenes.perfiles[0].ajustes, { ensayosPorSesion: 6, maxOpciones: 4, palabrasNuevasPorSesion: 2 });
+  assert.equal(doc.almacenes.perfiles[0].etapaActual, 3);
+
+  // el adulto cambia un ajuste MANUAL del curso (y también uno automático, que NO debe pisar al alumno)
+  const p1 = await m.tienda.obtener('perfiles', 'P1');
+  await m.tienda.guardar('perfiles', { ...p1, ajustes: { ...p1.ajustes, mayusculas: true, ensayosPorSesion: 12 } });
   await m.adulto.sincronizarAula('P1');
   assert.equal((await m.tienda.obtener('palabras', 'w-perro')).texto, 'perro');
+  const enAdulto = await m.tienda.obtener('perfiles', 'P1');
+  assert.equal(enAdulto.etapaActual ?? 1, p1.etapaActual ?? 1, 'el perfil del curso no recibe la etapa del alumno');
+  assert.equal(enAdulto.ajustes.ensayosPorSesion, 12, 'ni sus ajustes automáticos');
+  assert.equal(enAdulto.cambiosAutomaticos?.length ?? 0, p1.cambiosAutomaticos?.length ?? 0);
+  const ficha = await m.tienda.obtener('alumnos', fichaA);
+  assert.equal(ficha.estado.etapaActual, 3, 'lo del alumno queda en SU ficha');
+  assert.equal(ficha.estado.ajustes.ensayosPorSesion, 6);
+
+  await m.a.aulas.sincronizarComoAlumno({ aula, email: A });
+  const enAlumno = await m.a.store.obtener('perfiles', 'P1');
+  assert.equal(enAlumno.ajustes.mayusculas, true, 'el ajuste manual del curso llega al alumno');
+  assert.equal(enAlumno.ajustes.ensayosPorSesion, 6, 'el automático del alumno se queda');
+  assert.equal(enAlumno.etapaActual, 3);
+  assert.equal(enAlumno.cambiosAutomaticos.length, 1);
+
+  // si el adulto pone ese ajuste en «Lo elijo yo», su valor llega al alumno
+  const p1b = await m.tienda.obtener('perfiles', 'P1');
+  await m.tienda.guardar('perfiles', { ...p1b, ajustes: { ...p1b.ajustes, ensayosPorSesion: 10, automaticos: { ...p1b.ajustes.automaticos, ensayosPorSesion: false } } });
+  await m.adulto.sincronizarAula('P1');
+  await m.a.aulas.sincronizarComoAlumno({ aula, email: A });
+  assert.equal((await m.a.store.obtener('perfiles', 'P1')).ajustes.ensayosPorSesion, 10);
 });
 
 test('un permiso `anyone` o un editor en el aula puestos a mano salen como «Permiso extraño»; se quitan solo a pedido', async () => {
@@ -353,8 +400,9 @@ test('quitar acceso: A deja de ver el aula, el correo sale de la lista y los dat
   assert.deepEqual(info.invitados, []);
   assert.deepEqual(await m.a.aulas.buscarMiAula(), []);
   await assert.rejects(() => m.a.aulas.sincronizarComoAlumno({ aula, email: A }), (e) => e.sinAcceso === true);
-  assert.deepEqual(m.nube.permisosDe(aula1.carpetaAlumnoId).map((p) => p.emailAddress), [ADULTO]);
-  assert.equal((await m.tienda.obtener('sesiones', 's1')).perfilId, 'P1');
+  assert.deepEqual(m.nube.permisosDe(aula1.carpetasAlumnos[A]).map((p) => p.emailAddress), [ADULTO]);
+  assert.equal((await m.tienda.obtener('sesiones', 's1')).perfilId, fichaA, 'la ficha y su avance se quedan');
+  assert.ok(await m.tienda.obtener('alumnos', fichaA));
   // y con su dispositivo todavía en la carpeta, el adulto ya no lo cuenta como invitado
   const e = await m.adulto.sincronizarAula('P1');
   assert.deepEqual(e.alumnos, []);
@@ -395,20 +443,140 @@ test('cambiar el fondo lo reescribe en aula.json y A lo recibe; si no cambió no
   assert.equal(await m.a.aulas.huboCambiosDelAdulto(aula), false);
 });
 
-test('dos cuentas del mismo alumno (tablet y celular) comparten el aula y el adulto las ve a las dos', async () => {
+test('dos alumnos del mismo perfil: cada uno con su carpeta, su ficha y su avance; ninguno ve ni toca lo del otro', async () => {
+  const m = await montar();
+  const { aula1 } = await habilitar(m);
+  await m.adulto.invitar('P1', C);
+  const info = (await m.adulto.listarAulas()).P1;
+  assert.ok(info.carpetasAlumnos[A] && info.carpetasAlumnos[C] && info.carpetasAlumnos[A] !== info.carpetasAlumnos[C]);
+  const aulaA = await miAula(m.a);
+  const aulaC = await miAula(m.c);
+  assert.equal(aulaC.perfilId, 'P1');
+  assert.equal(aulaC.carpetaAlumnoId, info.carpetasAlumnos[C]);
+  assert.notEqual(aulaC.carpetaAlumnoId, aulaA.carpetaAlumnoId);
+
+  // cada uno juega lo suyo, con los MISMOS ids de palabra (el curso es el mismo)
+  const jugar = async (alumno, correo, aula, sufijo, aciertos) => {
+    await alumno.store.guardar('sesiones', { id: `s-${sufijo}`, perfilId: 'P1', ensayos: 8 });
+    await alumno.store.guardar('progresos', { id: 'P1:w-perro:L1', perfilId: 'P1', elementoId: 'w-perro', actividad: 'L1', aciertos });
+    await alumno.store.guardar('niveles', { id: 'P1:L1', perfilId: 'P1', actividad: 'L1', nivel: aciertos });
+    await alumno.aulas.sincronizarComoAlumno({ aula, email: correo });
+  };
+  await jugar(m.a, A, aulaA, 'a', 3);
+  await jugar(m.c, C, aulaC, 'c', 7);
+  const e = await m.adulto.sincronizarAula('P1');
+  assert.deepEqual(e.alumnos.map((x) => [x.email, x.estado]).sort(), [[A, 'conectado'], [C, 'conectado']]);
+  assert.deepEqual(e.permisosExtranos, []);
+
+  // en el adulto: dos fichas separadas, cada una con lo suyo, y NADA bajo el perfil del curso
+  assert.deepEqual((await m.tienda.listar('alumnos')).filter((f) => f.cursoId === 'P1').map((f) => f.id).sort(), [fichaA, fichaC].sort());
+  assert.deepEqual((await m.tienda.listar('alumnos')).filter((f) => f.cursoId === 'P2').map((f) => f.id), [idDeFicha('P2', B)], 'B tiene su ficha en el otro curso');
+  const deFicha = async (almacen, ficha) => (await m.tienda.listar(almacen, { perfilId: ficha })).map((r) => r.id).sort();
+  assert.deepEqual(await deFicha('sesiones', fichaA), ['s-a']);
+  assert.deepEqual(await deFicha('sesiones', fichaC), ['s-c']);
+  const progA = await m.tienda.listar('progresos', { perfilId: fichaA });
+  const progC = await m.tienda.listar('progresos', { perfilId: fichaC });
+  assert.equal(progA.length, 1);
+  assert.equal(progC.length, 1);
+  assert.notEqual(progA[0].id, progC[0].id, 'el id del avance lleva la ficha: no chocan');
+  assert.equal(progA[0].aciertos, 3);
+  assert.equal(progC[0].aciertos, 7);
+  assert.equal((await m.tienda.listar('niveles', { perfilId: fichaA }))[0].nivel, 3);
+  assert.equal((await m.tienda.listar('niveles', { perfilId: fichaC }))[0].nivel, 7);
+  for (const almacen of ['sesiones', 'progresos', 'niveles']) assert.equal((await m.tienda.listar(almacen, { perfilId: 'P1' })).length, 0, `${almacen} del curso`);
+
+  // A no puede leer ni escribir la carpeta de C (ni al revés)
+  const dep = m.nube.dep(A);
+  const deC = crearDriveCarpeta({ ...dep, carpetaId: info.carpetasAlumnos[C] });
+  assert.deepEqual(await deC.listar(), [], 'la carpeta de C se ve vacía');
+  await assert.rejects(() => deC.leerJson(m.nube.porNombre('alumno.json', info.carpetasAlumnos[C]).id), (x) => x instanceof ErrorDrive && x.sinAcceso === true);
+  await assert.rejects(() => deC.crear('x.json', '{}', 'application/json'), (x) => x.sinAcceso === true);
+  await assert.rejects(() => deC.actualizar(m.nube.porNombre('alumno.json', info.carpetasAlumnos[C]).id, 'trampa', 'application/json'), (x) => x.sinAcceso === true);
+  await assert.rejects(() => crearDriveCarpeta({ ...m.nube.dep(C), carpetaId: info.carpetasAlumnos[A] }).listar().then((l) => { if (l.length) throw new Error('vio algo'); return crearDriveCarpeta({ ...m.nube.dep(C), carpetaId: info.carpetasAlumnos[A] }).crear('x.json', '{}', 'application/json'); }), (x) => x.sinAcceso === true);
+  assert.equal(m.nube.json(m.nube.porNombre('alumno.json', info.carpetasAlumnos[C]).id).perfilId, 'P1');
+
+  // la app de A solo escribió en la carpeta de A
+  m.nube.reiniciarPeticiones();
+  await m.a.aulas.sincronizarComoAlumno({ aula: aulaA, email: A });
+  assert.ok(m.nube.peticionesDe(A).filter((p) => p.metodo !== 'GET').every((p) => p.padre === info.carpetasAlumnos[A]));
+
+  // lo de A no pisa lo de C aunque se sincronice otra vez
+  await m.adulto.sincronizarAula('P1');
+  assert.equal((await m.tienda.listar('progresos', { perfilId: fichaC }))[0].aciertos, 7);
+  assert.equal(aula1.carpetaAlumnoId, null);
+});
+
+test('un ajuste del curso llega a los dos alumnos sin pisar la etapa ni los ajustes automáticos de cada uno', async () => {
   const m = await montar();
   await habilitar(m);
   await m.adulto.invitar('P1', C);
   const aulaA = await miAula(m.a);
   const aulaC = await miAula(m.c);
-  assert.equal(aulaC.perfilId, 'P1');
-  await m.a.store.guardar('sesiones', { id: 'sa', perfilId: 'P1' });
-  await m.c.store.guardar('sesiones', { id: 'sc', perfilId: 'P1' });
   await m.a.aulas.sincronizarComoAlumno({ aula: aulaA, email: A });
   await m.c.aulas.sincronizarComoAlumno({ aula: aulaC, email: C });
-  const e = await m.adulto.sincronizarAula('P1');
-  assert.deepEqual(e.alumnos.map((x) => [x.email, x.estado]).sort(), [[A, 'conectado'], [C, 'conectado']]);
-  assert.deepEqual(await ids(m.tienda, 'sesiones'), ['sa', 'sc']);
+  for (const [alumno, etapa, ensayos] of [[m.a, 2, 5], [m.c, 3, 11]]) {
+    const p = await alumno.store.obtener('perfiles', 'P1');
+    await alumno.store.guardar('perfiles', { ...p, etapaActual: etapa, ajustes: { ...p.ajustes, ensayosPorSesion: ensayos } });
+  }
+  await m.a.aulas.sincronizarComoAlumno({ aula: aulaA, email: A });
+  await m.c.aulas.sincronizarComoAlumno({ aula: aulaC, email: C });
+  await m.adulto.sincronizarAula('P1');
+  const p1 = await m.tienda.obtener('perfiles', 'P1');
+  await m.tienda.guardar('perfiles', { ...p1, nombre: 'Curso nuevo', ajustes: { ...p1.ajustes, tamanoLetra: 'grande', velocidadVoz: 0.8 } });
+  await m.adulto.sincronizarAula('P1');
+  await m.a.aulas.sincronizarComoAlumno({ aula: aulaA, email: A });
+  await m.c.aulas.sincronizarComoAlumno({ aula: aulaC, email: C });
+  for (const [alumno, etapa, ensayos] of [[m.a, 2, 5], [m.c, 3, 11]]) {
+    const p = await alumno.store.obtener('perfiles', 'P1');
+    assert.equal(p.nombre, 'Curso nuevo');
+    assert.equal(p.ajustes.tamanoLetra, 'grande');
+    assert.equal(p.ajustes.velocidadVoz, 0.8);
+    assert.equal(p.etapaActual, etapa, 'su etapa');
+    assert.equal(p.ajustes.ensayosPorSesion, ensayos, 'su ajuste automático');
+  }
+  const fA = await m.tienda.obtener('alumnos', fichaA);
+  const fC = await m.tienda.obtener('alumnos', fichaC);
+  assert.equal(fA.estado.etapaActual, 2);
+  assert.equal(fC.estado.etapaActual, 3);
+});
+
+test('un aula de la fase 22 (una sola `del-alumno/` con todos como editores) se migra: carpetas por alumno, fichas y sin editores en la de antes', async () => {
+  const m = await montar();
+  const p1 = await m.tienda.obtener('perfiles', 'P1');
+  await m.adulto.crearAula(p1);
+  const info = (await m.adulto.listarAulas()).P1;
+  // se arma a mano lo que dejaba la fase 22: la carpeta única dentro del aula, con A como editor y su alumno.json
+  const drive = crearDriveAulas(m.nube.dep(ADULTO));
+  const legada = await drive.crearCarpeta('del-alumno', { padre: info.carpetaId, propiedades: { leoConmigo: 'del-alumno', perfilId: 'P1' } });
+  await drive.compartir(info.carpetaId, A, 'reader', { avisar: false });
+  await drive.compartir(legada, A, 'writer', { avisar: false });
+  const meta = await m.tienda.leerMeta('aulas');
+  await m.tienda.escribirMeta('aulas', { P1: { perfilId: 'P1', carpetaId: info.carpetaId, carpetaAlumnoId: legada, bibliotecaId: info.bibliotecaId, invitados: [A] } });
+  assert.ok(meta.P1.carpetaAlumnosId, 'el aula nueva sí tenía carpeta de alumnos');
+  const antiguo = crearDriveCarpeta({ ...m.nube.dep(A), carpetaId: legada });
+  await antiguo.crear('alumno.json', JSON.stringify({
+    formato: 'leo-conmigo-sync', version: 1, actualizado: '2026-11-05T10:00:00.000Z', perfilId: 'P1', rol: 'alumno',
+    almacenes: { sesiones: [{ id: 's-vieja', perfilId: 'P1', updatedAt: '2026-11-05T10:00:01.000Z', deleted: false }], perfiles: [{ id: 'P1', nombre: 'Pedro', etapaActual: 2, updatedAt: '2026-11-05T10:00:01.000Z' }] },
+  }), 'application/json');
+
+  const e = await m.adulto.sincronizarAula('P1'); // migra y lee lo de antes
+  const despues = (await m.adulto.listarAulas()).P1;
+  assert.ok(despues.carpetaAlumnosId);
+  assert.ok(despues.carpetasAlumnos[A]);
+  assert.deepEqual(m.nube.permisosDe(despues.carpetasAlumnos[A]).map((p) => [p.emailAddress, p.role]).sort(), [[ADULTO, 'owner'], [A, 'writer']]);
+  assert.equal(m.nube.permisosDe(legada).some((p) => p.emailAddress === A && p.role === 'writer'), false, 'nadie sigue como editor de la carpeta de antes');
+  assert.deepEqual(e.permisosExtranos, []);
+  assert.deepEqual(m.nube.json(m.nube.porNombre('aula.json', info.carpetaId).id).alumnos, [{ email: A, carpetaId: despues.carpetasAlumnos[A] }]);
+  assert.deepEqual((await m.tienda.listar('sesiones', { perfilId: fichaA })).map((s) => s.id), ['s-vieja'], 'su avance de antes pasó a su ficha');
+  assert.equal((await m.tienda.obtener('alumnos', fichaA)).estado.etapaActual, 2);
+  assert.equal((await m.tienda.listar('sesiones', { perfilId: 'P1' })).length, 0);
+
+  // el alumno (con su celular ya actualizado) encuentra su carpeta nueva y deja de escribir en la de antes
+  const aula = await miAula(m.a);
+  assert.equal(aula.carpetaAlumnoId, despues.carpetasAlumnos[A]);
+  m.nube.reiniciarPeticiones();
+  await m.a.aulas.sincronizarComoAlumno({ aula: { ...aula, carpetaAlumnoId: legada }, email: A });
+  assert.ok(m.nube.peticionesDe(A).filter((p) => p.metodo !== 'GET').every((p) => p.padre === despues.carpetasAlumnos[A]), 'aunque su celular recordara la de antes');
 });
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -474,6 +642,27 @@ test('vistaDePerfil: solo ve lo del perfil, rechaza importar lo de otro y mantie
   assert.equal(await store.obtener('palabras', 'ok'), undefined, 'no se escribe ninguno');
   await vista.importar('palabras', [{ id: 'bueno', perfilId: 'P1' }]);
   assert.ok(await store.obtener('palabras', 'bueno'));
+});
+
+test('vistaDeFichas: solo ve y escribe fichas y avance de las fichas de SU curso', async () => {
+  const store = crearStoreEnMemoria({ prefijo: 'f' });
+  await store.importar('alumnos', [{ id: idDeFicha('P1', A), cursoId: 'P1', email: A }, { id: idDeFicha('P2', B), cursoId: 'P2', email: B }]);
+  await store.importar('sesiones', [{ id: 's1', perfilId: idDeFicha('P1', A) }, { id: 's2', perfilId: idDeFicha('P2', B) }, { id: 's-curso', perfilId: 'P1' }]);
+  const vista = vistaDeFichas(store, 'P1');
+
+  assert.deepEqual((await vista.fichas()).map((f) => f.email), [A]);
+  assert.deepEqual((await vista.listar('sesiones', { fichaId: idDeFicha('P1', A) })).map((s) => s.id), ['s1']);
+  await assert.rejects(() => vista.listar('sesiones', { fichaId: idDeFicha('P2', B) }), ErrorVistaPerfil, 'la ficha de otro curso');
+  await assert.rejects(() => vista.listar('sesiones', { fichaId: 'P1' }), ErrorVistaPerfil, 'el curso no es una ficha');
+  await assert.rejects(() => vista.listar('palabras', { fichaId: idDeFicha('P1', A) }), ErrorVistaPerfil, 'una ficha no guarda palabras');
+
+  await assert.rejects(() => vista.importar('sesiones', [{ id: 'x', perfilId: 'P1' }]), ErrorVistaPerfil, 'nada bajo el curso');
+  await assert.rejects(() => vista.importar('sesiones', [{ id: 'ok', perfilId: idDeFicha('P1', A) }, { id: 'x', perfilId: idDeFicha('P2', B) }]), ErrorVistaPerfil);
+  assert.equal(await store.obtener('sesiones', 'ok'), undefined, 'no se escribe ninguno');
+  await assert.rejects(() => vista.importar('alumnos', [{ id: idDeFicha('P2', B), cursoId: 'P2' }]), ErrorVistaPerfil, 'una ficha de otro curso');
+  await assert.rejects(() => vista.importar('palabras', [{ id: 'w', perfilId: idDeFicha('P1', A) }]), ErrorVistaPerfil);
+  await vista.importar('sesiones', [{ id: 'bueno', perfilId: idDeFicha('P1', A) }]);
+  assert.ok(await store.obtener('sesiones', 'bueno'));
 });
 
 test('vistaDePerfil: la cola de la sincronización personal se filtra y no se limpia; la meta lleva prefijo', async () => {

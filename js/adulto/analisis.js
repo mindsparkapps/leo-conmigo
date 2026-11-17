@@ -6,7 +6,7 @@
 import { el } from '../ui/dom.js';
 import { cabecera, cargando, mostrarError, describirError } from '../ui/adulto.js';
 import { crearMiniatura } from '../ui/miniatura.js';
-import { obtenerStore, perfilActivo } from '../contexto.js';
+import { obtenerStore, sujetoDeEstadisticas } from '../contexto.js';
 import { urlDeMedio, liberarUrls } from '../medios.js';
 import { ACTIVIDADES } from '../actividades/indice.js';
 import { VERSION } from '../config.js';
@@ -26,21 +26,28 @@ const porciento = (n) => `${Math.round(n * 100)} %`;
 const fechaHora = (iso) =>
   new Date(iso).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '');
 
-export function montar(contenedor) {
+export function montar(contenedor, { ruta = '' } = {}) {
   const raiz = el('section', { class: 'vista-adulto' }, cabecera('Qué le cuesta'), cargando());
   contenedor.append(raiz);
   let vivo = true;
-  pintar(raiz, () => vivo).catch((error) => mostrarError(raiz, error));
+  pintar(raiz, () => vivo, ruta).catch((error) => mostrarError(raiz, error));
   return () => {
     vivo = false;
     liberarUrls();
   };
 }
 
-async function pintar(raiz, estaVivo, { abierta = null, ocultar = false } = {}) {
+async function pintar(raiz, estaVivo, ruta, { abierta = null, ocultar = false } = {}) {
   const store = await obtenerStore();
-  const perfil = await perfilActivo();
-  if (!perfil) {
+  const sujeto = await sujetoDeEstadisticas(ruta);
+  if (sujeto?.faltaFicha) {
+    raiz.replaceChildren(
+      cabecera('Qué le cuesta', { atras: '#/adulto/alumnos', textoAtras: '← Alumnos' }),
+      el('div', { class: 'panel' }, el('p', {}, 'Esa ficha de alumno ya no existe.')),
+    );
+    return;
+  }
+  if (!sujeto) {
     raiz.replaceChildren(
       cabecera('Qué le cuesta'),
       el('div', { class: 'panel' }, el('p', {}, 'Primero crea el perfil del niño.')),
@@ -48,12 +55,15 @@ async function pintar(raiz, estaVivo, { abierta = null, ocultar = false } = {}) 
     );
     return;
   }
+  const deFicha = Boolean(sujeto.ficha); // la ficha de un alumno es de solo lectura
+  // lo que se lee (palabras y frases) es del curso; lo que el alumno hizo, de su ficha. Para exportar y mostrar, el alumno se llama como su ficha.
+  const perfil = deFicha ? { ...sujeto.perfil, id: sujeto.id, nombre: sujeto.ficha.nombre } : sujeto.perfil;
   const [palabras, frases, progresos, sesiones, respuestas] = await Promise.all([
-    store.listar('palabras', { perfilId: perfil.id }),
-    store.listar('frases', { perfilId: perfil.id }),
-    store.listar('progresos', { perfilId: perfil.id }),
-    store.listar('sesiones', { perfilId: perfil.id }),
-    store.listar('respuestas', { perfilId: perfil.id }),
+    store.listar('palabras', { perfilId: sujeto.contenidoId }),
+    store.listar('frases', { perfilId: sujeto.contenidoId }),
+    store.listar('progresos', { perfilId: sujeto.id }),
+    store.listar('sesiones', { perfilId: sujeto.id }),
+    store.listar('respuestas', { perfilId: sujeto.id }),
   ]);
   const elementos = new Map([...frases, ...palabras].map((e) => [e.id, e]));
   const analisis = analizar(respuestas);
@@ -64,7 +74,7 @@ async function pintar(raiz, estaVivo, { abierta = null, ocultar = false } = {}) 
   }
   if (!estaVivo()) return;
 
-  const repintar = (opciones) => pintar(raiz, estaVivo, { abierta, ocultar, ...opciones }).catch((error) => mostrarError(raiz, error));
+  const repintar = (opciones) => pintar(raiz, estaVivo, ruta, { abierta, ocultar, ...opciones }).catch((error) => mostrarError(raiz, error));
   const aviso = el('p', { class: 'error-texto', role: 'alert', hidden: true });
   const fallar = (error) => {
     console.error(error);
@@ -132,12 +142,12 @@ async function pintar(raiz, estaVivo, { abierta = null, ocultar = false } = {}) 
     });
     const palabra = palabras.find((x) => x.id === p.elementoId);
     const acciones = [];
-    if (palabra) {
+    if (palabra && !deFicha) {
       const sabe = el('button', { type: 'button', class: 'boton chico' }, 'Ya la sabe');
       sabe.addEventListener('click', async () => {
         sabe.disabled = true;
         try {
-          await store.guardarVarios('progresos', marcarDominada({ perfilId: perfil.id, elementoId: palabra.id, existentes: progresos }));
+          await store.guardarVarios('progresos', marcarDominada({ perfilId: sujeto.id, elementoId: palabra.id, existentes: progresos }));
           repintar({ abierta: p.elementoId });
         } catch (e) {
           fallar(e);
@@ -179,7 +189,8 @@ async function pintar(raiz, estaVivo, { abierta = null, ocultar = false } = {}) 
   };
 
   // ---- sin datos suficientes ----
-  const piezas = [cabecera('Qué le cuesta')];
+  const piezas = [deFicha ? cabecera('Qué le cuesta', { atras: '#/adulto/alumnos', textoAtras: '← Alumnos' }) : cabecera('Qué le cuesta')];
+  if (deFicha) piezas.push(el('div', { class: 'panel' }, el('p', {}, el('strong', {}, sujeto.titulo), ` (${sujeto.ficha.email}). Solo se puede ver: sale de lo que su propio celular registró.`)));
   if (!analisis.hayDatos) {
     piezas.push(
       el(
@@ -194,7 +205,7 @@ async function pintar(raiz, estaVivo, { abierta = null, ocultar = false } = {}) 
             : `Todavía no hay ensayos registrados en los últimos ${analisis.dias} días.`,
         ),
         el('p', { class: 'ayuda' }, `Cuando ${perfil.nombre} practique unas cuantas sesiones más, aquí verás qué palabras le cuestan, cuáles le salen fáciles y con qué se confunde. Una palabra necesita al menos ${MIN_ENSAYOS} ensayos para aparecer en las listas.`),
-        el('a', { class: 'boton secundario', href: '#/adulto/progreso' }, 'Ver el progreso'),
+        el('a', { class: 'boton secundario', href: `#/adulto/progreso${sujeto.sufijo}` }, 'Ver el progreso'),
       ),
     );
   } else {

@@ -16,7 +16,8 @@ const reg = (id, s, extra = {}) => ({ id, updatedAt: t(s), deleted: false, ...ex
 test('listas: no se pisan, con los medios cubren todos los almacenes y los medios ya no van en el aula', () => {
   const juntas = [...ALMACENES_SOLO_ADULTO, ...ALMACENES_DEL_ALUMNO];
   assert.equal(new Set(juntas).size, juntas.length);
-  assert.deepEqual([...juntas, 'medios'].sort(), [...ALMACENES_RESPALDO].sort());
+  // 'alumnos' (las fichas) es solo del adulto y no viaja por el aula: se guarda en su celular
+  assert.deepEqual([...juntas, 'medios', 'alumnos'].sort(), [...ALMACENES_RESPALDO].sort());
   assert.deepEqual([...ALMACENES_SOLO_ADULTO].sort(), ['calcomaniasPropias', 'frases', 'libros', 'palabras', 'premios']);
   assert.deepEqual([...ALMACENES_DEL_CURSO].sort(), ['calcomaniasPropias', 'frases', 'libros', 'palabras', 'perfiles', 'premios']);
   assert.deepEqual([...ALMACENES_DEL_ALUMNO].sort(), ['calcomanias', 'movimientos', 'niveles', 'perfiles', 'progresos', 'respuestas', 'sesiones']);
@@ -393,8 +394,8 @@ test('estadoDeAlumnos (v2): Biblioteca para invitados de cualquier curso, curso 
       biblioteca: [duenoA, lectorDe('pedro@gmail.com'), lectorDe('sofia@gmail.com'), lectorDe('luis@gmail.com')],
       aula: [duenoA, lectorDe('pedro@gmail.com'), lectorDe('sofia@gmail.com')],
       alumnos: {
-        'pedro@gmail.com': [duenoA, lectorDe('pedro@gmail.com'), editorDe('pedro@gmail.com'), lectorDe('sofia@gmail.com')],
-        'sofia@gmail.com': [duenoA, lectorDe('pedro@gmail.com'), lectorDe('sofia@gmail.com'), editorDe('sofia@gmail.com')],
+        'pedro@gmail.com': [duenoA, editorDe('pedro@gmail.com')], // fuera del aula: nadie más la ve, ni como lector
+        'sofia@gmail.com': [duenoA, editorDe('sofia@gmail.com')],
       },
     },
     ahora,
@@ -412,34 +413,38 @@ test('estadoDeAlumnos (v2): permisos extraños en Biblioteca, en el curso y en l
       biblioteca: [duenoA, editorDe('pedro@gmail.com'), lectorDe('intruso@gmail.com')], // un editor en la Biblioteca y alguien no invitado
       aula: [duenoA, lectorDe('pedro@gmail.com'), anyone],
       alumnos: {
-        'pedro@gmail.com': [duenoA, editorDe('pedro@gmail.com'), anyone, editorDe('sofia@gmail.com')], // sofia no es la dueña de esta carpeta: no puede editar
-        'sofia@gmail.com': [duenoA, editorDe('sofia@gmail.com'), editorDe('pedro@gmail.com'), { id: 'g', type: 'group', role: 'reader', emailAddress: 'g@grupos.com' }],
+        'pedro@gmail.com': [duenoA, editorDe('pedro@gmail.com'), anyone, editorDe('sofia@gmail.com')], // sofia no es la dueña de esta carpeta: no puede ni leerla
+        'sofia@gmail.com': [duenoA, editorDe('sofia@gmail.com'), lectorDe('pedro@gmail.com'), { id: 'g', type: 'group', role: 'reader', emailAddress: 'g@grupos.com' }],
       },
     },
     ahora,
   });
   const lista = r.permisosExtranos.map((p) => [p.carpeta, p.id]).sort();
   assert.deepEqual(lista, [
+    ['alumnos/pedro@gmail.com', 'a1'], // la carpeta del alumno está fuera del aula: un acceso suyo no es el del aula
     ['alumnos/pedro@gmail.com', 'w-sofia@gmail.com'],
     ['alumnos/sofia@gmail.com', 'g'],
-    ['alumnos/sofia@gmail.com', 'w-pedro@gmail.com'],
+    ['alumnos/sofia@gmail.com', 'r-pedro@gmail.com'],
     ['aula', 'a1'],
     ['biblioteca', 'r-intruso@gmail.com'],
     ['biblioteca', 'w-pedro@gmail.com'],
-  ].sort()); // `anyone` heredado del curso se cuenta una sola vez (en el curso)
-  assert.ok(r.permisosExtranos.find((p) => p.id === 'w-sofia@gmail.com').motivo.includes('writer'));
+  ].sort());
+  assert.match(r.permisosExtranos.find((p) => p.id === 'w-sofia@gmail.com').motivo, /carpeta de un alumno/);
 });
 
-test('estadoDeAlumnos (v2): un invitado a otro curso puede leer la Biblioteca pero no el curso ni escribir en la carpeta de otro', () => {
+test('estadoDeAlumnos (v2): un invitado a otro curso puede leer la Biblioteca pero no el curso ni ver la carpeta de un alumno', () => {
   const r = estadoDeAlumnos({
     invitados: ['pedro@gmail.com'],
     invitadosDeTodos: ['pedro@gmail.com', 'luis@gmail.com'],
     permisos: {
       biblioteca: [duenoA, lectorDe('luis@gmail.com')],
       aula: [duenoA, lectorDe('pedro@gmail.com'), lectorDe('luis@gmail.com')], // luis no es de este curso
-      alumnos: { 'pedro@gmail.com': [duenoA, editorDe('pedro@gmail.com')] },
+      alumnos: { 'pedro@gmail.com': [duenoA, editorDe('pedro@gmail.com'), lectorDe('luis@gmail.com')] }, // ni siquiera como lector
     },
     ahora,
   });
-  assert.deepEqual(r.permisosExtranos.map((p) => [p.carpeta, p.id, p.motivo]), [['aula', 'r-luis@gmail.com', 'Un correo que no invitaste']]);
+  assert.deepEqual(r.permisosExtranos.map((p) => [p.carpeta, p.id, p.motivo]).sort(), [
+    ['alumnos/pedro@gmail.com', 'r-luis@gmail.com', 'Otro correo con acceso a la carpeta de un alumno'],
+    ['aula', 'r-luis@gmail.com', 'Un correo que no invitaste'],
+  ]);
 });

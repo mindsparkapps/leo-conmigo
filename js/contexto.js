@@ -3,6 +3,7 @@
 import { abrirStore } from './store.js';
 import { completarVocesIniciales, migrarCatalogoUnaVez } from './medios.js';
 import { esAlumno } from './acceso.js';
+import { contenidoDe } from './core/curso.js';
 
 const META_PERFIL = 'perfilActivoId';
 let promesaStore = null;
@@ -51,6 +52,27 @@ async function elegirPerfil(store) {
   if (!todos.length) return null;
   await store.escribirMeta(META_PERFIL, todos[0].id);
   return todos[0];
+}
+
+/**
+ * De quién son las estadísticas que muestra una pantalla del adulto (Progreso, «Qué le cuesta», Álbum…): del perfil activo o,
+ * si la ruta termina en `/ficha/<id>`, de la ficha de un alumno (Ampliación 4, fase 23). Es de solo lectura para una ficha.
+ * @returns {Promise<null | { perfil, ficha, id, contenidoId, titulo, sufijo }>}
+ *   perfil: el curso (de ahí salen palabras, frases, libros y álbumes: `contenidoId`); id: el `perfilId` con que se guardó el
+ *   avance (el perfil o la ficha); sufijo: lo que se agrega a un enlace para seguir en la misma ficha ('' o '/ficha/…').
+ *   `{ faltaFicha: true }` si la ficha ya no existe.
+ */
+export async function sujetoDeEstadisticas(ruta = '') {
+  const encontrada = /\/ficha\/([^/?#]+)$/.exec(ruta);
+  if (!encontrada) {
+    const perfil = await perfilActivo();
+    return perfil ? { perfil, ficha: null, id: perfil.id, contenidoId: perfil.id, titulo: perfil.nombre, sufijo: '' } : null;
+  }
+  const store = await obtenerStore();
+  const ficha = await store.obtener('alumnos', decodeURIComponent(encontrada[1]));
+  const perfil = ficha ? await store.obtener('perfiles', contenidoDe(ficha)) : null;
+  if (!ficha || !perfil) return { faltaFicha: true };
+  return { perfil, ficha, id: ficha.id, contenidoId: contenidoDe(ficha), titulo: `${ficha.nombre} · perfil ${perfil.nombre}`, sufijo: `/ficha/${encodeURIComponent(ficha.id)}` };
 }
 
 export async function fijarPerfilActivo(id) {

@@ -7,10 +7,10 @@ import { crearSelectorImagen } from '../ui/selector-imagen.js';
 import { crearMiniatura } from '../ui/miniatura.js';
 import { crearCofre } from '../ui/moneda.js';
 import { mapaDePropias, nodoDeCalcomania } from '../ui/calcomania.js';
-import { obtenerStore, perfilActivo } from '../contexto.js';
+import { obtenerStore, perfilActivo, sujetoDeEstadisticas } from '../contexto.js';
 import { borrarMedio, guardarMedio, liberarUrls, urlDeMedio } from '../medios.js';
 import { cargarMonedas, reiniciarAlbumes } from '../albumes.js';
-import { MONEDAS_LECCION_MAX, MONEDAS_LECCION_MIN, MONEDAS_MAX, MONEDAS_MIN, TAMANO_MAX, TAMANO_MIN, crearRegalo, normalizarAlbum } from '../core/album.js';
+import { MONEDAS_LECCION_MAX, MONEDAS_LECCION_MIN, MONEDAS_MAX, MONEDAS_MIN, TAMANO_MAX, TAMANO_MIN, calcularAlbumes, crearRegalo, normalizarAlbum, saldo } from '../core/album.js';
 import { CALCOMANIAS, codigoDePropia, rutaCalcomania } from '../core/calcomanias.js';
 import { laminasDeColeccion, listarColecciones, normalizarBase, normalizarColecciones, nuevaColeccion } from '../core/colecciones.js';
 import { elegirImagenes } from '../hardware.js';
@@ -348,9 +348,49 @@ function panelAlbumesCargados({ store, perfil, propias, miniaturas, repintar, re
   );
 }
 
-export function montar(contenedor) {
+/**
+ * El álbum de UN alumno (su ficha): solo se mira. Las calcomanías y las monedas son suyas (de su ficha); el tamaño del álbum
+ * es del curso. Para cambiar el álbum del curso se vuelve al perfil.
+ */
+async function pintarFicha(raiz, ruta, estaVivo) {
+  const store = await obtenerStore();
+  const sujeto = await sujetoDeEstadisticas(ruta);
+  const atras = { atras: '#/adulto/alumnos', textoAtras: '← Alumnos' };
+  if (!sujeto?.ficha) {
+    raiz.replaceChildren(cabecera('Álbum y monedas', atras), el('div', { class: 'panel' }, el('p', {}, 'Esa ficha de alumno ya no existe.')));
+    return;
+  }
+  const [calcomanias, movimientos] = await Promise.all([
+    store.listar('calcomanias', { perfilId: sujeto.id }),
+    store.listar('movimientos', { perfilId: sujeto.id }),
+  ]);
+  if (!estaVivo()) return;
+  const album = normalizarAlbum(sujeto.perfil.album);
+  const estado = calcularAlbumes({ calcomanias, movimientos, tamano: album.tamano });
+  const dato = (valor, etiqueta) => el('div', { class: 'dato' }, el('strong', {}, String(valor)), el('span', {}, etiqueta));
+  raiz.replaceChildren(
+    cabecera('Álbum y monedas', atras),
+    el('div', { class: 'panel' },
+      el('h2', {}, `Álbum de ${sujeto.titulo}`),
+      el('p', { class: 'ayuda' }, `Es el álbum de ${sujeto.ficha.nombre} (${sujeto.ficha.email}). Solo se puede ver: sus monedas y calcomanías son de su propio celular. El tamaño y los álbumes disponibles son los del perfil.`),
+      el('div', { class: 'datos' },
+        dato(saldo(movimientos), 'monedas'),
+        dato(calcomanias.filter((c) => !c.deleted).length, 'calcomanías'),
+        dato(estado.completos.length, estado.completos.length === 1 ? 'álbum completo' : 'álbumes completos'),
+        dato(`${estado.actual.codigos.length} de ${album.tamano}`, 'en el álbum actual'),
+      ),
+    ),
+  );
+}
+
+export function montar(contenedor, { ruta = '' } = {}) {
   const raiz = el('section', { class: 'vista-adulto' }, cabecera('Álbum y monedas'), cargando());
   contenedor.append(raiz);
+  if (/\/ficha\//.test(ruta)) {
+    let vivoFicha = true;
+    pintarFicha(raiz, ruta, () => vivoFicha).catch((error) => mostrarError(raiz, error));
+    return () => { vivoFicha = false; };
+  }
   let vivo = true;
   let selector = null;
   const urlsTemporales = []; // vistas previas de las imágenes elegidas para un álbum nuevo

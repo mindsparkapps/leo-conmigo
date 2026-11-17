@@ -7,6 +7,7 @@ import functools
 import mimetypes
 import os
 import sys
+import threading
 from http import server
 
 mimetypes.add_type('text/javascript', '.js')
@@ -70,4 +71,12 @@ if __name__ == '__main__':
     print(f'Sirviendo {RAIZ} en http://127.0.0.1:{puerto}/')
     # La cola por defecto es de 5 conexiones: el álbum pide unas 30 imágenes a la vez y el resto se reseteaba
     server.ThreadingHTTPServer.request_queue_size = 128
+    # Un tercer origen (solo en este equipo) para probar DOS alumnos del mismo perfil además del adulto:
+    # localhost (adulto), 127.0.0.1 (alumno A) y 127.0.0.2 (alumno B), con la misma «nube» compartida
+    try:
+        segundo = server.ThreadingHTTPServer(('127.0.0.2', puerto), manejador)
+        threading.Thread(target=segundo.serve_forever, daemon=True).start()
+        print(f'y en http://127.0.0.2:{puerto}/')
+    except OSError:
+        pass
     server.ThreadingHTTPServer(('127.0.0.1', puerto), manejador).serve_forever()
