@@ -4,6 +4,9 @@
 // Para agregar una: genera el mp3 en data/voces/frases/, anótala aquí y añádela a PRECACHE en sw.js.
 
 const FRASES = [
+  // ejemplos del menú de niveles de Escritura
+  ['dí·a', 'dia'],
+  ['a e i', 'a-e-i'],
   // consignas
   ['Toca la frase que es igual', 'toca-la-frase-que-es-igual'],
   ['Lee la frase y toca el dibujo', 'lee-la-frase-y-toca-el-dibujo'],
