@@ -4,7 +4,7 @@
 import { el } from '../ui/dom.js';
 import { crearCandado } from '../ui/candado.js';
 import { crearMiniatura } from '../ui/miniatura.js';
-import { habilitarAdulto, deshabilitarAdulto, esAlumno } from '../acceso.js';
+import { habilitarAdulto, deshabilitarAdulto, esAlumno, esAdministrador, cargarAdministradores } from '../acceso.js';
 import { NOMBRE_APP, TEXTO_VERSION } from '../config.js';
 import { pintarPrimerUso } from './primer-uso.js';
 import { alTocarJugar } from '../nube-alumno.js';
@@ -18,6 +18,7 @@ import { acreditarAlbumesPendientes, cargarMonedas } from '../albumes.js';
 import { saltarLeccionActivo } from '../dev.js';
 import { terminarLeccion } from './premio.js';
 import { normalizarAjustes } from '../core/modelos.js';
+import { elementosDeEscritura, nivelesDisponibles } from '../core/escritura/elementos.js';
 
 export const titulo = NOMBRE_APP;
 
@@ -32,6 +33,9 @@ const ICONO_JUGAR = `
 
 const ICONO_ALBUM = `
 <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path d="M32 6l7.4 15.6 17 2.2-12.4 11.8 3.1 16.9L32 44.1 16.9 52.5l3.1-16.9L7.6 23.8l17-2.2z" fill="currentColor"/></svg>`;
+
+const ICONO_ESCRITURA = `
+<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path d="M4 40h16v14H4zM24 40h16v14H24z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/><path d="M44 8l12 12-24 24-14 4 4-14z" fill="currentColor"/></svg>`;
 
 export function montar(contenedor, { ir }) {
   deshabilitarAdulto(); // al volver al modo niño, el modo adulto vuelve a quedar bloqueado
@@ -91,6 +95,8 @@ async function pintar(vista, ir, estaVivo) {
   ]);
   if (!estaVivo()) return;
 
+  const escritura = await botonEscritura({ store, perfil, palabras, frases, irA: (ruta) => () => { desbloquearAudio(); ir(ruta); } });
+  if (!estaVivo()) return;
   const hayQuePracticar = hayAlgoQuePracticar({ perfil, palabras, frases, progresos, niveles });
   const palabrasPorId = new Map(palabras.filter((p) => !p.deleted).map((p) => [p.id, p]));
   const frasesPorId = new Map(frases.filter((f) => !f.deleted).map((f) => [f.id, f]));
@@ -128,6 +134,7 @@ async function pintar(vista, ir, estaVivo) {
     }),
     botonMenu({ clase: 'menu-tienda', etiqueta: 'Tienda', icono: ICONO_TIENDA, alTocar: irA('/nino/tienda') }),
     botonMenu({ clase: 'menu-album', etiqueta: 'Álbum', icono: ICONO_ALBUM, alTocar: irA('/nino/albumes') }),
+    escritura,
     hayLibros ? botonMenu({ clase: 'menu-libro', etiqueta: 'Libros', icono: ICONO_LIBRO, alTocar: irA('/nino/libros') }) : null,
     // Config lleva al modo adulto: sigue protegido (mantener 3 s y resolver la suma). En el celular de un alumno lleva al mismo panel con el menú reducido.
     crearCandado({ alDesbloquear: () => entrarAdulto(ir), etiqueta: 'Config' }),
@@ -142,4 +149,26 @@ async function pintar(vista, ir, estaVivo) {
       el('p', { class: 'version-app' }, TEXTO_VERSION),
     ].filter(Boolean), // un nodo null se escribiría como el texto «null»
   );
+}
+
+/**
+ * El botón «Escritura» (Ampliación 5), o null si no corresponde. Con la escritura habilitada para el perfil lo ve todo el mundo; si no,
+ * solo un administrador (la cuenta de Google con sesión está en la lista de `meta`), con la etiqueta «Modo administrador» encima.
+ * Además tiene que haber al menos un nivel con palabras para escribir.
+ */
+async function botonEscritura({ store, perfil, palabras, frases, irA }) {
+  const esc = normalizarAjustes(perfil.ajustes).escritura;
+  await cargarAdministradores(store);
+  const comoAdministrador = !esc.habilitada;
+  if (comoAdministrador && !esAdministrador()) return null;
+  let banco = {};
+  try {
+    const respuesta = await fetch('data/escritura/banco.json');
+    if (respuesta.ok) banco = await respuesta.json();
+  } catch { /* sin red: solo cuentan las palabras del perfil */ }
+  const elementos = elementosDeEscritura({ palabras, frases, banco, bancoApagado: esc.bancoApagado });
+  if (!nivelesDisponibles(elementos.filter((e) => e.activa !== false && !e.deleted)).length) return null;
+  const boton = botonMenu({ clase: 'menu-escritura', etiqueta: 'Escritura', icono: ICONO_ESCRITURA, alTocar: irA('/nino/escritura') });
+  if (!comoAdministrador) return boton;
+  return el('div', { class: 'menu-escritura-celda' }, el('p', { class: 'esc-etiqueta-admin' }, 'Modo administrador'), boton);
 }

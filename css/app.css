@@ -1357,3 +1357,105 @@ a.boton-respuesta { text-decoration: none; font-size: 2.4rem; }
 .revisor-actual { font-size: 1.2rem; font-weight: 700; margin: 0.5rem 0; }
 .revisor-malas { padding-left: 1.2rem; }
 .revisor-malas li { margin: 0.3rem 0; }
+
+/* ===== Modo Escritura (Ampliación 5, fase 29): el modelo, una caja por pieza y las piezas =====
+   Las reglas de celular acostado van DESPUÉS de las base (con igual especificidad gana la última). */
+.menu-escritura { background: #6a3d9a; }
+.menu-escritura-celda { display: flex; flex-direction: column; gap: 6px; }
+.menu-escritura-celda .menu-boton { flex: 1; }
+.esc-etiqueta-admin {
+  align-self: center; margin: 0; padding: 2px 12px; border: 2px solid var(--amarillo); border-radius: 999px;
+  background: var(--amarillo-suave); color: var(--texto); font-size: 0.9rem; font-weight: 700; text-align: center;
+}
+.escritura-nino > .esc-etiqueta-admin { position: absolute; bottom: 6px; left: 50%; z-index: 6; translate: -50% 0; pointer-events: none; }
+
+.escritura-nino { padding-top: 104px; }
+.esc-area { gap: 10px; padding-bottom: 34px; }
+.esc-modelo { display: flex; flex: none; align-items: center; justify-content: center; gap: 12px; padding: 4px 16px; }
+.esc-modelo .carta { width: auto; min-width: 0; min-height: 0; padding: 8px; gap: 2px; overflow: hidden; cursor: default; }
+.esc-modelo .carta-emoji, .esc-modelo .carta-imagen .carta-emoji { font-size: min(clamp(3.5rem, 14vmin, 6rem), 11dvh); }
+.esc-modelo .carta-foto, .esc-modelo .carta-imagen .carta-foto { max-height: min(clamp(90px, 22vmin, 160px), 16dvh); }
+.esc-modelo .boton-audio { width: 88px; height: 88px; padding: 18px; }
+.esc-dictado .boton-audio-grande { width: min(clamp(140px, 30vmin, 220px), 22dvh); height: min(clamp(140px, 30vmin, 220px), 22dvh); padding: 22%; }
+
+.esc-texto { margin: 0 16px; font-size: clamp(1.3rem, 5vmin, 2rem); line-height: 1.4; text-align: center; }
+.esc-texto-hueco { display: inline-block; min-width: 3em; height: 1.1em; padding: 0 0.3em; vertical-align: text-bottom; border-bottom: 4px dashed var(--azul); color: var(--azul-oscuro); }
+.esc-texto-hueco.completo { min-width: 0; height: auto; border-bottom-style: solid; border-bottom-color: var(--verde); color: var(--verde); font-weight: 700; }
+
+.esc-cajas { display: flex; flex: none; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; padding: 4px 16px; }
+.esc-espacio { flex: none; width: 22px; }
+.esc-caja {
+  display: grid; place-items: center; min-width: clamp(64px, 18vw, 120px); min-height: 88px; padding: 4px 10px;
+  border: 4px dashed var(--borde-fuerte); border-radius: 18px; background: #fff; color: var(--texto);
+  font: inherit; cursor: pointer; touch-action: manipulation; transition: background-color 0.15s, border-color 0.15s;
+}
+.esc-texto-caja, .esc-texto-pieza { font-size: clamp(1.8rem, 8vw, 3.2rem); font-weight: 700; line-height: 1.1; white-space: nowrap; }
+.esc-caja.cerca { border-color: var(--azul); background: var(--azul-suave); }
+.esc-caja.llena { border-style: solid; border-color: var(--verde); background: var(--verde-suave); cursor: default; }
+.esc-caja.error-rojo { border-color: #e07a7a; background: #fbe4e4; } /* rojo suave: solo con la opción «rojo» del adulto, sin sonido ni cruz */
+.esc-caja.ayuda { border-color: var(--amarillo); background: var(--amarillo-suave); animation: latido 1.3s ease-in-out infinite; }
+.esc-caja.suena { border-color: var(--amarillo); background: var(--amarillo-suave); scale: 1.08; }
+.esc-cajas.celebrar { animation: salto 0.7s ease-out; }
+
+.esc-piezas { display: flex; flex: 1; flex-wrap: wrap; align-content: center; align-items: center; justify-content: center; gap: 12px; min-height: 0; padding: 8px 16px; }
+.esc-pieza {
+  position: relative; min-width: 88px; min-height: 88px; padding: 8px 14px; border: 4px solid var(--borde-fuerte); border-radius: 24px;
+  background: #fff; color: var(--texto); font: inherit; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+  transition: opacity 0.2s, background-color 0.15s, border-color 0.15s;
+}
+.esc-pieza.tomada { border-color: var(--azul); background: var(--azul-suave); scale: 1.06; }
+.esc-pieza.arrastrando { z-index: 20; cursor: grabbing; scale: 1.1; box-shadow: 0 8px 18px rgb(0 0 0 / 0.28); transition: none; }
+.esc-pieza.atenuada { opacity: 0.3; }
+.esc-pieza.ayuda { border-color: var(--amarillo); background: var(--amarillo-suave); animation: latido 1.3s ease-in-out infinite; }
+.esc-pieza.usada { visibility: hidden; }
+.alto-contraste .esc-pieza, .alto-contraste .esc-caja { border-color: #000; }
+
+/* El menú de niveles y el interruptor de oraciones */
+.esc-boton-niveles {
+  position: absolute; top: 12px; left: 96px; z-index: 5; display: grid; place-items: center; width: 88px; height: 88px; padding: 0;
+  border: 0; border-radius: 18px; background: #6a3d9a; color: #fff; cursor: pointer; touch-action: manipulation;
+}
+.esc-boton-niveles svg { width: 58%; height: 58%; }
+.esc-menu { position: absolute; inset: 0; z-index: 30; padding: 104px 16px 16px; overflow-y: auto; background: var(--fondo); }
+.esc-menu-cerrar { position: absolute; top: 12px; left: 12px; }
+.esc-niveles { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
+.esc-nivel {
+  position: relative; display: grid; place-items: center; min-width: 88px; min-height: 96px; padding: 8px; border: 4px solid var(--borde-fuerte);
+  border-radius: 20px; background: #fff; color: var(--texto); font: inherit; cursor: pointer; touch-action: manipulation;
+}
+.esc-nivel.actual { border-color: var(--verde); background: var(--verde-suave); }
+.esc-nivel.elegido { border-color: var(--amarillo); background: var(--amarillo-suave); }
+.esc-nivel-ejemplo { font-size: clamp(1.6rem, 7vw, 2.4rem); font-weight: 700; line-height: 1.1; text-align: center; overflow-wrap: anywhere; }
+.esc-nivel-numero { position: absolute; top: 4px; right: 8px; color: var(--texto-suave); font-size: 0.8rem; }
+.esc-interruptor { display: flex; flex: 1; flex-direction: column; justify-content: center; gap: 16px; padding: 16px; }
+.esc-opcion {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 120px; padding: 12px;
+  border: 4px solid var(--borde-fuerte); border-radius: 24px; background: #fff; color: var(--texto); font: inherit; cursor: pointer; touch-action: manipulation;
+}
+.esc-opcion.predeterminada { border-color: var(--azul); background: var(--azul-suave); }
+.esc-opcion-ejemplo { font-size: clamp(1.1rem, 4.4vw, 1.7rem); }
+.esc-opcion-texto { font-size: clamp(1.6rem, 6vw, 2.4rem); font-weight: 700; }
+
+@media (prefers-reduced-motion: reduce) {
+  .esc-caja.ayuda, .esc-pieza.ayuda { animation: none; border-width: 8px; }
+  .esc-caja, .esc-pieza { transition: none; }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .escritura-nino { padding: 12px 16px 12px 108px; }
+  .esc-boton-niveles { top: 96px; left: 12px; }
+  .esc-area { display: grid; grid-template-columns: minmax(0, 27%) minmax(0, 1fr); grid-template-rows: auto auto 1fr; align-items: center; gap: 6px 12px; padding-bottom: 28px; }
+  .esc-modelo { grid-column: 1; grid-row: 1 / span 3; flex-direction: column; align-self: stretch; padding: 4px; }
+  .esc-texto { grid-column: 2; grid-row: 1; margin: 0; font-size: 4.6vh; }
+  .esc-cajas { grid-column: 2; grid-row: 2; padding: 2px; }
+  .esc-piezas { grid-column: 2; grid-row: 3; align-self: stretch; padding: 2px; gap: 8px; }
+  .esc-caja { min-height: 88px; min-width: 76px; }
+  .esc-texto-caja, .esc-texto-pieza { font-size: clamp(1.6rem, 8vh, 2.6rem); }
+  .esc-modelo .carta-emoji, .esc-modelo .carta-imagen .carta-emoji { font-size: 14vh; }
+  .esc-modelo .carta-foto, .esc-modelo .carta-imagen .carta-foto { max-height: 22vh; }
+  .esc-modelo .boton-audio { width: 64px; height: 64px; padding: 12px; }
+  .esc-dictado .boton-audio-grande { width: 38vh; height: 38vh; padding: 9vh; }
+  .esc-menu { padding: 12px 16px 12px 108px; }
+  .esc-interruptor { flex-direction: row; }
+  .esc-opcion { flex: 1; }
+}

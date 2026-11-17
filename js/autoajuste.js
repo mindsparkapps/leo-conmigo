@@ -3,7 +3,7 @@
 // Nunca debe romper el cierre de la sesión: quien lo llame captura el error.
 
 import { analizar } from './core/analisis.js';
-import { evaluarAutoajuste } from './core/autoajuste.js';
+import { evaluarAutoajuste, evaluarAutoajusteEscritura } from './core/autoajuste.js';
 import { ETAPAS_HECHAS, etapasDesbloqueadas } from './core/etapas.js';
 import { tablaDePalabras } from './core/estadisticas.js';
 import { normalizarAjustes } from './core/modelos.js';
@@ -37,6 +37,20 @@ export async function aplicarAutoajuste(store, perfilId, hoy = new Date()) {
     : null;
 
   const resultado = evaluarAutoajuste({ perfil, sesiones, niveles, indicesEnPractica, proporcionEtapa, etapaSiguienteAbierta, hoy });
+  if (resultado.cambios.length) await store.guardar('perfiles', resultado.perfil);
+  return resultado.cambios;
+}
+
+/**
+ * El mismo cierre de sesión para la escritura (Ampliación 5): mira solo las sesiones y progresos de escritura del perfil REAL.
+ * Con un perfil de prueba (`prueba:<id>`) no hace nada. `elementos` = los de `elementosDeEscritura`.
+ * @returns lista de cambios nuevos (vacía si no hubo ninguno)
+ */
+export async function aplicarAutoajusteEscritura(store, perfilId, elementos, hoy = new Date()) {
+  const perfil = await store.obtener('perfiles', perfilId);
+  if (!perfil) return [];
+  const [sesiones, progresos] = await Promise.all([store.listar('sesiones', { perfilId }), store.listar('progresos', { perfilId })]);
+  const resultado = evaluarAutoajusteEscritura({ perfil, sesiones, elementos, progresos, hoy });
   if (resultado.cambios.length) await store.guardar('perfiles', resultado.perfil);
   return resultado.cambios;
 }

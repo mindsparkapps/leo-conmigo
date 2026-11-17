@@ -32,6 +32,7 @@ crearRouter({
   // Las rutas más específicas van primero: '/adulto' también coincide con '/adulto/...'
   rutas: [
     { ruta: '/nino/sesion', cargar: () => import('./nino/sesion.js') },
+    { ruta: '/nino/escritura', cargar: () => import('./nino/escritura.js') },
     { ruta: '/nino/premio', cargar: () => import('./nino/premio.js') },
     { ruta: '/nino/elegir', cargar: () => import('./nino/elegir.js') },
     { ruta: '/nino/tienda', cargar: () => import('./nino/tienda.js') },

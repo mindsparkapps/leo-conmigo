@@ -26,7 +26,8 @@ export function montar(contenedor, { ir }) {
     ir('/nino');
     return undefined;
   }
-  const { opciones, ajustes } = pendiente;
+  // `perfil` y `volverA` son opcionales: la escritura en modo administrador pide la lámina para la ficha de prueba y vuelve a la escritura
+  const { opciones, ajustes, perfil: perfilDelPremio = null, volverA = '/nino/sesion' } = pendiente;
   const fila = el('div', { class: 'elegir-albumes' });
   const vista = el(
     'section',
@@ -53,7 +54,7 @@ export function montar(contenedor, { ir }) {
         elegido = true;
         desbloquearAudio();
         try {
-          await terminarLeccion(store, perfil, ajustes, { coleccionId: coleccion.id });
+          await terminarLeccion(store, perfilDelPremio ?? perfil, ajustes, { coleccionId: coleccion.id, volverA });
         } catch (error) {
           console.error('No se pudo dar la lámina', error);
         }

@@ -35,5 +35,46 @@ export function puedeAbrirRutaAdulta(ruta) {
   return adultoHabilitado() && (!esAlumno() || rutaPermitidaAlumno(ruta));
 }
 
+// ---------- administradores (Ampliación 5: funciones experimentales) ----------
+// La lista de correos vive en `meta` (clave `administradores`; la edita la pantalla Cuenta, fase 30). `esAdministrador()` es síncrona
+// para poder usarla al pintar: quien la necesite primero llama a `cargarAdministradores(store)`, que lee `meta` y la deja en memoria.
+export const CLAVE_ADMINISTRADORES = 'administradores';
+const CLAVE_CUENTA_GOOGLE = 'leo_cuenta_google'; // la misma que guarda auth.js: { email, ... }
+let administradores = [];
+
+const normalizarCorreo = (correo) => String(correo ?? '').trim().toLowerCase();
+
+/** Pone la lista de administradores en memoria (la usa la pantalla Cuenta al editarla y `cargarAdministradores`). */
+export function establecerAdministradores(lista) {
+  administradores = [...new Set((Array.isArray(lista) ? lista : []).map(normalizarCorreo).filter(Boolean))];
+}
+
+/** Lee la lista de `meta` y la deja en memoria. Un fallo no la rompe: sin lista no hay administradores. */
+export async function cargarAdministradores(store) {
+  try {
+    establecerAdministradores(await store.leerMeta(CLAVE_ADMINISTRADORES, []));
+  } catch {
+    establecerAdministradores([]);
+  }
+  return [...administradores];
+}
+
+/** El correo de la cuenta de Google con sesión iniciada en este dispositivo (o null). */
+export function correoDeLaCuenta() {
+  try {
+    const cuenta = JSON.parse(localStorage.getItem(CLAVE_CUENTA_GOOGLE) ?? 'null');
+    return typeof cuenta?.email === 'string' ? normalizarCorreo(cuenta.email) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** ¿La cuenta de Google con sesión es de un administrador? Sin sesión de Google, o en el dispositivo de un alumno, nunca. */
+export function esAdministrador() {
+  if (esAlumno()) return false;
+  const correo = correoDeLaCuenta();
+  return Boolean(correo) && administradores.includes(correo);
+}
+
 /** A dónde ir si no se puede: el alumno con el modo adulto abierto vuelve al panel reducido; los demás, al modo niño. */
 export const destinoSiNoPasa = () => (esAlumno() && adultoHabilitado() ? '/adulto' : '/nino');

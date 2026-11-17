@@ -34,10 +34,10 @@ export function establecerPremio(datos) {
  * Cierra una lección: elige la calcomanía de hoy, paga las monedas de la lección y deja todo listo para la pantalla del
  * premio. Lo usan el fin de la sesión y el atajo «saltar la lección» de las herramientas de desarrollador.
  */
-export async function terminarLeccion(store, perfil, ajustes, { coleccionId = null } = {}) {
+export async function terminarLeccion(store, perfil, ajustes, { coleccionId = null, volverA = '/nino/sesion' } = {}) {
   const { codigo, album, saldo } = await ganarCalcomania(store, perfil, { coleccionId });
   const pago = await pagarLeccion(store, perfil);
-  establecerPremio({ codigo, ajustes, album, saldo: saldo + pago.cantidad, monedas: pago.cantidad, saldoAntes: pago.saldoAntes });
+  establecerPremio({ codigo, ajustes, album, saldo: saldo + pago.cantidad, monedas: pago.cantidad, saldoAntes: pago.saldoAntes, volverA });
 }
 
 /** Confeti que cae (≈ 2 s). Se llama igual que antes (`vista` ya no hace falta): ahora son papelitos, no estrellas. */
@@ -51,9 +51,9 @@ export function montar(contenedor, { ir }) {
     ir('/nino'); // abierto directamente (p. ej. al recargar): no hay nada que premiar
     return undefined;
   }
-  const { codigo, ajustes, album = null, saldo = 0, monedas = 0, saldoAntes = 0 } = premio;
+  const { codigo, ajustes, album = null, saldo = 0, monedas = 0, saldoAntes = 0, volverA = '/nino/sesion' } = premio;
   // Al completar la práctica: el botón es «volver a jugar» (la casa queda para el resto de pantallas)
-  const casa = el('button', { type: 'button', class: 'boton-jugar premio-jugar', 'aria-label': 'Volver a jugar', onclick: () => { desbloquearAudio(); ir('/nino/sesion'); } });
+  const casa = el('button', { type: 'button', class: 'boton-jugar premio-jugar', 'aria-label': 'Volver a jugar', onclick: () => { desbloquearAudio(); ir(volverA); } });
   casa.innerHTML = ICONO_JUGAR;
 
   const centro = el('div', { class: album ? 'premio-album' : 'premio-calcomania' });

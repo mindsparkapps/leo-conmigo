@@ -10,6 +10,8 @@
   <!--
     Muestra una actividad con datos de ejemplo, usando el mismo render que la app.
     Parámetros: ?a=P1..P3, L1..L6, F1..F3, S1..S4  &n=1..4 (opciones)  &largo (palabra larga)  &mayus  &grande
+                Escritura: ?a=E01..E20  &extras=0..4 (sílabas que no son)  &mover=arrastrar|tocar  &error=rojo|suave  &oracion=silabas
+                           &i=N (la N-ésima palabra del nivel)  &ayuda (enciende la ayuda en la primera caja)
                 &ayuda (tras un error)  &acierto (solo actividades de elegir)
     Ej.: /tests/navegador/actividades.html?a=L4&n=3&ayuda   ·   ?a=F3&n=3&ayuda
   -->
@@ -33,6 +35,55 @@
       g.fillText(letra, 128, 136);
       return c.toDataURL('image/png');
     }
+    if (/^E\d/.test(id)) await montarEscritura();
+    else montarLectura();
+
+    // ---- Escritura: un ensayo de ejemplo del banco, jugable con el motor puro (sin guardar nada) ----
+    async function montarEscritura() {
+      const { renderEscritura } = await import('../../js/actividades/escritura.js');
+      const { elementosDeEscritura } = await import('../../js/core/escritura/elementos.js');
+      const { armarEnsayoEscritura } = await import('../../js/core/escritura/sesion.js');
+      const { crearIntentoEscritura, soltar, escuchar, ayudaActual } = await import('../../js/core/escritura/intento.js');
+      const banco = await (await fetch('../../data/escritura/banco.json')).json();
+      const delNivel = elementosDeEscritura({ banco }).filter((e) => e.nivel === id);
+      const elemento = delNivel[Number(q.get('i') ?? 0) % delNivel.length];
+      const visual = armarEnsayoEscritura({
+        ensayo: { elementoId: elemento.id, actividad: id, extras: Number(q.get('extras') ?? 2) },
+        elemento,
+        ajustes: { escritura: { piezasOracion: q.get('oracion') ?? 'palabras' } },
+        aleatorio: () => 0.3,
+      });
+      visual.elemento = elemento;
+      let intento = crearIntentoEscritura(visual, performance.now() - 1000);
+      const colorError = q.get('error') === 'rojo' ? 'rojo' : 'suave';
+      const toques = [];
+      const area = el('div', { class: 'area-ensayo esc-area' });
+      const vista = el('section', { class: 'vista-nino sesion-nino escritura-nino' }, area, crearCandado({ alDesbloquear: () => {} }));
+      vista.classList.toggle('mayusculas', q.has('mayus'));
+      document.getElementById('vista').append(vista);
+      const manejador = renderEscritura(area, visual, {
+        urls: new Map(),
+        formaDeMover: q.get('mover') === 'arrastrar' ? 'arrastrar' : 'tocar',
+        alToqueModelo: () => toques.push('modelo'),
+        alEscuchar: (fichaId) => { intento = escuchar(intento, fichaId, performance.now()).intento; toques.push('escucha:' + fichaId); },
+        alSoltar: ({ fichaId, hueco, forma }) => {
+          const r = soltar(intento, { fichaId, hueco, forma }, performance.now());
+          intento = r.intento;
+          toques.push(r.efecto + ':' + fichaId + '>' + hueco);
+          if (r.efecto === 'correcto') manejador.colocar(fichaId, hueco);
+          else manejador.devolver(fichaId, hueco, r.efecto === 'incorrecto' ? colorError : null);
+          manejador.ayudar(ayudaActual(intento));
+          if (r.completo) manejador.marcarAcierto({ celebrar: true });
+        },
+      });
+      if (q.has('ayuda')) {
+        const ficha = visual.fichas.find((f) => f.texto === visual.huecos[0]);
+        manejador.ayudar({ hueco: 0, fichaId: ficha?.id });
+      }
+      window.__prueba = { visual, toques, manejador, intento: () => intento };
+    }
+
+    function montarLectura() {
     const objetivoTexto = q.has('largo') ? 'refrigerador' : 'perro';
     const palabrasPorId = new Map([
       [objetivoTexto, { id: objetivoTexto, texto: objetivoTexto, categoria: 'animales', medioImagenId: 'm1', emoji: '🐶' }],
@@ -106,6 +157,7 @@
     }
     if (q.has('acierto') && ensayo.modo === 'simple') manejador.marcarAcierto(ensayo.correctaId, { celebrar: false });
     window.__prueba = { ensayo, toques, manejador };
+    }
   </script>
 </body>
 </html>
