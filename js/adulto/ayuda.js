@@ -48,6 +48,20 @@ export function montar(contenedor) {
         ),
       ),
       seccion(
+        'Escritura (experimental)',
+        el('p', {}, 'Un modo aparte, todavía en prueba: el niño arma palabras poniendo sílabas en cajas (una caja por sílaba), sin trazar letras. Va de las vocales a las sílabas directas, los dígrafos (CH, LL, Ñ, QU, GU, R/RR), las inversas, las mixtas, las trabadas, los diptongos, los hiatos, las palabras, las oraciones, los textos y los dictados: 20 niveles. Se abre con el botón «Escritura» del inicio del niño.'),
+        lista(
+          'Para habilitarla: Escritura (experimental) › «Habilitar para este perfil» (también está en Perfiles). Apagada, el niño no ve el botón; solo lo ven los administradores (Cuenta › «Administradores»), con la etiqueta «Modo administrador», y lo que juegan se guarda en un «Perfil de prueba», nunca en el del niño. «Probar Escritura» hace lo mismo desde tu panel, y «Borrar los datos de prueba» lo limpia.',
+          'Dos reglas de la lectura cambian aquí, y las dos se suavizan: se puede tocar la sílaba y tocar su caja (por defecto, sin arrastrar) o arrastrarla; y el error puede verse en rojo suave (la caja se pone roja un momento) o solo atenuando la pieza (por defecto). En los dos casos no suena nada, no vibra y no hay cruz. Tras 2 errores en la misma caja, la sílaba correcta se ilumina en amarillo y se dice: el niño nunca pierde.',
+          'Tocar una sílaba la dice. Al completar la palabra se lee sílaba por sílaba y luego entera, y vienen la felicitación y la siguiente palabra. Al terminar la sesión da la lámina del álbum, igual que la lectura.',
+          'Entre las piezas hay de 0 a 4 sílabas que no son de la palabra. Empieza en 0 y sube o baja según cómo le va, sin pasar del máximo que fijes. No se usan de distractoras las sílabas que confunde mientras la sílaba aún le falla.',
+          'Lo que la app hace sola: sube al siguiente nivel cuando domina el 80 % de las palabras del nivel (nunca baja: solo te sugiere), y ajusta las palabras por sesión. Todo con aviso y «Deshacer». Elige «Lo elijo yo» para fijarlo tú.',
+          'El niño puede elegir otro nivel con el botón de niveles de la pantalla (lo configuras en «Qué niveles puede elegir el niño»). En oraciones (nivel 18) ve un interruptor «Por palabras / Por sílabas».',
+          'Progreso y «Qué le cuesta» tienen su sección de escritura: palabras y sílabas que le cuestan, sílabas que confunde, dónde se equivoca y cuántas palabras nuevas escribe bien a la primera. «Exportar para analizar con IA» la incluye.',
+          'Las voces de las sílabas y palabras que aún no están grabadas usan la voz sintética, y una sílaba suelta en voz sintética puede sonar mal. La lista de lo que falta está en data/escritura/faltan-voces.txt.',
+        ),
+      ),
+      seccion(
         'Lo que la app hace sola',
         el('p', {}, 'Para que el niño no pierda tiempo con lo que ya sabe y no se canse, la app se adapta. Todo se puede apagar en Ajustes › «Lo que la app hace sola», y el niño nunca ve nada de esto.'),
         lista(

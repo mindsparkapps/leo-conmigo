@@ -23,6 +23,19 @@ export function montar(contenedor) {
         el('p', { class: 'ayuda' }, 'Sigue el método de lectura global de María Victoria Troncoso y Mercedes del Cerro («Síndrome de Down: lectura y escritura»). No reemplaza a los profesionales que acompañan al niño.'),
       ),
       seccion(
+        'Escritura (experimental): en qué se basa',
+        el('p', {}, 'No hay un método de escritura con evidencia fuerte y específica para el síndrome de Down. El modo combina el método de Troncoso y del Cerro (después de la etapa global, una etapa analítica que empieza por las sílabas directas, con palabras conocidas y componiendo con piezas en vez de trazar) con lo que muestran los estudios de instrucción explícita: mejoran las palabras enseñadas y se generaliza poco, por eso se mide cuántas palabras nuevas escribe bien a la primera.'),
+        el('ul', { class: 'lista-ayuda' }, [
+          el('li', {}, 'María Victoria Troncoso y María Mercedes del Cerro, «Síndrome de Down: lectura y escritura» (Masson, 1997).'),
+          el('li', {}, enlace('Manual del profesor «Síndrome de Down: palabras, palabras»', 'https://www.orientacionandujar.es/wp-content/uploads/2015/07/Sindrome-de-DOWN-palabras-palabras-Manual_Profesor.pdf')),
+          el('li', {}, enlace('Down Syndrome Education International: hallazgos del programa de lectura y lenguaje', 'https://www.down-syndrome.org/en-us/research/projects/reading-language-intervention/findings')),
+          el('li', {}, enlace('Revisión de lectura y escritura en síndrome de Down (DSE)', 'https://cdn.down-syndrome.org/pubs/a/reviews-2128.pdf')),
+          el('li', {}, enlace('MULTILIT con niños con síndrome de Down (Flinders University)', 'https://researchnow.flinders.edu.au/en/publications/using-the-multilit-literacy-instruction-program-with-children-who/')),
+          el('li', {}, enlace('Cajas de Elkonin: una caja por unidad sonora', 'https://en.wikipedia.org/wiki/Elkonin_boxes')),
+        ]),
+        el('p', { class: 'ayuda' }, 'Consultadas el 17 de noviembre de 2026. No se encontraron estudios con cajas de Elkonin, letras móviles o aprendizaje sin error en esta población: afinar el modo con los datos reales del niño es parte del trabajo.'),
+      ),
+      seccion(
         'Privacidad',
         el('ul', { class: 'lista-ayuda' }, [
           el('li', {}, 'Las fotos, la voz grabada, las palabras y el progreso del niño se guardan en este dispositivo.'),

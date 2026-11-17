@@ -54,6 +54,12 @@ En el Drive del adulto, dentro de «Leo Conmigo»: la **Biblioteca** (una sola c
 
 Para probar con tres orígenes (adulto en `localhost:8080`, alumnos en `127.0.0.1:8080` y `127.0.0.2:8080`) con Google y Drive simulados: `python tests/servidor.py 8080` y `tests/navegador/simular-aulas.js`.
 
+## Modo «Escritura» (experimental)
+
+Un modo aparte donde el niño arma palabras poniendo sílabas en cajas (20 niveles, de las vocales a los dictados). Se habilita por perfil en modo adulto → **Escritura (experimental)** (o la casilla de Perfiles). Mientras no esté habilitada, solo la ven los **administradores** (Cuenta → «Administradores», por correo de Google) con la etiqueta «Modo administrador», y lo que juegan se guarda en un **perfil de prueba** (`prueba:<perfilId>`) que se puede borrar. Por defecto se toca (sin arrastrar) y el error es suave; arrastrar y rojo suave son opciones. Progreso y «Qué le cuesta» tienen su sección de escritura y la exportación para IA la incluye. Base pedagógica y fuentes: [docs/escritura-fuentes.md](docs/escritura-fuentes.md).
+
+**Voces que faltan.** Las sílabas y palabras del banco sin grabación usan la voz sintética (una sílaba suelta suena peor). Para ver qué falta y dónde va cada mp3: `node herramientas/listar-voces-escritura.mjs` (deja [data/escritura/faltan-voces.txt](data/escritura/faltan-voces.txt)); al generar una voz, anótala en `js/silabas-voz.js` (sílabas) o en `data/voces/indice.json` (palabras) y agrégala a `PRECACHE` en `sw.js`.
+
 ### Cada vez que se publica una versión nueva
 
 - Agregar a `PRECACHE` en `sw.js` los archivos nuevos que haya.

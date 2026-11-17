@@ -4,6 +4,7 @@
   "type": "module",
   "description": "PWA para aprender a leer (método de lectura global), pensada para niños con síndrome de Down.",
   "scripts": {
-    "test": "node --test \"tests/*.test.js\""
+    "test": "node --test \"tests/*.test.js\"",
+    "voces-escritura": "node herramientas/listar-voces-escritura.mjs"
   }
 }
