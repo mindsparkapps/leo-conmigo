@@ -24,9 +24,10 @@ export class ErrorVistaPerfil extends Error {
 export function vistaDeFichas(store, cursoId) {
   const prefijo = `ficha:${cursoId}:`;
   const esFicha = (r) => r?.cursoId === cursoId && typeof r.id === 'string' && r.id.startsWith(prefijo);
-  const esDeFicha = (almacen, r) => (almacen === 'alumnos' ? esFicha(r) : typeof r?.perfilId === 'string' && r.perfilId.startsWith(prefijo));
+  const idDeLaFila = (almacen, r) => (almacen === 'contenidoFamilia' ? r?.fichaId : r?.perfilId);
+  const esDeFicha = (almacen, r) => (almacen === 'alumnos' ? esFicha(r) : typeof idDeLaFila(almacen, r) === 'string' && idDeLaFila(almacen, r).startsWith(prefijo));
   const comprobar = (almacen) => {
-    if (almacen !== 'alumnos' && !ALMACENES_DE_FICHA.includes(almacen)) throw new ErrorVistaPerfil(`Una ficha no guarda «${almacen}».`);
+    if (almacen !== 'alumnos' && almacen !== 'contenidoFamilia' && !ALMACENES_DE_FICHA.includes(almacen)) throw new ErrorVistaPerfil(`Una ficha no guarda «${almacen}».`);
   };
 
   return {
@@ -42,6 +43,7 @@ export function vistaDeFichas(store, cursoId) {
       comprobar(almacen);
       if (almacen === 'alumnos') return (await store.listar('alumnos', { conBorrados })).filter(esFicha);
       if (!fichaId?.startsWith(prefijo)) throw new ErrorVistaPerfil('Esa ficha no es de este curso.');
+      if (almacen === 'contenidoFamilia') return (await store.listar(almacen, { conBorrados })).filter((f) => f.fichaId === fichaId);
       return store.listar(almacen, { perfilId: fichaId, conBorrados });
     },
 

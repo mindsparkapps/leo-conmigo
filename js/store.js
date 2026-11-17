@@ -10,7 +10,7 @@
 import { nuevoId } from './core/id.js';
 
 export const NOMBRE_BD = 'leo-conmigo';
-const VERSION_BD = 4; // 2: premios, movimientos y calcomaniasPropias (fase 11); 3: respuestas (fase 12); 4: alumnos (fichas, fase 23)
+const VERSION_BD = 5; // 2: premios, movimientos y calcomaniasPropias (fase 11); 3: respuestas (fase 12); 4: alumnos (fichas, fase 23); 5: contenidoFamilia (fase 24)
 
 /** Almacenes de datos y los índices de cada uno. */
 export const ALMACENES = Object.freeze({
@@ -28,6 +28,7 @@ export const ALMACENES = Object.freeze({
   respuestas: ['perfilId', 'elementoId'], // registro fino: una por ensayo terminado, solo se agrega (ver core/registro.js)
   medios: [], // { id, tipo, mime, blob, driveFileId, subido }
   alumnos: ['cursoId'], // fichas de alumno del adulto: { id, cursoId, email, nombre, creado, estado } (ver core/curso.js)
+  contenidoFamilia: ['fichaId'], // lo que la familia de un alumno agregó (sin blobs): { id, fichaId, almacen, registro, updatedAt, deleted }
 });
 
 const COLA = 'colaSync';

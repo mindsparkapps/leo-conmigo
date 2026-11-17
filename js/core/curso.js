@@ -225,6 +225,34 @@ export function limpiarContenidoFamilia(contenido, { cursoId } = {}) {
   return { contenido: salida, descartados };
 }
 
+// ---------- escribir en el celular del alumno ----------
+
+/** Lo que se marca como «de la familia» al guardarlo en el celular de un alumno (sus medios también). */
+export const ALMACENES_DE_FAMILIA = Object.freeze([...CLAVES_FAMILIA, 'medios']);
+
+export class ErrorCurso extends Error {
+  constructor(mensaje) {
+    super(mensaje);
+    this.name = 'ErrorCurso';
+  }
+}
+
+/**
+ * La regla de escritura del celular de un alumno: lo NUEVO es de la familia (`origen: 'familia'`), lo de la familia se puede
+ * cambiar y borrar, y lo del curso (que viene del adulto) NO se toca. Devuelve el registro a guardar o lanza `ErrorCurso`.
+ * @param previo  el registro que ya había con ese id (o undefined)
+ */
+export function aplicarOrigenDeFamilia(almacen, registro, previo) {
+  if (!ALMACENES_DE_FAMILIA.includes(almacen)) return registro;
+  if (previo && previo.origen !== ORIGEN_FAMILIA) throw new ErrorCurso('Esto es del curso: solo lo puede cambiar tu adulto.');
+  return { ...registro, origen: ORIGEN_FAMILIA };
+}
+
+/** Los registros vivos de un almacén que la familia agregó, a partir de las filas del almacén `contenidoFamilia`. */
+export const registrosDeFamilia = (filas, almacen, fichaId) => (filas ?? [])
+  .filter((f) => !f.deleted && f.almacen === almacen && (fichaId === undefined || f.fichaId === fichaId) && f.registro && !f.registro.deleted)
+  .map((f) => f.registro);
+
 /**
  * Las filas del almacén `contenidoFamilia` del adulto: { id, fichaId, almacen, registro, updatedAt, deleted }.
  * Es solo para mostrar nombres en las estadísticas: nunca se mezcla con `palabras`, `frases` ni `libros`.

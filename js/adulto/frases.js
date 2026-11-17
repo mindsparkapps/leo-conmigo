@@ -7,6 +7,7 @@ import { cabecera, campo, cargando, mostrarError, describirError } from '../ui/a
 import { crearMiniatura } from '../ui/miniatura.js';
 import { crearSelectorFoto } from '../ui/selector-foto.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
+import { esAlumno } from '../acceso.js';
 import { borrarMedio, guardarMedio, liberarUrls, urlDeMedio } from '../medios.js';
 import { decirFrase, desbloquearAudio, detener } from '../audio.js';
 import { MAX_PALABRAS_FRASE, frasePracticable, palabrasDeFrase, textoDeFrase, validarFrase } from '../core/frases.js';
@@ -72,6 +73,7 @@ async function pintar(raiz, estado, { editando = null } = {}) {
   for (const f of frases) {
     const ps = palabrasDeFrase(f, palabrasPorId);
     const practicable = frasePracticable(f, palabrasPorId);
+    const delCurso = esAlumno() && f.origen !== 'familia'; // en el celular de un alumno lo del curso solo se ve
     lista.append(
       el(
         'li',
@@ -84,6 +86,8 @@ async function pintar(raiz, estado, { editando = null } = {}) {
           el(
             'span',
             { class: 'insignias' },
+            delCurso ? el('span', { class: 'insignia' }, 'Del curso') : null,
+            esAlumno() && !delCurso ? el('span', { class: 'insignia' }, 'De la familia') : null,
             f.medioImagenId ? el('span', { class: 'insignia' }, 'Con foto') : null,
             !ps ? el('span', { class: 'insignia apagada', title: 'Una de sus palabras ya no está en la lista' }, 'Le falta una palabra') : null,
             ps && !practicable && f.activa !== false
@@ -106,8 +110,8 @@ async function pintar(raiz, estado, { editando = null } = {}) {
                 },
               }, nodoIcono(SVG_ALTAVOZ))
             : null,
-          el('button', { type: 'button', class: 'boton secundario chico', onclick: () => repintar({ editando: f }) }, 'Editar'),
-          el('button', { type: 'button', class: 'boton secundario chico', onclick: () => alternarActiva(f) }, f.activa === false ? 'Activar' : 'Pausar'),
+          delCurso ? null : el('button', { type: 'button', class: 'boton secundario chico', onclick: () => repintar({ editando: f }) }, 'Editar'),
+          delCurso ? null : el('button', { type: 'button', class: 'boton secundario chico', onclick: () => alternarActiva(f) }, f.activa === false ? 'Activar' : 'Pausar'),
         ),
       ),
     );

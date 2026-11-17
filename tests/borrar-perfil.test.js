@@ -40,15 +40,20 @@ test('borrarPerfil: borra con el almacén y no toca al otro perfil', async () =>
   for (const a of ALMACENES_DEL_PERFIL) datos[a] ??= [];
   // fase 23: cada curso tiene fichas de alumno y su avance lleva `perfilId` = id de la ficha
   datos.alumnos = [{ id: 'ficha:A:ana@g.com', cursoId: 'A' }, { id: 'ficha:B:beto@g.com', cursoId: 'B' }];
+  datos.contenidoFamilia = [{ id: 'cf-a', fichaId: 'ficha:A:ana@g.com' }, { id: 'cf-b', fichaId: 'ficha:B:beto@g.com' }];
+  const metas = new Map();
   datos.progresos.push({ id: 'pf-a', perfilId: 'ficha:A:ana@g.com' }, { id: 'pf-b', perfilId: 'ficha:B:beto@g.com' });
   const store = {
+    escribirMeta: async (clave, valor) => { metas.set(clave, valor); },
     listar: async (a) => datos[a].filter((r) => !r.deleted),
     borrar: async (a, id) => { const r = datos[a].find((x) => x.id === id); if (!r) return false; r.deleted = true; return true; },
     obtener: async (a, id) => datos[a].find((x) => x.id === id) ?? null,
     guardar: async (a, r) => { const i = datos[a].findIndex((x) => x.id === r.id); datos[a][i] = r; return r; },
   };
   const res = await borrarPerfil(store, 'A');
-  assert.equal(res.registros, 1 + 2 + 1 + 1 + 1 + 1, 'el curso, lo suyo, su ficha y el avance de su ficha');
+  assert.equal(res.registros, 1 + 2 + 1 + 1 + 1 + 1 + 1, 'el curso, lo suyo, su ficha, el avance de su ficha y lo que agregó su familia');
+  assert.deepEqual(datos.contenidoFamilia.filter((f) => !f.deleted).map((f) => f.id), ['cf-b']);
+  assert.deepEqual(metas.get('materialFamilia:ficha:A:ana@g.com'), [], 'y el material de la familia que se hubiera traído');
   assert.equal(res.medios, 4);
   assert.deepEqual(datos.alumnos.filter((f) => !f.deleted).map((f) => f.id), ['ficha:B:beto@g.com'], 'la ficha del otro curso no se toca');
   assert.deepEqual(datos.progresos.filter((p) => !p.deleted && p.id.startsWith('pf-')).map((p) => p.id), ['pf-b']);

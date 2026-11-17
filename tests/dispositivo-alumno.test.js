@@ -78,7 +78,7 @@ test('estaDesvinculado y firmaDelAdulto', () => {
   assert.notEqual(firmaDelAdulto([{ ...archivos[0], modifiedTime: 'nuevo' }, archivos[1]], 'adulto@x.com'), firmaDelAdulto(archivos, 'adulto@x.com'));
 });
 
-test('acceso: en un dispositivo de alumno no hay modo adulto aunque sessionStorage diga que sí', async () => {
+test('acceso: en un dispositivo de alumno el candado abre solo el menú reducido del modo adulto', async () => {
   const guardado = new Map();
   const almacen = () => ({ getItem: (k) => (guardado.has(k) ? guardado.get(k) : null), setItem: (k, v) => guardado.set(k, String(v)), removeItem: (k) => guardado.delete(k) });
   globalThis.localStorage = almacen();
@@ -89,16 +89,28 @@ test('acceso: en un dispositivo de alumno no hay modo adulto aunque sessionStora
     sesion.set('leo_modo_adulto', '1');
     assert.equal(acceso.esAlumno(), false);
     assert.equal(acceso.adultoHabilitado(), true, 'en el dispositivo del adulto sigue como siempre');
+    assert.equal(acceso.puedeAbrirRutaAdulta('/adulto/ajustes'), true, 'el adulto abre todo');
     acceso.deshabilitarAdulto();
     guardado.set(acceso.CLAVE_ROL, 'alumno');
-    sesion.set('leo_modo_adulto', '1');
     assert.equal(acceso.esAlumno(), true);
+    // sin pasar el candado no hay modo adulto
     assert.equal(acceso.adultoHabilitado(), false);
+    assert.equal(acceso.puedeAbrirRutaAdulta('/adulto'), false);
+    assert.equal(acceso.destinoSiNoPasa(), '/nino');
+    // con el candado: el panel y el menú reducido, nada más
     acceso.habilitarAdulto();
-    assert.equal(acceso.adultoHabilitado(), false, 'habilitarAdulto() no tiene efecto');
+    assert.equal(acceso.adultoHabilitado(), true);
+    for (const r of ['/adulto', '/adulto/vocabulario', '/adulto/palabra/nueva', '/adulto/frases', '/adulto/libros', '/adulto/album', '/adulto/progreso', '/adulto/analisis', '/adulto/ayuda']) {
+      assert.equal(acceso.puedeAbrirRutaAdulta(r), true, r);
+    }
+    for (const r of ['/adulto/alumnos', '/adulto/cuenta', '/adulto/ajustes', '/adulto/fondo', '/adulto/tienda', '/adulto/perfiles', '/adulto/respaldo', '/adulto/asistente', '/adulto/acerca']) {
+      assert.equal(acceso.puedeAbrirRutaAdulta(r), false, r);
+    }
+    assert.equal(acceso.destinoSiNoPasa(), '/adulto', 'una ruta que no existe lo lleva al panel reducido');
+    acceso.deshabilitarAdulto(); // al volver al modo niño
+    assert.equal(acceso.adultoHabilitado(), false);
     guardado.delete(acceso.CLAVE_ROL);
     sesion.clear();
-    assert.equal(acceso.adultoHabilitado(), false, 'y no dejó nada en memoria');
   } finally {
     delete globalThis.localStorage;
     delete globalThis.sessionStorage;

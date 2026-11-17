@@ -198,6 +198,11 @@ export function crearNubeFalsa() {
     if (id && base[0] === undefined) return error(400, 'ruta');
 
     // ---- listar ----
+    if (metodo === 'GET' && base.length === 1 && !subida && u.searchParams.get('spaces') === 'appDataFolder') {
+      // el `appDataFolder` de cada cuenta (fase 24: el respaldo del alumno): solo lo ve su dueño
+      const suyos = [...estado.archivos.values()].filter((a) => a.parents?.[0] === 'appDataFolder' && a.owner === cuenta);
+      return json({ files: suyos.map(sinPrivados) });
+    }
     if (metodo === 'GET' && base.length === 1 && !subida) {
       const q = u.searchParams.get('q') ?? '';
       const todos = consultar(cuenta, q);
@@ -251,6 +256,11 @@ export function crearNubeFalsa() {
     if (metodo === 'POST' && subida && u.searchParams.get('uploadType') === 'multipart') {
       const limite = /boundary=(.+)$/.exec(opciones.headers['Content-Type'])[1];
       const { metadatos, contenido, mime } = leerMultipartGeneral(await aBytes(opciones.body), limite);
+      if (metadatos.parents?.[0] === 'appDataFolder') {
+        const nuevoArchivo = { id: nuevoId('archivo'), name: metadatos.name, mimeType: mime, parents: ['appDataFolder'], properties: {}, owner: cuenta, bytes: contenido, mime, modifiedTime: new Date().toISOString() };
+        estado.archivos.set(nuevoArchivo.id, nuevoArchivo);
+        return json({ id: nuevoArchivo.id });
+      }
       const padre = estado.archivos.get(metadatos.parents?.[0]);
       registro.padre = metadatos.parents?.[0] ?? null;
       if (!padre || rango(cuenta, padre) < RANGO.reader) return error(404, 'Parent not found');

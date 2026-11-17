@@ -157,7 +157,12 @@ export async function borrarMedio(store, id) {
   if (!id) return;
   const medio = await store.obtener('medios', id, { conBorrados: true });
   if (!medio) return;
-  await store.guardar('medios', { ...medio, blob: null, deleted: true, subido: false });
+  try {
+    await store.guardar('medios', { ...medio, blob: null, deleted: true, subido: false });
+  } catch (error) {
+    if (error?.name === 'ErrorCurso') return; // en el celular de un alumno un medio del curso (o del catálogo) no se borra
+    throw error;
+  }
   const url = urls.get(id);
   if (url) {
     URL.revokeObjectURL(url);

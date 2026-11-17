@@ -21,7 +21,10 @@ export async function borrarPerfil(store, perfilId) {
   for (const almacen of ALMACENES_DEL_PERFIL) todos[almacen] = await store.listar(almacen);
   // Las fichas de los alumnos del curso y sus registros (avance, sesiones…) también se borran
   const fichas = (await store.listar('alumnos')).filter((f) => f.cursoId === perfilId);
-  const plan = planDeBorradoDePerfil({ perfilId, perfiles, todos, fichas });
+  const familia = fichas.length ? (await store.listar('contenidoFamilia')).filter((f) => fichas.some((x) => x.id === f.fichaId)) : [];
+  const plan = planDeBorradoDePerfil({ perfilId, perfiles, todos, fichas, familia });
+  // el material de la familia que el adulto trajo a este celular (si lo hay) se quita con las fichas
+  for (const ficha of fichas) await store.escribirMeta?.(`materialFamilia:${ficha.id}`, []);
   let registros = 0;
   for (const [almacen, ids] of Object.entries(plan.registros)) {
     for (const id of ids) if (await store.borrar(almacen, id)) registros += 1;
@@ -54,12 +57,15 @@ export function mediosDeRegistro(registro) {
  * @param perfiles  los registros del almacén `perfiles` (vivos)
  * @param todos     { almacen: [registros vivos de TODOS los perfiles] } de los almacenes con `perfilId`
  * @param fichas    las fichas de alumno de este curso (almacén `alumnos`): se borran con sus registros
+ * @param familia   las filas de `contenidoFamilia` de esas fichas: se borran también
  * @returns {{ registros: {[almacen]: string[]}, medios: string[] }} ids a borrar
  */
-export function planDeBorradoDePerfil({ perfilId, perfiles, todos, fichas = [] }) {
+export function planDeBorradoDePerfil({ perfilId, perfiles, todos, fichas = [], familia = [] }) {
   const perfil = perfiles.find((p) => p.id === perfilId);
   const registros = { perfiles: perfil ? [perfil.id] : [] };
   if (perfil && fichas.length) registros.alumnos = fichas.filter((f) => f.cursoId === perfilId).map((f) => f.id);
+  // lo que agregó la familia de esos alumnos (solo la lista para estadísticas: sin fotos ni voces)
+  if (perfil && familia.length) registros.contenidoFamilia = familia.filter((f) => (registros.alumnos ?? []).includes(f.fichaId)).map((f) => f.id);
   const idsDeFichas = new Set(registros.alumnos ?? []);
   const propios = perfil ? [perfil] : [];
   const ajenos = perfiles.filter((p) => p.id !== perfilId);

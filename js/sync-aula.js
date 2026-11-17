@@ -24,7 +24,9 @@ import {
   ALMACENES_DEL_ALUMNO, ALMACENES_DEL_CURSO, ARCHIVO_ADULTO, ARCHIVO_ALUMNO, aceptaDe, armarArchivoAula, filtrarEntrantes, mediosDelPerfil, nombreArchivoDispositivo,
   nuevoDispositivo, publicaRol, validarArchivoAula, validarDispositivo,
 } from './core/aula.js';
-import { ALMACENES_DE_FICHA, aFicha, combinarPerfil, idDeFicha, nuevaFicha, perfilPublicable } from './core/curso.js';
+import {
+  ALMACENES_DE_FICHA, ORIGEN_FAMILIA, aFicha, combinarPerfil, filasDeContenidoFamilia, idDeFicha, limpiarContenidoFamilia, nuevaFicha, perfilPublicable, separarFamilia,
+} from './core/curso.js';
 import { ALMACENES_RESPALDO } from './core/respaldo.js';
 import { blobDeApp } from './medios.js';
 
@@ -51,6 +53,7 @@ const estable = (v) => JSON.stringify(v, (_, x) => (x && typeof x === 'object' &
  * @param carpetaAlumno  (alumno) cliente atado a SU carpeta `alumnos/<su correo>/`
  * @param carpetasAlumnos (adulto) { <correo>: cliente atado a la carpeta de ese alumno }: solo se leen
  * @param carpetaLegado  (adulto) cliente atado al `del-alumno/` de las aulas anteriores a la fase 23 (solo lectura; puede faltar)
+ * @param carpetaFamilia (alumno) cliente atado a SU `familia/` (dentro de su carpeta): ahí van las fotos y voces de la familia
  * @param carpetaMedios  cliente atado a la Biblioteca/ (o, en un aula versión 1 sin migrar, al aula); el alumno solo la lee
  * @param usadosPorOtros (adulto) async () => Set de ids de medios que usan los OTROS cursos (para no borrarlos de la Biblioteca)
  * @param invitados      (adulto) correos invitados: solo se lee lo que ellos son dueños
@@ -59,7 +62,7 @@ const estable = (v) => JSON.stringify(v, (_, x) => (x && typeof x === 'object' &
  * @param dispositivo    (alumno) { idDispositivo, nombre, versionApp }
  */
 export function crearSincronizadorDeAula({
-  store, fichas = null, rol, aula, carpetaAula, carpetaAlumno = null, carpetasAlumnos = {}, carpetaLegado = null, carpetaMedios = carpetaAula,
+  store, fichas = null, rol, aula, carpetaAula, carpetaAlumno = null, carpetasAlumnos = {}, carpetaLegado = null, carpetaFamilia = null, carpetaMedios = carpetaAula,
   usadosPorOtros = async () => new Set(), invitados = [], emailPropio = '', duenoEmail = '', dispositivo = null,
   ahora = () => new Date(), alProgreso = () => {}, traerDeApp = blobDeApp,
 }) {
@@ -117,10 +120,12 @@ export function crearSincronizadorDeAula({
       : archivosAlumno.find((a) => a.name === ARCHIVO_ALUMNO && (!miCorreo || duenoDe(a) === miCorreo));
     let propios = {};
     let limpiarPropio = false;
+    let familiaPublicada = null; // (alumno) lo que mi archivo ya dice de la familia
     if (archivoPropio) {
       const doc = await propia.leerJson(archivoPropio.id);
       const error = validarArchivoAula(doc, { rolEsperado: rol, perfilId });
       if (error) throw new ErrorSync(error);
+      familiaPublicada = doc.contenidoFamilia ?? null;
       // También mi propio archivo se filtra: si alguien lo manipuló con mi cuenta, lo ajeno no entra y el archivo se limpia
       const { almacenes, descartados: d } = filtrarEntrantes({ almacenes: doc.almacenes, perfilId, aceptados: publicaRol(rol) });
       propios = almacenes;
@@ -169,6 +174,10 @@ export function crearSincronizadorDeAula({
             descartados.total += extra;
             hallado.entrantes = deLaFicha;
             hallado.estado = estado;
+            // lo que la familia agregó (sin fotos ni voces): solo para mostrar nombres en sus estadísticas
+            const { contenido, descartados: sobrantes } = limpiarContenidoFamilia(doc.contenidoFamilia, { cursoId: perfilId });
+            descartados.total += sobrantes;
+            hallado.familia = contenido;
           }
         }
         // sus dispositivos (de su carpeta y, si aún no se mudó, del `del-alumno/` de antes): el más reciente de cada uno
@@ -310,8 +319,17 @@ export function crearSincronizadorDeAula({
           if (paraLocal.length) await fichas.importar(almacen, paraLocal);
           nuevos += paraLocal.length;
         }
-        traidos += nuevos;
-        resumenFichas.push({ fichaId: h.ficha, email: h.correo, registros: nuevos, conArchivo: Boolean(h.entrantes) });
+        // la lista de lo que agregó la familia: aparte, nunca en palabras, frases ni libros del curso
+        let deFamilia = 0;
+        if (h.familia) {
+          const filas = filasDeContenidoFamilia({ fichaId: h.ficha, contenido: h.familia });
+          const aqui = await fichas.listar('contenidoFamilia', { fichaId: h.ficha, conBorrados: true });
+          const { paraLocal } = fusionarAlmacen(aqui, filas);
+          if (paraLocal.length) await fichas.importar('contenidoFamilia', paraLocal);
+          deFamilia = paraLocal.length;
+        }
+        traidos += nuevos + deFamilia;
+        resumenFichas.push({ fichaId: h.ficha, email: h.correo, registros: nuevos, familia: deFamilia, conArchivo: Boolean(h.entrantes) });
       }
     }
 
@@ -324,11 +342,30 @@ export function crearSincronizadorDeAula({
       }
     }
 
+    // ---- el alumno sube las fotos y voces de su familia a SU carpeta `familia/` (son de su cuenta: ocupan su espacio) ----
+    let familiaSubidos = 0;
+    if (!esAdulto && carpetaFamilia) {
+      const enFamilia = new Map((await carpetaFamilia.listar()).filter((a) => !a.mimeType?.includes('folder')).map((a) => [a.name, a]));
+      for (const m of mediosLocales.filter((x) => x.origen === ORIGEN_FAMILIA)) {
+        const nombre = nombreArchivoMedio(m);
+        if (m.deleted) {
+          if (enFamilia.get(nombre)?.id) await carpetaFamilia.borrar(enFamilia.get(nombre).id);
+        } else if (m.blob && !enFamilia.has(nombre)) {
+          alProgreso(`Guardando las fotos y voces de la familia (${++familiaSubidos})…`);
+          await carpetaFamilia.crear(nombre, m.blob, m.mime || m.blob.type || 'application/octet-stream');
+        }
+        conocidos.add(m.id); // así un borrado posterior sigue a la vista y su archivo se quita de `familia/`
+      }
+    }
+
     // ---- subir mis datos (después de los medios) ----
-    // El alumno publica solo SU parte del perfil (`perfilPublicable`): nada del curso
+    // El alumno publica solo SU parte del perfil (`perfilPublicable`): nada del curso. Lo que agregó la familia viaja aparte,
+    // en `contenidoFamilia` (sin fotos ni voces: esas van a `familia/`).
     const paraPublicar = esAdulto ? resultado : { ...resultado, perfiles: resultado.perfiles.map((p) => (p.id === perfilId ? perfilPublicable(p) : p)) };
-    const doc = armarArchivoAula({ rol, perfilId, almacenes: paraPublicar, ahora: ahora() });
-    const cambia = !archivoPropio || limpiarPropio || publicaRol(rol).some((nombre) => {
+    const contenidoFamilia = esAdulto ? undefined : separarFamilia(resultado).contenidoFamilia;
+    const doc = armarArchivoAula({ rol, perfilId, almacenes: paraPublicar, contenidoFamilia, ahora: ahora() });
+    const cambiaFamilia = !esAdulto && estable(doc.contenidoFamilia) !== estable(familiaPublicada ?? limpiarContenidoFamilia(null).contenido);
+    const cambia = !archivoPropio || limpiarPropio || cambiaFamilia || publicaRol(rol).some((nombre) => {
       if (!esAdulto && nombre === 'perfiles') return estable(propios.perfiles ?? []) !== estable(doc.almacenes.perfiles);
       const enDoc = new Set(doc.almacenes[nombre].map((r) => r.id));
       return fusion[nombre].paraPropio.some((r) => enDoc.has(r.id));

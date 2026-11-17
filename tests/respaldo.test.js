@@ -73,7 +73,7 @@ test('armarRespaldo: sin borrados, con las imágenes y voces en base64 y convert
   assert.equal(respaldo.formato, FORMATO);
   assert.equal(respaldo.version, VERSION_RESPALDO);
   assert.equal(respaldo.meta.perfilActivoId, 'p1');
-  assert.deepEqual(contarRespaldo(respaldo), { medios: 2, perfiles: 1, palabras: 2, progresos: 1, niveles: 1, frases: 0, libros: 0, sesiones: 1, calcomanias: 1, calcomaniasPropias: 1, premios: 1, movimientos: 2, respuestas: 1, alumnos: 0 });
+  assert.deepEqual(contarRespaldo(respaldo), { medios: 2, perfiles: 1, palabras: 2, progresos: 1, niveles: 1, frases: 0, libros: 0, sesiones: 1, calcomanias: 1, calcomaniasPropias: 1, premios: 1, movimientos: 2, respuestas: 1, alumnos: 0, contenidoFamilia: 0 });
   assert.ok(!respaldo.almacenes.palabras.some((p) => p.id === 'w-borrada'));
   for (const m of respaldo.almacenes.medios) {
     assert.equal(typeof m.blobBase64, 'string');

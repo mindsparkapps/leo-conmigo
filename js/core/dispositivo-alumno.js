@@ -6,6 +6,23 @@ export const REVISAR_NOVEDADES_CADA_MS = 60_000;
 /** ¿Una ruta es del modo adulto? (el alumno nunca llega a ellas). */
 export const esRutaAdulta = (hash) => /^#?\/adulto(\/|$)/.test(String(hash ?? ''));
 
+/**
+ * Las pantallas del modo adulto que existen en el celular de un alumno (PLAN.md, Ampliación 4, fase 24): el panel de siempre
+ * con el menú reducido. Palabras, frases, libros y álbum (lo del curso se ve pero no se cambia; lo nuevo es «de la familia»),
+ * Progreso y «Qué le cuesta» del propio alumno, y la ayuda. NO: Alumnos, Cuenta, Ajustes, Fondo, Tienda, Perfiles, Asistente,
+ * Copia de seguridad ni Acerca de.
+ */
+export const RUTAS_ADULTAS_DEL_ALUMNO = Object.freeze(['vocabulario', 'palabra', 'frases', 'libros', 'album', 'progreso', 'analisis', 'ayuda']);
+
+/** ¿Puede un alumno abrir esta ruta del modo adulto? (`/adulto` es el panel reducido; `/adulto/palabra/<id>` es el editor.) */
+export function rutaPermitidaAlumno(ruta) {
+  const partes = String(ruta ?? '').replace(/^#/, '').split(/[?#]/)[0].split('/').filter(Boolean);
+  if (partes[0] !== 'adulto') return false;
+  if (partes.length === 1) return true;
+  if (!RUTAS_ADULTAS_DEL_ALUMNO.includes(partes[1])) return false;
+  return partes.length === 2 || (partes[1] === 'palabra' && partes.length === 3);
+}
+
 /** ¿Es la sesión de juego del niño? (ahí nunca se sincroniza ni se abre nada). */
 export const esSesionDelNino = (hash) => /^#?\/nino\/sesion(\/|$|\?)/.test(String(hash ?? ''));
 

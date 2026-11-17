@@ -144,6 +144,9 @@ export function planDeMedios({ medios, archivos, conBlobLocal }) {
       if (!medio.deleted && !conBlobLocal.has(medio.id)) deApp.push(medio);
       continue;
     }
+    // Un medio del curso que el celular de un alumno bajó de la Biblioteca del adulto es «de otro origen»: no se sube al respaldo
+    // personal del alumno (el aula lo vuelve a bajar de la Biblioteca)
+    if (medio.origen === 'biblioteca') continue;
     const nombre = nombreArchivoMedio(medio);
     const remoto = archivos.get(nombre);
     if (medio.deleted) {

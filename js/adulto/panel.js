@@ -4,6 +4,7 @@ import { el } from '../ui/dom.js';
 import { TEXTO_VERSION, VERSION, COMMIT } from '../config.js';
 import { observar, instalar, aplicarActualizacion, versionPublicada, forzarActualizacion } from '../pwa.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
+import { esAlumno } from '../acceso.js';
 import { crearMiniatura } from '../ui/miniatura.js';
 import { describirError } from '../ui/adulto.js';
 import { urlDeMedio, liberarUrls } from '../medios.js';
@@ -38,7 +39,7 @@ export function montar(contenedor, { ir }) {
       zonaAviso,
       zonaAuto,
       zonaNino,
-      zonaNube,
+      esAlumno() ? null : zonaNube, // en el celular de un alumno no hay cuenta ni ajustes: menú reducido
       zonaEstado,
       el(
         'div',
@@ -48,14 +49,14 @@ export function montar(contenedor, { ir }) {
           'div',
           { class: 'acciones' },
           el('a', { class: 'boton secundario', href: '#/adulto/ayuda' }, 'Ayuda'),
-          el('a', { class: 'boton secundario', href: '#/adulto/acerca' }, 'Acerca de, privacidad y créditos'),
+          esAlumno() ? null : el('a', { class: 'boton secundario', href: '#/adulto/acerca' }, 'Acerca de, privacidad y créditos'),
         ),
         el('p', { class: 'ayuda' }, 'Para volver aquí desde la pantalla del niño: mantén presionado el candado 3 segundos y resuelve la suma.'),
       ),
     ),
   );
 
-  pintarAvisosAutomaticos(zonaAuto, () => vivo).catch((error) => console.error(error));
+  if (!esAlumno()) pintarAvisosAutomaticos(zonaAuto, () => vivo).catch((error) => console.error(error)); // los ajustes automáticos del alumno los ve su adulto
   pintarNino(zonaNino, () => vivo).catch((error) => {
     zonaNino.replaceChildren(el('h2', {}, 'El niño'), el('p', { class: 'error-texto' }, describirError(error)));
   });
@@ -181,13 +182,16 @@ async function pintarNino(zona, estaVivo) {
       el('a', { class: 'boton', href: '#/adulto/progreso' }, 'Progreso'),
       el('a', { class: 'boton', href: '#/adulto/analisis' }, 'Qué le cuesta'),
       el('a', { class: 'boton', href: '#/adulto/album' }, 'Álbum'),
-      el('a', { class: 'boton', href: '#/adulto/tienda' }, 'Tienda'),
-      el('a', { class: 'boton secundario', href: '#/adulto/ajustes' }, 'Ajustes'),
-      el('a', { class: 'boton secundario', href: '#/adulto/fondo' }, 'Fondo'),
-      el('a', { class: 'boton secundario', href: '#/adulto/perfiles' }, 'Perfiles'),
-      el('a', { class: 'boton secundario', href: '#/adulto/alumnos', 'data-enlace-alumnos': '' }, textoEnlaceAlumnos(conectadosAhora)),
+      // menú reducido del celular de un alumno: sin Tienda, Ajustes, Fondo, Perfiles, Alumnos ni Copia de seguridad
+      esAlumno() ? null : el('a', { class: 'boton', href: '#/adulto/tienda' }, 'Tienda'),
+      esAlumno() ? null : el('a', { class: 'boton secundario', href: '#/adulto/ajustes' }, 'Ajustes'),
+      esAlumno() ? null : el('a', { class: 'boton secundario', href: '#/adulto/fondo' }, 'Fondo'),
+      esAlumno() ? null : el('a', { class: 'boton secundario', href: '#/adulto/perfiles' }, 'Perfiles'),
+      esAlumno() ? null : el('a', { class: 'boton secundario', href: '#/adulto/alumnos', 'data-enlace-alumnos': '' }, textoEnlaceAlumnos(conectadosAhora)),
     ),
-    el('p', { class: 'ayuda' }, el('a', { href: '#/adulto/respaldo' }, 'Copia de seguridad')),
+    esAlumno()
+      ? el('p', { class: 'ayuda' }, 'Lo del curso lo pone tu adulto y aquí solo se ve. Lo que agregues tú (palabras, frases, libros y láminas) es de la familia: se queda en este celular y en el Drive del alumno.')
+      : el('p', { class: 'ayuda' }, el('a', { href: '#/adulto/respaldo' }, 'Copia de seguridad')),
   );
 }
 

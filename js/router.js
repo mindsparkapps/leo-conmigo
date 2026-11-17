@@ -12,7 +12,7 @@ export function crearRouter({ contenedor, rutas, rutaInicial }) {
     const def = rutas.find((r) => ruta === r.ruta || ruta.startsWith(r.ruta + '/'));
 
     if (!def) { ir(rutaInicial, true); return; }
-    if (def.guardia && !def.guardia()) { ir(def.siNoPasa ?? rutaInicial, true); return; }
+    if (def.guardia && !def.guardia(ruta)) { ir((typeof def.siNoPasa === 'function' ? def.siNoPasa() : def.siNoPasa) ?? rutaInicial, true); return; }
 
     let modulo;
     try {

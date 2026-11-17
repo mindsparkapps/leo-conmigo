@@ -13,12 +13,15 @@ import { VERSION } from '../config.js';
 import { copiarTexto, descargarArchivo } from '../hardware.js';
 import { analizar, construirExportacion, nombreDeArchivoAnalisis, resumenParaIA, MIN_ENSAYOS } from '../core/analisis.js';
 import { idsDeProgresoDe, marcarDominada } from '../core/estadisticas.js';
+import { registrosDeFamilia } from '../core/curso.js';
+import { materialDe, urlsDeMaterial } from '../material-familia.js';
 import { colorDeIndice, paginar } from '../core/listas.js';
 import { crearPaginacion } from '../ui/paginacion.js';
 
 export const titulo = 'Qué le cuesta · Leo Conmigo';
 
 const paginasLista = { dificiles: 1, faciles: 1, repetir: 1 }; // página de cada lista, se conserva al repintar
+let liberarMaterial = () => {}; // las fotos de la familia traídas (solo en la ficha de un alumno)
 
 const FLECHAS = { mejora: ['↑', 'mejora'], igual: ['→', 'sin cambios'], empeora: ['↓', 'empeora'] };
 const segundos = (ms) => (ms == null ? '—' : `${(ms / 1000).toFixed(1).replace('.', ',')} s`);
@@ -34,6 +37,7 @@ export function montar(contenedor, { ruta = '' } = {}) {
   return () => {
     vivo = false;
     liberarUrls();
+    liberarMaterial();
   };
 }
 
@@ -58,19 +62,26 @@ async function pintar(raiz, estaVivo, ruta, { abierta = null, ocultar = false } 
   const deFicha = Boolean(sujeto.ficha); // la ficha de un alumno es de solo lectura
   // lo que se lee (palabras y frases) es del curso; lo que el alumno hizo, de su ficha. Para exportar y mostrar, el alumno se llama como su ficha.
   const perfil = deFicha ? { ...sujeto.perfil, id: sujeto.id, nombre: sujeto.ficha.nombre } : sujeto.perfil;
-  const [palabras, frases, progresos, sesiones, respuestas] = await Promise.all([
+  const [palabrasDelCurso, frasesDelCurso, progresos, sesiones, respuestas] = await Promise.all([
     store.listar('palabras', { perfilId: sujeto.contenidoId }),
     store.listar('frases', { perfilId: sujeto.contenidoId }),
     store.listar('progresos', { perfilId: sujeto.id }),
     store.listar('sesiones', { perfilId: sujeto.id }),
     store.listar('respuestas', { perfilId: sujeto.id }),
   ]);
+  // Lo que agregó la familia de ese alumno: sus nombres llegan con su archivo; sus fotos solo si el adulto trajo el material
+  const filasFamilia = deFicha ? (await store.listar('contenidoFamilia')).filter((f) => f.fichaId === sujeto.id) : [];
+  const palabras = [...palabrasDelCurso, ...registrosDeFamilia(filasFamilia, 'palabras')];
+  const frases = [...frasesDelCurso, ...registrosDeFamilia(filasFamilia, 'frases')];
+  liberarMaterial(); // las direcciones de la pintada anterior
+  const material = deFicha ? urlsDeMaterial(await materialDe(store, sujeto.id)) : { urls: new Map(), liberar() {} };
+  liberarMaterial = material.liberar;
   const elementos = new Map([...frases, ...palabras].map((e) => [e.id, e]));
   const analisis = analizar(respuestas);
   const urls = new Map();
   for (const p of analisis.palabras) {
     const e = elementos.get(p.elementoId);
-    if (e?.medioImagenId) urls.set(p.elementoId, await urlDeMedio(store, e.medioImagenId));
+    if (e?.medioImagenId) urls.set(p.elementoId, material.urls.get(e.medioImagenId) ?? await urlDeMedio(store, e.medioImagenId));
   }
   if (!estaVivo()) return;
 
@@ -103,7 +114,7 @@ async function pintar(raiz, estaVivo, ruta, { abierta = null, ocultar = false } 
       el(
         'span',
         { class: 'fila-texto' },
-        el('strong', {}, p.texto),
+        el('strong', {}, p.texto, elementos.get(p.elementoId)?.origen === 'familia' ? el('span', { class: 'insignia' }, 'De la familia') : null),
         el(
           'span',
           { class: 'barra-indice', role: 'img', 'aria-label': `Dificultad ${p.indice} de 100` },

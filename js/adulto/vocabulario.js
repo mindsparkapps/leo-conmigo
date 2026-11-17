@@ -5,6 +5,7 @@ import { nodoIcono, SVG_ALTAVOZ } from '../ui/iconos.js';
 import { cabecera, cargando, mostrarError, describirError } from '../ui/adulto.js';
 import { crearMiniatura } from '../ui/miniatura.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
+import { esAlumno } from '../acceso.js';
 import { urlDeMedio, liberarUrls, ponerVocesIniciales } from '../medios.js';
 import { decirPalabra, desbloquearAudio, detener } from '../audio.js';
 import {
@@ -124,6 +125,9 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
     const p = fila.palabra;
     const i = palabras.indexOf(p);
     const silabas = (p.silabas ?? []).join('-');
+    // En el celular de un alumno lo del curso solo se ve («Del curso»); lo de la familia se edita; el orden es del curso
+    const delCurso = esAlumno() && p.origen !== 'familia';
+    const soloAdulto = esAlumno();
     lista.append(
       el(
         'li',
@@ -138,6 +142,8 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
             'span',
             { class: 'insignias' },
             el('span', { class: `insignia suave estado-${estadoDe.get(p.id)}` }, NOMBRE_ESTADO[estadoDe.get(p.id)] ?? ''),
+            delCurso ? el('span', { class: 'insignia' }, 'Del curso') : null,
+            esAlumno() && !delCurso ? el('span', { class: 'insignia' }, 'De la familia') : null,
             p.medioAudioId ? el('span', { class: 'insignia' }, 'Tu voz') : null,
             !p.medioImagenId && !p.emoji
               ? el('span', { class: 'insignia apagada', title: 'Una palabra sin imagen no se practica hasta que tenga una' }, 'Sin imagen')
@@ -157,7 +163,7 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
               decirPalabra(p, { obtenerMedio: (id) => store.obtener('medios', id), velocidad: perfil.ajustes?.velocidadVoz ?? 1 });
             },
           }, nodoIcono(SVG_ALTAVOZ)),
-          el('button', {
+          soloAdulto ? null : el('button', {
             type: 'button',
             class: 'boton secundario chico',
             'aria-label': `Subir ${p.texto}`,
@@ -165,15 +171,15 @@ async function pintar(raiz, estaVivo, { catalogoAbierto = false } = {}) {
             title: ordenAprendizaje ? null : 'Para cambiar el orden de aprendizaje, ordena por «Orden de aprendizaje»',
             onclick: () => reordenar(p, -1),
           }, '▲'),
-          el('button', {
+          soloAdulto ? null : el('button', {
             type: 'button',
             class: 'boton secundario chico',
             'aria-label': `Bajar ${p.texto}`,
             disabled: i === palabras.length - 1 || !ordenAprendizaje,
             onclick: () => reordenar(p, 1),
           }, '▼'),
-          el('a', { class: 'boton secundario chico', href: `#/adulto/palabra/${p.id}`, 'aria-label': `Editar ${p.texto}` }, 'Editar'),
-          el('button', {
+          delCurso ? null : el('a', { class: 'boton secundario chico', href: `#/adulto/palabra/${p.id}`, 'aria-label': `Editar ${p.texto}` }, 'Editar'),
+          delCurso ? null : el('button', {
             type: 'button',
             class: 'boton secundario chico',
             'aria-pressed': String(p.activa !== false),

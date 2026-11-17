@@ -38,7 +38,8 @@ export function instalar({ cuenta = ADULTO, compartida = true } = {}) {
     }
   };
   const cargar = async () => nube.importar(await (await pedir(RUTA)).json());
-  const guardar = async () => pedir(RUTA, { method: 'POST', body: JSON.stringify(nube.exportar()) });
+  // (se lee la respuesta entera: si no, las conexiones quedan abiertas y a las pocas peticiones el navegador deja de contestar)
+  const guardar = async () => (await pedir(RUTA, { method: 'POST', body: JSON.stringify(nube.exportar()) })).text();
 
   globalThis.google = {
     accounts: {

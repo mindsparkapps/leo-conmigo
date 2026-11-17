@@ -6,6 +6,7 @@ import { cabecera, campo, cargando, mostrarError, describirError } from '../ui/a
 import { crearMiniatura } from '../ui/miniatura.js';
 import { crearSelectorFoto } from '../ui/selector-foto.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
+import { esAlumno } from '../acceso.js';
 import { borrarMedio, guardarMedio, liberarUrls, urlDeMedio } from '../medios.js';
 import { MAX_LARGO_TITULO, MAX_PAGINAS_LIBRO, paginasLeibles, palabrasDeFrase, validarLibro } from '../core/frases.js';
 import { nuevoLibro, normalizarPregunta } from '../core/modelos.js';
@@ -77,6 +78,7 @@ async function pintar(raiz, estado, { editando = null, nuevo = false } = {}) {
   const lista = el('ul', { class: 'lista-filas' });
   for (const libro of libros) {
     const leibles = paginasLeibles(libro, frasesPorId, palabrasPorId).length;
+    const delCurso = esAlumno() && libro.origen !== 'familia'; // en el celular de un alumno lo del curso solo se ve
     lista.append(
       el(
         'li',
@@ -99,9 +101,11 @@ async function pintar(raiz, estado, { editando = null, nuevo = false } = {}) {
               ? el('span', { class: 'insignia' }, `Cuento · ${preguntasLeibles(libro, palabrasPorId).length} pregunta${preguntasLeibles(libro, palabrasPorId).length === 1 ? '' : 's'}`)
               : null,
             leibles === 0 ? el('span', { class: 'insignia apagada' }, 'No se muestra al niño') : null,
+            delCurso ? el('span', { class: 'insignia' }, 'Del curso') : null,
+            esAlumno() && !delCurso ? el('span', { class: 'insignia' }, 'De la familia') : null,
           ),
         ),
-        el('div', { class: 'acciones-fila' }, el('button', { type: 'button', class: 'boton secundario chico', onclick: () => repintar({ editando: libro }) }, 'Editar')),
+        delCurso ? null : el('div', { class: 'acciones-fila' }, el('button', { type: 'button', class: 'boton secundario chico', onclick: () => repintar({ editando: libro }) }, 'Editar')),
       ),
     );
   }

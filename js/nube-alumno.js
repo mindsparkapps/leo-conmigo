@@ -11,6 +11,8 @@
 import { autenticacion as auth } from './nube.js';
 import { ErrorCuenta } from './auth.js';
 import { crearAulas } from './aulas.js';
+import { crearDrive } from './drive.js';
+import { crearSincronizador } from './sync.js';
 import { CLAVE_ROL, esAlumno } from './acceso.js';
 import { fijarPerfilActivo, obtenerStore } from './contexto.js';
 import { borrarBD } from './store.js';
@@ -84,6 +86,27 @@ export async function entrarComoAlumno() {
   }
 }
 
+/**
+ * El respaldo del alumno en SU PROPIO Drive (`appDataFolder`, la misma sincronización personal de js/sync.js, con la cuenta del alumno):
+ * su avance, lo que agregó su familia y las fotos y voces de esa familia. Los medios del curso (Biblioteca) y del catálogo no se suben.
+ * Al reinstalar y entrar con su Gmail se baja primero esto (recupera su avance) y después el curso. Un fallo aquí nunca frena el aula.
+ */
+async function respaldarAlumno({ conVentana = false, alProgreso = () => {} } = {}) {
+  try {
+    const store = await obtenerStore();
+    const obtenerToken = conVentana
+      ? (forzar) => auth.obtenerToken(forzar)
+      : async () => {
+        if (!auth.tokenVigente()) throw new ErrorCuenta('No hay una sesión de Google vigente.', { vuelveAIniciar: true });
+        return auth.obtenerToken(false);
+      };
+    return await crearSincronizador({ store, drive: crearDrive({ obtenerToken }), alProgreso }).sincronizar();
+  } catch (error) {
+    console.warn('El respaldo del alumno no se pudo hacer (se intentará de nuevo):', error?.message ?? error);
+    return null;
+  }
+}
+
 /** Busca (otra vez) las aulas compartidas con la cuenta que ya inició sesión. */
 export async function buscarAulasDelAlumno() {
   const email = auth.cuenta().email;
@@ -99,6 +122,9 @@ export async function descargarAula(aula, alProgreso = () => {}) {
   const store = await obtenerStore();
   escribir(CLAVE_ROL, 'alumno');
   await store.escribirMeta(META_AULA, aula); // desde aquí, un corte se retoma con el mismo aula
+  // Primero lo propio (si el alumno reinstala, recupera su avance y lo de su familia); después el curso
+  alProgreso('Buscando tu avance guardado…');
+  await respaldarAlumno({ conVentana: true, alProgreso });
   const aulas = await obtenerAulasAlumno({ conVentana: true, alProgreso });
   const r = await aulas.sincronizarComoAlumno({ aula, email: auth.cuenta().email });
   if (r.desvinculado) {
@@ -111,6 +137,7 @@ export async function descargarAula(aula, alProgreso = () => {}) {
   await store.escribirMeta('rol', 'alumno');
   escribir(CLAVE_ULTIMA_SYNC, r.fecha);
   pedirAlmacenamientoPersistente();
+  await respaldarAlumno({ conVentana: true }); // y se guarda lo de ahora en su Drive
   return r;
 }
 
@@ -156,6 +183,7 @@ export async function sincronizarAlumno() {
       if (r.desvinculado) { await olvidarTodo(); return null; }
       aplicarApariencia(r.aula);
       escribir(CLAVE_ULTIMA_SYNC, r.fecha);
+      await respaldarAlumno(); // su avance y lo de su familia, en su propio Drive
       return r;
     } catch (error) {
       console.warn('El aula no se pudo sincronizar (se intentará de nuevo):', error?.message ?? error);

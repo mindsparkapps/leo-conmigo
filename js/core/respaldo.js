@@ -22,6 +22,7 @@ export const ALMACENES_RESPALDO = Object.freeze([
   'movimientos',
   'respuestas',
   'alumnos', // fichas de alumno del adulto (Ampliación 4, fase 23): sus registros llevan `perfilId` = id de la ficha
+  'contenidoFamilia', // (fase 24) lo que la familia de cada alumno agregó, sin fotos ni voces: solo para mostrar nombres en las estadísticas
 ]);
 
 export class ErrorRespaldo extends Error {

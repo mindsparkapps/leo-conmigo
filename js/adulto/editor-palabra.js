@@ -8,6 +8,7 @@ import { cabecera, campo, cargando, mostrarError, describirError } from '../ui/a
 import { crearMiniatura, pintarMiniatura } from '../ui/miniatura.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { guardarMedio, borrarMedio, urlDeMedio, liberarUrls } from '../medios.js';
+import { esAlumno } from '../acceso.js';
 import { elegirImagen, soporte, motivoSinGrabacion, crearGrabadora } from '../hardware.js';
 import { prepararImagen } from '../imagenes.js';
 import { buscarPictogramas, descargarPictograma, urlImagen, CREDITO_ARASAAC } from '../pictos.js';
@@ -61,6 +62,11 @@ async function iniciar(raiz, id, ir, limpiezas, estaVivo) {
   const esNueva = id === 'nueva';
   const palabra = esNueva ? null : palabras.find((p) => p.id === id);
   if (!esNueva && !palabra) throw new Error('No se encontró la palabra.');
+  if (!esNueva && esAlumno() && palabra.origen !== 'familia') {
+    // en el celular de un alumno lo del curso solo se ve: lo cambia su adulto
+    raiz.replaceChildren(cabecera('Palabra', { atras: ATRAS }), el('div', { class: 'panel' }, el('p', {}, `«${palabra.texto}» es del curso: solo la puede cambiar tu adulto.`)));
+    return;
+  }
   if (!estaVivo()) return;
   const velocidad = perfil.ajustes?.velocidadVoz ?? 1;
 

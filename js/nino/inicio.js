@@ -43,7 +43,7 @@ export function montar(contenedor, { ir }) {
   pintar(vista, ir, () => vivo).catch((error) => {
     console.error(error);
     vista.prepend(el('h1', { class: 'titulo-nino' }, NOMBRE_APP), el('p', { class: 'mensaje-nino' }, esAlumno() ? 'Algo no funcionó. Vuelve a abrir la aplicación.' : 'Algo no funcionó. Un adulto puede tocar el candado.'));
-    if (!esAlumno() && !vista.querySelector('.candado')) vista.append(crearCandado({ alDesbloquear: () => entrarAdulto(ir) }));
+    if (!vista.querySelector('.candado')) vista.append(crearCandado({ alDesbloquear: () => entrarAdulto(ir) }));
   });
   return () => {
     vivo = false;
@@ -129,8 +129,8 @@ async function pintar(vista, ir, estaVivo) {
     botonMenu({ clase: 'menu-tienda', etiqueta: 'Tienda', icono: ICONO_TIENDA, alTocar: irA('/nino/tienda') }),
     botonMenu({ clase: 'menu-album', etiqueta: 'Álbum', icono: ICONO_ALBUM, alTocar: irA('/nino/albumes') }),
     hayLibros ? botonMenu({ clase: 'menu-libro', etiqueta: 'Libros', icono: ICONO_LIBRO, alTocar: irA('/nino/libros') }) : null,
-    // Config lleva al modo adulto: sigue protegido (mantener 3 s y resolver la suma). El alumno no tiene modo adulto: no hay candado.
-    esAlumno() ? null : crearCandado({ alDesbloquear: () => entrarAdulto(ir), etiqueta: 'Config' }),
+    // Config lleva al modo adulto: sigue protegido (mantener 3 s y resolver la suma). En el celular de un alumno lleva al mismo panel con el menú reducido.
+    crearCandado({ alDesbloquear: () => entrarAdulto(ir), etiqueta: 'Config' }),
   );
 
   vista.prepend(

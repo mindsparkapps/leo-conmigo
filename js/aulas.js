@@ -24,6 +24,7 @@ import { ARCHIVO_AULA, aulaComoV2, estadoDeAlumnos, mediosDelPerfil, nuevaAula, 
 import { ALMACENES_DEL_PERFIL } from './core/borrar-perfil.js';
 import { estaDesvinculado, firmaDelAdulto } from './core/dispositivo-alumno.js';
 import { idDeFicha, nuevaFicha } from './core/curso.js';
+import { guardarMaterial, idDeArchivoDeMedio } from './material-familia.js';
 
 const MIME_JSON = 'application/json';
 const NOMBRE_TRABAJO = 'Leo Conmigo';
@@ -315,6 +316,34 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
       return info;
     },
 
+    /**
+     * «Traer el material de la familia»: baja a ESTE celular las fotos y voces que la familia del alumno guardó en su carpeta
+     * `familia/` (archivos de su cuenta; aquí solo se leen) y las guarda aparte (`js/material-familia.js`), nunca en `medios`.
+     * @returns {{ traidos, sinCarpeta }}
+     */
+    async traerMaterialDeFamilia(perfilId, correo, { alProgresoMaterial = () => {} } = {}) {
+      const dueno = minuscula(correo);
+      const info = await aulaDe(perfilId);
+      const carpeta = info.carpetasAlumnos?.[dueno] ?? (dueno && info.carpetaAlumnoId);
+      if (!carpeta) throw new ErrorAula('Ese alumno todavía no tiene su carpeta.');
+      const suyos = (lista) => lista.filter((a) => minuscula(a.owners?.[0]?.emailAddress) === dueno);
+      const lector = clienteCarpeta(carpeta);
+      const familia = suyos(await lector.listar()).find((a) => a.name === 'familia' && a.mimeType?.includes('folder'));
+      if (!familia) return { traidos: 0, sinCarpeta: true };
+      const enFamilia = clienteCarpeta(familia.id);
+      const archivos = suyos(await enFamilia.listar()).filter((a) => idDeArchivoDeMedio(a.name));
+      const items = [];
+      for (const [i, archivo] of archivos.entries()) {
+        alProgresoMaterial(`Trayendo el material de la familia (${i + 1} de ${archivos.length})…`);
+        const mime = archivo.mimeType && archivo.mimeType !== 'application/octet-stream' ? archivo.mimeType : '';
+        const bajado = await enFamilia.leerBlob(archivo.id);
+        const blob = mime && bajado.type !== mime ? new Blob([bajado], { type: mime }) : bajado;
+        items.push({ id: idDeArchivoDeMedio(archivo.name), nombre: archivo.name, mime: blob.type || mime, tipo: String(blob.type || mime).startsWith('audio') ? 'audio' : 'imagen', blob });
+      }
+      await guardarMaterial(store, idDeFicha(perfilId, dueno), items);
+      return { traidos: items.length, sinCarpeta: false };
+    },
+
     /** Agrega el dispositivo a `aula.json`: en su siguiente sincronización borrará sus datos. */
     async desvincularDispositivo(perfilId, id) {
       return cambiarAulaJson(perfilId, (a) => ({ ...a, desvinculados: [...new Set([...a.desvinculados, id])] }));
@@ -418,9 +447,20 @@ export function crearAulas({ store, obtenerToken, fetchFn, emailAdulto = '', idD
       const carpetaAlumnoId = propia?.id ?? aula.carpetaAlumnoId;
       if (!carpetaAlumnoId) throw new ErrorAula('Tu adulto todavía no terminó de preparar tu carpeta.', { sinAcceso: true });
 
+      // Las fotos y voces de la familia van a `familia/`, dentro de MI carpeta (se crea solo cuando hace falta)
+      const miCarpeta = clienteCarpeta(carpetaAlumnoId);
+      let carpetaFamilia = null;
+      const familiaYa = (await miCarpeta.listar()).find((a) => a.name === 'familia' && a.mimeType?.includes('folder') && minuscula(a.owners?.[0]?.emailAddress) === minuscula(email));
+      const hayMaterial = (await store.listar('medios', { conBorrados: true })).some((m) => m.origen === 'familia');
+      if (familiaYa || hayMaterial) {
+        const familiaId = familiaYa?.id ?? await drive.crearCarpeta('familia', { padre: carpetaAlumnoId, propiedades: { leoConmigo: 'familia', perfilId: aula.perfilId } });
+        carpetaFamilia = clienteCarpeta(familiaId);
+      }
+
       const conocidos = new Set((await store.leerMeta(`aula:${aula.perfilId}:idsMediosConocidos`, [])) ?? []);
       const sincronizador = crearSincronizadorDeAula({
         store: vistaDePerfil(store, aula.perfilId, { idsMediosConocidos: conocidos }),
+        carpetaFamilia,
         rol: 'alumno',
         traerDeApp,
         aula,

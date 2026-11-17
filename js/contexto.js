@@ -4,6 +4,7 @@ import { abrirStore } from './store.js';
 import { completarVocesIniciales, migrarCatalogoUnaVez } from './medios.js';
 import { esAlumno } from './acceso.js';
 import { contenidoDe } from './core/curso.js';
+import { envolverParaFamilia } from './store-familia.js';
 
 const META_PERFIL = 'perfilActivoId';
 let promesaStore = null;
@@ -14,11 +15,12 @@ let promesaStore = null;
  */
 export function obtenerStore() {
   if (!promesaStore) {
+    // En el celular de un alumno lo que escribe la familia se marca «de la familia» y lo del curso no se toca (store-familia.js)
     const esta = abrirStore({
       alCerrarse: () => {
         if (promesaStore === esta) promesaStore = null;
       },
-    }).catch((error) => {
+    }).then((store) => envolverParaFamilia(store, esAlumno)).catch((error) => {
       if (promesaStore === esta) promesaStore = null; // permite reintentar
       throw error;
     });

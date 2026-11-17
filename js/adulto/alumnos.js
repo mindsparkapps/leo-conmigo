@@ -9,6 +9,7 @@ import { leerFondo } from '../ui/fondo.js';
 import { vistaDePerfil } from '../store-perfil.js';
 import { estadoDeAlumnos } from '../core/aula.js';
 import { idDeFicha } from '../core/curso.js';
+import { materialDe, quitarMaterial, urlsDeMaterial } from '../material-familia.js';
 import {
   FASES, nubeConfigurada, observarAulas, observarNube, obtenerAulas, pedirPermisoAulas, refrescarEstado, sincronizarAulaAhora, tienePermisoAulas,
 } from '../nube.js';
@@ -41,6 +42,10 @@ export function montar(contenedor) {
   let pendientes = {}; // perfilId -> cambios por subir
   let contenido = {}; // perfilId -> { palabras, medios }: para elegir el perfil que de verdad tiene el material
   let fichas = {}; // perfilId -> fichas de sus alumnos (cada una con su propio avance)
+  let familia = {}; // fichaId -> filas de lo que agregó su familia (sin fotos ni voces)
+  let material = {}; // fichaId -> fotos y voces de la familia traídas a ESTE celular
+  const urlsMaterial = []; // direcciones blob: de lo traído (se liberan al salir)
+  const trayendo = {}; // fichaId -> texto mientras se baja el material
   const trabajando = {}; // perfilId -> texto mientras una acción corre
   const mensajes = {}; // perfilId -> { texto, error }
   const borradores = {}; // perfilId -> correo a medio escribir
@@ -55,6 +60,13 @@ export function montar(contenedor) {
     fichas = {};
     const todasLasFichas = await store.listar('alumnos');
     for (const p of perfiles) fichas[p.id] = todasLasFichas.filter((f) => f.cursoId === p.id).sort((a, b) => a.email.localeCompare(b.email));
+    const filasFamilia = (await store.listar('contenidoFamilia')).filter((f) => f.registro && !f.registro.deleted);
+    familia = {};
+    material = {};
+    for (const f of todasLasFichas) {
+      familia[f.id] = filasFamilia.filter((x) => x.fichaId === f.id);
+      material[f.id] = await materialDe(store, f.id);
+    }
     for (const p of perfiles) {
       contenido[p.id] = {
         palabras: (await store.listar('palabras', { perfilId: p.id })).length,
@@ -135,6 +147,57 @@ export function montar(contenedor) {
     location.hash = '#/adulto/progreso';
   };
 
+  /** «Traer el material de la familia»: baja SOLO a este celular las fotos y voces de esa familia (no toca su Drive). */
+  const traerMaterial = async (perfil, ficha) => {
+    trayendo[ficha.id] = 'Trayendo el material de la familia…';
+    delete mensajes[perfil.id];
+    pintar();
+    try {
+      const aulas = await obtenerAulas();
+      const r = await aulas.traerMaterialDeFamilia(perfil.id, ficha.email, { alProgresoMaterial: (t) => { trayendo[ficha.id] = t; pintar(); } });
+      mensajes[perfil.id] = { texto: r.sinCarpeta ? `${ficha.nombre} todavía no guardó fotos ni voces propias.` : `Listo: ${r.traidos} ${r.traidos === 1 ? 'archivo' : 'archivos'} de la familia de ${ficha.nombre} en este celular.`, error: false };
+    } catch (error) {
+      console.error(error);
+      mensajes[perfil.id] = { texto: error?.name === 'ErrorAula' || error?.name === 'ErrorDrive' || error?.name === 'ErrorCuenta' ? error.message : describirError(error), error: true };
+    } finally {
+      delete trayendo[ficha.id];
+    }
+    await cargar();
+  };
+
+  /** «Quitarlo de mi celular»: borra solo la copia de este celular, no lo del Drive ni el celular del alumno. */
+  const quitarDeMiCelular = async (perfil, ficha) => {
+    if (!globalThis.confirm(`¿Quitar de tu celular el material de la familia de ${ficha.nombre}? Solo se borra la copia de aquí: sigue en el Drive y en el celular del alumno, y puedes volver a traerlo.`)) return;
+    const store = await obtenerStore();
+    const n = await quitarMaterial(store, ficha.id);
+    mensajes[perfil.id] = { texto: `Se quitaron ${n} ${n === 1 ? 'archivo' : 'archivos'} de este celular. Lo del alumno no cambió.`, error: false };
+    await cargar();
+  };
+
+  /** Lo que agregó la familia de un alumno, y los botones para traer o quitar su material. */
+  const panelFamilia = (perfil, ficha, ocupado) => {
+    const filas = familia[ficha.id] ?? [];
+    if (!filas.length && !(material[ficha.id] ?? []).length) return null;
+    const cuenta = (almacen) => filas.filter((f) => f.almacen === almacen).length;
+    const traido = material[ficha.id] ?? [];
+    const { urls, liberar } = urlsDeMaterial(traido);
+    urlsMaterial.push(liberar);
+    return el('div', { class: 'familia-ficha' },
+      el('p', { class: 'ayuda' }, `La familia agregó ${cuantos(cuenta('palabras'), 'palabra', 'palabras')}, ${cuantos(cuenta('frases'), 'frase', 'frases')} y ${cuantos(cuenta('libros'), 'libro', 'libros')}. Sus estadísticas aparecen en su ficha, marcadas «De la familia». Sus fotos y voces están en el Drive del alumno y no se bajan solas.`),
+      el('div', { class: 'acciones' },
+        trayendo[ficha.id]
+          ? progreso(trayendo[ficha.id])
+          : el('button', { type: 'button', class: 'boton secundario chico', disabled: ocupado, onclick: () => traerMaterial(perfil, ficha) }, 'Traer el material de la familia'),
+        traido.length ? el('button', { type: 'button', class: 'boton secundario chico', disabled: ocupado, onclick: () => quitarDeMiCelular(perfil, ficha) }, 'Quitarlo de mi celular') : null),
+      traido.length
+        ? el('details', { class: 'detalle-numeros' },
+          el('summary', {}, `Material traído a este celular (${traido.length})`),
+          el('ul', { class: 'lista-simple' }, traido.map((m) => el('li', {}, m.tipo === 'audio'
+            ? el('audio', { controls: true, src: urls.get(m.id), 'aria-label': 'Voz de la familia' })
+            : el('img', { src: urls.get(m.id), alt: '', width: 64, height: 64 })))))
+        : null);
+  };
+
   /** Los enlaces a las estadísticas de UN alumno (su ficha): Progreso, «Qué le cuesta» y Álbum. */
   const enlacesDeFicha = (ficha) => {
     const sufijo = `/ficha/${encodeURIComponent(ficha.id)}`;
@@ -146,6 +209,7 @@ export function montar(contenedor) {
 
   function pintar() {
     if (!vivo) return;
+    for (const liberar of urlsMaterial.splice(0)) liberar(); // lo que se vuelve a dibujar crea sus propias direcciones
     const ahora = Date.now();
     zona.replaceChildren(...[
       panelQuePuedeVer(),
@@ -251,7 +315,8 @@ export function montar(contenedor) {
           el('button', { type: 'button', class: 'boton secundario chico', disabled: ocupado, onclick: () => desvincular(perfil, d) }, 'Desvincular'))),
         el('div', { class: 'acciones' },
           fichaDe(a.email) ? enlacesDeFicha(fichaDe(a.email)) : null,
-          el('button', { type: 'button', class: 'boton secundario chico', disabled: ocupado, onclick: () => quitarAcceso(perfil, a.email) }, 'Quitar acceso'))))));
+          el('button', { type: 'button', class: 'boton secundario chico', disabled: ocupado, onclick: () => quitarAcceso(perfil, a.email) }, 'Quitar acceso')),
+        fichaDe(a.email) ? panelFamilia(perfil, fichaDe(a.email), ocupado) : null))));
     }
     // alumnos que ya no tienen acceso pero cuyas estadísticas se conservan
     const antiguos = (fichas[perfil.id] ?? []).filter((f) => !info.invitados.includes(f.email));
@@ -259,7 +324,7 @@ export function montar(contenedor) {
       hecho.push(
         el('h3', {}, 'Antiguos alumnos'),
         el('p', { class: 'ayuda' }, 'Ya no tienen acceso, pero sus estadísticas se conservan.'),
-        el('ul', { class: 'lista-alumnos' }, ...antiguos.map((f) => el('li', { class: 'alumno-fila', 'data-alumno': f.email }, el('div', {}, el('strong', {}, f.nombre), ` (${f.email})`), el('div', { class: 'acciones' }, enlacesDeFicha(f))))),
+        el('ul', { class: 'lista-alumnos' }, ...antiguos.map((f) => el('li', { class: 'alumno-fila', 'data-alumno': f.email }, el('div', {}, el('strong', {}, f.nombre), ` (${f.email})`), el('div', { class: 'acciones' }, enlacesDeFicha(f)), panelFamilia(perfil, f, ocupado)))),
       );
     }
 
@@ -290,6 +355,7 @@ export function montar(contenedor) {
 
   return () => {
     vivo = false;
+    for (const liberar of urlsMaterial) liberar();
     dejarDeObservarNube();
     dejarDeObservarAulas();
   };

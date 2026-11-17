@@ -12,6 +12,7 @@ import {
 } from '../core/estadisticas.js';
 import { UMBRAL_ETAPA_2, etapasDesbloqueadas } from '../core/etapas.js';
 import { paginar } from '../core/listas.js';
+import { registrosDeFamilia } from '../core/curso.js';
 import { crearPaginacion } from '../ui/paginacion.js';
 
 export const titulo = 'Progreso · Leo Conmigo';
@@ -61,11 +62,14 @@ async function pintar(raiz, estaVivo, ruta, { filtro = 'todas', abierta = null, 
     );
     return;
   }
-  const [palabras, progresos, sesiones] = await Promise.all([
+  const [palabrasDelCurso, progresos, sesiones] = await Promise.all([
     store.listar('palabras', { perfilId: sujeto.contenidoId }), // lo que se lee es del curso
     store.listar('progresos', { perfilId: sujeto.id }), // lo que avanzó, del perfil o de la ficha
     store.listar('sesiones', { perfilId: sujeto.id }),
   ]);
+  // Lo que agregó la familia de ese alumno (su lista llega con su archivo, sin fotos ni voces): también tiene estadísticas
+  const filasFamilia = deFicha ? (await store.listar('contenidoFamilia')).filter((f) => f.fichaId === sujeto.id) : [];
+  const palabras = [...palabrasDelCurso, ...registrosDeFamilia(filasFamilia, 'palabras')];
   if (!estaVivo()) return;
 
   const repintar = (opciones) => pintar(raiz, estaVivo, ruta, opciones).catch((error) => mostrarError(raiz, error));
@@ -185,7 +189,7 @@ async function pintar(raiz, estaVivo, ruta, { filtro = 'todas', abierta = null, 
       el(
         'tr',
         {},
-        el('td', {}, el('strong', {}, palabra.texto), el('span', { class: `insignia suave estado-${fila.estado}` }, NOMBRE_ESTADO[fila.estado])),
+        el('td', {}, el('strong', {}, palabra.texto), el('span', { class: `insignia suave estado-${fila.estado}` }, NOMBRE_ESTADO[fila.estado]), palabra.origen === 'familia' ? el('span', { class: 'insignia' }, 'De la familia') : null),
         fila.celdas.map((c) => {
           const texto = c.estado === 'dominada' ? '✓' : c.estado === 'practica' ? `${c.aciertos}/${c.ensayos}` : '·';
           const lectura = c.estado === 'dominada' ? 'dominada' : c.estado === 'practica' ? `en práctica, ${c.aciertos} de ${c.ensayos} sin ayuda` : 'aún no empieza';

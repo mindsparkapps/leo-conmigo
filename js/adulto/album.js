@@ -8,6 +8,7 @@ import { crearMiniatura } from '../ui/miniatura.js';
 import { crearCofre } from '../ui/moneda.js';
 import { mapaDePropias, nodoDeCalcomania } from '../ui/calcomania.js';
 import { obtenerStore, perfilActivo, sujetoDeEstadisticas } from '../contexto.js';
+import { esAlumno } from '../acceso.js';
 import { borrarMedio, guardarMedio, liberarUrls, urlDeMedio } from '../medios.js';
 import { cargarMonedas, reiniciarAlbumes } from '../albumes.js';
 import { MONEDAS_LECCION_MAX, MONEDAS_LECCION_MIN, MONEDAS_MAX, MONEDAS_MIN, TAMANO_MAX, TAMANO_MIN, calcularAlbumes, crearRegalo, normalizarAlbum, saldo } from '../core/album.js';
@@ -479,7 +480,8 @@ export function montar(contenedor, { ruta = '' } = {}) {
         const medio = imagen.blob ? await guardarMedio(store, { tipo: 'imagen', blob: imagen.blob, mime: imagen.mime, origen: imagen.origen, arasaacId: imagen.arasaacId }) : null;
         const nueva = await store.guardar('calcomaniasPropias', { perfilId: perfil.id, nombre, medioImagenId: medio?.id ?? null, arasaacId: imagen.arasaacId, emoji: imagen.emoji });
         // si el álbum de la app tiene una lista de láminas, la nueva entra a ella
-        if (config.codigos) await store.guardar('perfiles', { ...perfil, album: normalizarAlbum({ ...config, codigos: [...config.codigos, codigoDePropia(nueva.id)] }) });
+        // (el álbum del curso lo ordena el adulto: la familia no cambia la lista de láminas)
+        if (config.codigos && !esAlumno()) await store.guardar('perfiles', { ...perfil, album: normalizarAlbum({ ...config, codigos: [...config.codigos, codigoDePropia(nueva.id)] }) });
         await pintar();
       } catch (error) {
         mensajePropia.textContent = describirError(error);
@@ -502,10 +504,33 @@ export function montar(contenedor, { ruta = '' } = {}) {
         'li',
         { class: 'fila-contenido' },
         crearMiniatura({ url: miniaturasPropias.get(p.id), emoji: p.emoji, texto: p.nombre }),
-        el('div', { class: 'fila-texto' }, el('strong', {}, p.nombre)),
-        el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Quitar la calcomanía ${p.nombre}`, onclick: () => quitarPropia(p) }, 'Quitar'),
+        el('div', { class: 'fila-texto' }, el('strong', {}, p.nombre), esAlumno() ? el('span', { class: 'insignia' }, p.origen === 'familia' ? 'De la familia' : 'Del curso') : null),
+        esAlumno() && p.origen !== 'familia' ? null : el('button', { type: 'button', class: 'boton secundario chico', 'aria-label': `Quitar la calcomanía ${p.nombre}`, onclick: () => quitarPropia(p) }, 'Quitar'),
       ),
     );
+
+    // En el celular de un alumno: el álbum actual (solo se ve) y las láminas propias de la familia; nada del curso se cambia
+    if (esAlumno()) {
+      raiz.replaceChildren(
+        cabecera('Álbum'),
+        el('div', { class: 'panel' },
+          el('h2', {}, `Álbum ${datos.actual.numero} (${datos.actual.codigos.length} de ${config.tamano})`),
+          actualesNodos.length
+            ? el('div', { class: 'album album-adulto', 'aria-label': 'Calcomanías del álbum actual' }, actualesNodos)
+            : el('p', { class: 'ayuda' }, 'Aún no tiene calcomanías en este álbum.'),
+          el('p', { class: 'ayuda' }, `Álbumes completos: ${datos.completos.length}. El tamaño y los álbumes los pone el adulto.`),
+          el('div', { class: 'fila-contenido' }, crearCofre({ saldo: datos.saldo, compacto: true }))),
+        el('div', { class: 'panel' },
+          el('h2', {}, 'Láminas de la familia'),
+          el('p', { class: 'ayuda' }, 'Crea láminas con una foto, un pictograma o un emoji. Se quedan en este celular y en el Drive del alumno. Las del curso solo se ven.'),
+          listaPropias.length ? el('ul', { class: 'lista-simple' }, listaPropias) : el('p', { class: 'ayuda' }, 'Todavía no hay ninguna.'),
+          campo('Nombre', entradaNombre),
+          selector.elemento,
+          mensajePropia,
+          el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton', onclick: agregarPropia }, 'Agregar lámina'))),
+      );
+      return;
+    }
 
     raiz.replaceChildren(
       cabecera('Álbum y monedas'),

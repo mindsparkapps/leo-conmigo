@@ -1,6 +1,6 @@
 import { crearRouter } from './router.js';
 import { iniciarPWA } from './pwa.js';
-import { adultoHabilitado } from './acceso.js';
+import { destinoSiNoPasa, puedeAbrirRutaAdulta } from './acceso.js';
 import { pedirAlmacenamientoPersistente } from './hardware.js';
 import { iniciarNube } from './nube.js';
 import { iniciarNubeAlumno } from './nube-alumno.js';
@@ -22,8 +22,8 @@ pedirAlmacenamientoPersistente(); // que el navegador no borre las fotos, voces 
 const adulto = (ruta, modulo) => ({
   ruta,
   cargar: () => import(modulo),
-  guardia: adultoHabilitado,
-  siNoPasa: '/nino',
+  guardia: puedeAbrirRutaAdulta, // el alumno solo abre las del menú reducido (acceso.js)
+  siNoPasa: destinoSiNoPasa,
 });
 
 crearRouter({
