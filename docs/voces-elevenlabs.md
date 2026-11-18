@@ -49,6 +49,7 @@ Una sílaba aislada sin contexto se lee mal de varias formas. Qué pasaba y qué
 - **Se lee la palabra que abrevia** («dra» → «doctora», «ed» → «edición», «vi» → «seis», «cli» → «ce-ele-i», «fla» → «Florida», «flia» → «familia», «bul» → «bulevar»): mandar `"apply_text_normalization": "off"`.
 - **Suena inglés o francés** («dri» → «drai», «craz», «cur», «blun», «ceur», «doir»): escribirla con acento en la vocal fuerte (`drí`, `cráz`, `cúr`, `blún`…), que fuerza la lectura española. Mismo archivo de destino (`dri.mp3`), solo cambia el texto enviado.
 - **Entonación de sorpresa, cansancio o maullido** («guau», «bua», «miau»): sin signos, con acento (`guáu`, `buá`, `miáu`) y `stability` 0.6.
+- **Segundo intento** (cuando el acento no bastó: «guau», «miau», «bua», «ceur», «fler», «flie»): grafía sin acento, `previous_text` con una frase en español que no se pronuncia («Ahora repite la sílaba en español, con voz tranquila y neutra: »), `stability` 0.9 y normalización off. Las que terminan en «r» (`ceur`, `fler`) suenan francesas incluso con acento; `ceur` se probó como «seur».
 - La API no deja transcribir (la clave no tiene `speech_to_text`), así que lo único que comprueba el resultado es oírlo en el revisor. Si una sigue mal, probar otra grafía y volver a oírla.
 
 `herramientas/generar-voces.mjs` ya manda `apply_text_normalization: "off"` y `stability: 0.6` para las sílabas. Para las que están en `data/voces/tanda-escritura.json` con `"revisar": true`, el revisor las saca de su tanda y las ofrece aparte en el botón «Revisión tanda 1».
