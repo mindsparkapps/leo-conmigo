@@ -46,13 +46,15 @@ for (const linea of readFileSync(ruta('data/escritura/faltan-voces.txt'), 'utf8'
   }
 }
 
-async function generar(texto) {
+// Para sílabas sueltas: sin normalización de texto (si no, «dra» → «doctora», «ed» → «edición», «vi» → «seis») y, si
+// suena mal (inglés, francés), escribirla con acento en la vocal fuerte («drí», «cráz»). Ver docs/voces-elevenlabs.md.
+async function generar(texto, silaba = false) {
   for (let intento = 1; intento <= 4; intento++) {
     const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOZ}?output_format=mp3_44100_128`, {
       method: 'POST',
       headers: { 'xi-api-key': CLAVE, 'Content-Type': 'application/json' },
       // language_code: 'es' es obligatorio: sin él las palabras cortas se leen en inglés («mar» → «march»)
-      body: JSON.stringify({ text: texto, model_id: MODELO, language_code: 'es', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
+      body: JSON.stringify({ text: texto, model_id: MODELO, language_code: 'es', ...(silaba ? { apply_text_normalization: 'off' } : {}), voice_settings: { stability: silaba ? 0.6 : 0.5, similarity_boost: 0.75 } }),
     });
     if (r.ok) return Buffer.from(await r.arrayBuffer());
     if (r.status === 429 || r.status >= 500) { await new Promise((s) => setTimeout(s, 2000 * intento)); continue; }
@@ -76,7 +78,7 @@ async function obrero() {
   while (!fallo && siguiente < pendientes.length) {
     const t = pendientes[siguiente++];
     try {
-      const mp3 = await generar(t.habla);
+      const mp3 = await generar(t.habla, t.tipo === 'silaba');
       mkdirSync(dirname(ruta(t.archivo)), { recursive: true });
       writeFileSync(ruta(t.archivo), mp3);
       hechos.push(t);

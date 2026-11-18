@@ -56,8 +56,10 @@ async function cargarTandaNueva() {
  */
 async function cargarLista(modo = 'todas') {
   const nuevas = await cargarTandaNueva();
+  // las que se corrigieron (`revisar`) salen de su tanda y se oyen aparte, en «revision1»
+  if (modo === 'revision1') return nuevas.filter((x) => x.revisar);
   const tanda = /^tanda(\d+)$/.exec(modo);
-  if (tanda) return nuevas.slice((Number(tanda[1]) - 1) * POR_TANDA, Number(tanda[1]) * POR_TANDA);
+  if (tanda) return nuevas.slice((Number(tanda[1]) - 1) * POR_TANDA, Number(tanda[1]) * POR_TANDA).filter((x) => !x.revisar);
   const deTanda = new Set(nuevas.map((x) => x.ruta));
   const respuesta = await fetch('data/vocabulario-inicial.json');
   if (!respuesta.ok) throw new Error('No se pudo leer el catálogo de palabras.');
@@ -102,7 +104,7 @@ export function crearRevisorVoces() {
   const etiqueta = (x) => `${x.tipo === 'frase' ? 'Frase' : x.tipo === 'sílaba' ? 'Sílaba' : 'Palabra'}: ${x.texto}`;
   const esMala = (x) => malas.some((m) => m.texto === etiqueta(x));
   // El número es el mismo que se ve arriba cuando suena en su lista: «139 de 280» (tramo) o «442 de 901» (todas)
-  const nombreLista = (l) => (l ?? 'todas').replace(/^tanda(\d+)$/, 'tanda $1');
+  const nombreLista = (l) => (l ?? 'todas').replace(/^tanda(\d+)$/, 'tanda $1').replace(/^revision(\d+)$/, 'revisión tanda $1');
   const textoMala = (m) => `${m.numero ? `N.º ${m.numero} de ${m.total ?? (totalTodas || '…')} (${nombreLista(m.lista)}) · ` : ''}${m.texto}`;
 
   function pintarMalas() {
@@ -272,6 +274,14 @@ export function crearRevisorVoces() {
       b.addEventListener('click', () => iniciar(`tanda${i + 1}`));
       botonesTanda.push(b);
       filaTandas.append(b);
+    }
+    // las que se regeneraron tras la primera revisión de la tanda 1
+    const corregidas = nuevas.filter((x) => x.revisar).length;
+    if (corregidas) {
+      const b = el('button', { type: 'button', class: 'boton' }, `Revisión tanda 1: las ${corregidas} que corregí`);
+      b.addEventListener('click', () => iniciar('revision1'));
+      botonesTanda.push(b);
+      filaTandas.prepend(b);
     }
   }).catch((e) => console.error(e));
 
