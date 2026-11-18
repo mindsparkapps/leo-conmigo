@@ -1,11 +1,11 @@
-// Perfiles: ver, elegir el niño activo, editar nombre y foto, y agregar otro niño.
+// Perfiles: ver, elegir el perfil activo, cambiarle el nombre y agregar otro. El perfil (curso) no lleva foto:
+// la foto es del alumno. Un perfil antiguo que ya tenía foto la sigue mostrando.
 
 import { el } from '../ui/dom.js';
 import { cabecera, campo, cargando, mostrarError, describirError } from '../ui/adulto.js';
 import { crearMiniatura } from '../ui/miniatura.js';
-import { crearSelectorFoto } from '../ui/selector-foto.js';
 import { obtenerStore, perfilActivo, fijarPerfilActivo } from '../contexto.js';
-import { guardarMedio, borrarMedio, urlDeMedio, liberarUrls } from '../medios.js';
+import { urlDeMedio, liberarUrls } from '../medios.js';
 import { MAX_LARGO_PALABRA } from '../core/vocabulario.js';
 import { borrarPerfil } from '../core/borrar-perfil.js';
 
@@ -96,9 +96,6 @@ async function pintar(raiz, limpiezas, estaVivo) {
 
     const vistaEdicion = () => {
       const entrada = el('input', { type: 'text', maxlength: MAX_LARGO_PALABRA, value: perfil.nombre, autocomplete: 'off' });
-      const selector = crearSelectorFoto({ urlInicial: urls.get(perfil.id) ?? null, texto: perfil.nombre });
-      limpiezas.push(() => selector.liberar());
-      entrada.addEventListener('input', () => selector.establecerTexto(entrada.value));
       const error = el('p', { class: 'error-texto', role: 'alert', hidden: true });
       const guardar = el('button', { type: 'button', class: 'boton' }, 'Guardar');
       guardar.addEventListener('click', async () => {
@@ -110,17 +107,8 @@ async function pintar(raiz, limpiezas, estaVivo) {
         }
         guardar.disabled = true;
         try {
-          let fotoMedioId = perfil.fotoMedioId ?? null;
-          const { blob, mime, quitar } = selector.estado;
-          if (blob) {
-            const medio = await guardarMedio(store, { tipo: 'imagen', blob, mime, origen: 'foto' });
-            await borrarMedio(store, fotoMedioId);
-            fotoMedioId = medio.id;
-          } else if (quitar) {
-            await borrarMedio(store, fotoMedioId);
-            fotoMedioId = null;
-          }
-          await store.guardar('perfiles', { ...perfil, nombre, fotoMedioId });
+          // El perfil no lleva foto (la foto es del alumno): solo se cambia el nombre
+          await store.guardar('perfiles', { ...perfil, nombre });
           repintar();
         } catch (e) {
           console.error(e);
@@ -134,7 +122,6 @@ async function pintar(raiz, limpiezas, estaVivo) {
           'div',
           { class: 'panel-interno' },
           campo('Nombre', entrada),
-          selector.elemento,
           error,
           el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton secundario', onclick: vistaNormal }, 'Cancelar'), guardar),
         ),
@@ -150,7 +137,7 @@ async function pintar(raiz, limpiezas, estaVivo) {
     cabecera('Perfiles'),
     perfiles.length
       ? el('div', { class: 'panel' }, lista)
-      : el('div', { class: 'panel' }, el('p', {}, 'Todavía no hay ningún niño. Crea el primero para empezar.')),
-    el('a', { class: 'boton', href: '#/adulto/asistente' }, perfiles.length ? 'Agregar otro niño' : 'Crear el primer perfil'),
+      : el('div', { class: 'panel' }, el('p', {}, 'Todavía no hay ningún perfil. Crea el primero para empezar.')),
+    el('a', { class: 'boton', href: '#/adulto/asistente' }, perfiles.length ? 'Agregar perfil' : 'Crear el primer perfil'),
   );
 }

@@ -1,5 +1,5 @@
-// Asistente de primer uso: crea el perfil del niño y sus primeras palabras.
-//   1. Nombre y foto del niño
+// Asistente de primer uso: crea un perfil y sus primeras palabras.
+//   1. Nombre del perfil (sin foto: la foto es del alumno); opcional, el nombre como primera palabra
 //   2. Su gente y sus cosas favoritas (con foto)
 //   3. Palabras de la lista inicial que se quieren agregar
 
@@ -11,7 +11,7 @@ import { nuevoPerfil } from '../core/modelos.js';
 import { armarPalabrasDelAsistente, agruparPorCategoria, nombreDeCategoria, MAX_LARGO_PALABRA } from '../core/vocabulario.js';
 import { guardarMedio, borrarMedio, ponerVocesIniciales } from '../medios.js';
 
-export const titulo = 'Nuevo niño · Leo Conmigo';
+export const titulo = 'Nuevo perfil · Leo Conmigo';
 
 const SUGERENCIAS = [
   { etiqueta: 'Mamá', texto: 'Mamá', categoria: 'personas' },
@@ -48,23 +48,20 @@ async function iniciar(raiz, ir, limpiezas, estaVivo) {
   const catalogo = await cargarCatalogo();
   if (!estaVivo()) return;
 
-  // ---- Paso 1: el niño ----
+  // ---- Paso 1: el perfil (sin foto: la foto es del alumno) ----
   const entradaNombre = el('input', { type: 'text', maxlength: MAX_LARGO_PALABRA, autocomplete: 'off', enterkeyhint: 'next' });
   const errorNombre = el('p', { class: 'error-texto', role: 'alert', hidden: true });
-  const selectorNino = crearSelectorFoto({ texto: '' });
-  limpiezas.push(() => selectorNino.liberar());
   entradaNombre.addEventListener('input', () => {
     errorNombre.hidden = true;
-    selectorNino.establecerTexto(entradaNombre.value);
   });
+  const casillaPalabra = el('input', { type: 'checkbox', checked: true });
   const paso1 = el(
     'div',
     { class: 'panel' },
-    el('h2', {}, '¿Cómo se llama el niño?'),
-    campo('Nombre', entradaNombre, 'Será la primera palabra que verá todos los días.'),
+    el('h2', {}, '¿Cómo se llama el perfil?'),
+    campo('Nombre', entradaNombre, 'Por ejemplo, el nombre del alumno o «Lectura inicial».'),
     errorNombre,
-    el('p', { class: 'campo-etiqueta' }, 'Su foto (opcional)'),
-    selectorNino.elemento,
+    el('label', { class: 'ayuda' }, casillaPalabra, ' Agregar este nombre como primera palabra (si es el nombre del alumno)'),
   );
 
   // ---- Paso 2: su gente y sus cosas ----
@@ -177,7 +174,7 @@ async function iniciar(raiz, ir, limpiezas, estaVivo) {
   async function avanzar() {
     if (actual === 0) {
       if (!entradaNombre.value.trim()) {
-        errorNombre.textContent = 'Escribe el nombre del niño.';
+        errorNombre.textContent = 'Escribe el nombre del perfil.';
         errorNombre.hidden = false;
         entradaNombre.focus();
         return;
@@ -206,8 +203,6 @@ async function iniciar(raiz, ir, limpiezas, estaVivo) {
       };
 
       const nombre = entradaNombre.value.trim();
-      const fotoPerfilId = await nuevoMedio(selectorNino.estado);
-      const fotoPalabraId = await nuevoMedio(selectorNino.estado); // copia propia: cada uso tiene su medio
       const personales = [];
       for (const f of filas) {
         const texto = f.entrada.value.trim();
@@ -215,13 +210,13 @@ async function iniciar(raiz, ir, limpiezas, estaVivo) {
         personales.push({ texto, categoria: f.categorias.value, medioImagenId: await nuevoMedio(f.selector.estado) });
       }
 
-      const perfil = perfilPendiente ?? nuevoPerfil({ nombre, fotoMedioId: fotoPerfilId });
+      const perfil = perfilPendiente ?? nuevoPerfil({ nombre });
       await store.guardar('perfiles', perfil);
       perfilPendiente = perfil;
       const existentes = await store.listar('palabras', { perfilId: perfil.id });
       const { palabras } = armarPalabrasDelAsistente({
         perfilId: perfil.id,
-        nino: { nombre, medioImagenId: fotoPalabraId },
+        nino: casillaPalabra.checked ? { nombre } : null,
         personales,
         catalogo: catalogo.filter((e) => marcadas.has(e.texto)),
         existentes,
@@ -245,7 +240,7 @@ async function iniciar(raiz, ir, limpiezas, estaVivo) {
   }
 
   raiz.append(
-    cabecera('Nuevo niño', { atras: '#/adulto', textoAtras: 'Cancelar' }),
+    cabecera('Nuevo perfil', { atras: '#/adulto', textoAtras: 'Cancelar' }),
     indicador,
     ...pasos,
     mensaje,
