@@ -63,7 +63,7 @@ Todas con `language_code: "es"`, `eleven_v4`, `apply_text_normalization: "off"`.
 | «h» muda leída como «j» | hi | enviar solo la vocal: `í` |
 | Se lee como la palabra inglesa | tle («tell») | `tlé` |
 | Entonación de sorpresa, maullido o cansancio | guau, miau, bua, jo | acento (`guáu`, `miáu`, `buá`, `jó`) no bastó del todo para guau/miau/bua; sirvió: sin acento, `previous_text` (contexto en español que no se pronuncia) y `stability` 0.9 |
-| Francesa con «r» final | ceur, fler | `fler` se arregló con contexto + stability 0.9 sin acento; `ceur` no con `ceur`, `céur` ni `seur`; tampoco `séur` con contexto (sonaba «seeerg»); se probó `sé ur` (con espacio, para separar «eu» de la «r») con contexto |
+| Francesa con «r» final | ceur, fler | `fler` se arregló con contexto + stability 0.9 sin acento; `ceur` no con `ceur`, `céur` ni `seur`; tampoco `séur` con contexto (sonaba «seeerg»); `sé ur` (con espacio) sonó peor por la pausa; se probó `seúr` (acento en la «u») con contexto |
 
 - La API no deja transcribir (la clave no tiene `speech_to_text`), así que lo único que comprueba el resultado es oírlo en el revisor. Si una sigue mal, probar otra grafía y volver a oírla.
 

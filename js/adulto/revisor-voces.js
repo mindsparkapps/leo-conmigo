@@ -60,6 +60,13 @@ async function cargarLista(modo = 'todas') {
   if (modo === 'revision1') return nuevas.filter((x) => x.revisar);
   const tanda = /^tanda(\d+)$/.exec(modo);
   if (tanda) return nuevas.slice((Number(tanda[1]) - 1) * POR_TANDA, Number(tanda[1]) * POR_TANDA).filter((x) => !x.revisar);
+  // La tanda 1 ya está revisada: lo aprobado pasa a las listas por tipo (palabras, sílabas, frases)
+  const aprobadas = nuevas.slice(0, POR_TANDA).filter((x) => !x.revisar);
+  const porTipo = { palabras: 'palabra', silabas: 'sílaba', frases: 'frase' };
+  if (porTipo[modo]) {
+    const viejas = await cargarLista('todas');
+    return [...viejas.filter((x) => x.tipo === porTipo[modo]), ...aprobadas.filter((x) => x.tipo === porTipo[modo])];
+  }
   const deTanda = new Set(nuevas.map((x) => x.ruta));
   const respuesta = await fetch('data/vocabulario-inicial.json');
   if (!respuesta.ok) throw new Error('No se pudo leer el catálogo de palabras.');
@@ -85,8 +92,10 @@ export function crearRevisorVoces() {
   let modoActual = 'todas';
   let aislado = null; // audio de «Reproducir» de una marcada
 
-  const preparar = el('button', { type: 'button', class: 'boton' }, 'Probar todas las anteriores');
-  const prepararTramo = el('button', { type: 'button', class: 'boton secundario' }, 'Probar el siguiente tramo (frases y sílabas)');
+  // Lo ya revisado y aprobado, por tipo (la tanda 1 entró aquí)
+  const preparar = el('button', { type: 'button', class: 'boton' }, 'Probar palabras');
+  const prepararTramo = el('button', { type: 'button', class: 'boton' }, 'Probar sílabas');
+  const prepararFrases = el('button', { type: 'button', class: 'boton' }, 'Probar frases');
   const filaTandas = el('div', { class: 'acciones' });
   const estado = el('p', { class: 'ayuda', role: 'status' });
   const actualTexto = el('p', { class: 'revisor-actual', 'aria-live': 'polite' }, '');
@@ -104,7 +113,7 @@ export function crearRevisorVoces() {
   const etiqueta = (x) => `${x.tipo === 'frase' ? 'Frase' : x.tipo === 'sílaba' ? 'Sílaba' : 'Palabra'}: ${x.texto}`;
   const esMala = (x) => malas.some((m) => m.texto === etiqueta(x));
   // El número es el mismo que se ve arriba cuando suena en su lista: «139 de 280» (tramo) o «442 de 901» (todas)
-  const nombreLista = (l) => (l ?? 'todas').replace(/^tanda(\d+)$/, 'tanda $1').replace(/^revision(\d+)$/, 'revisión tanda $1');
+  const nombreLista = (l) => (l ?? 'todas').replace(/^tanda(\d+)$/, 'tanda $1').replace(/^revision(\d+)$/, 'revisión tanda $1').replace(/^silabas$/, 'sílabas');
   const textoMala = (m) => `${m.numero ? `N.º ${m.numero} de ${m.total ?? (totalTodas || '…')} (${nombreLista(m.lista)}) · ` : ''}${m.texto}`;
 
   function pintarMalas() {
@@ -233,7 +242,7 @@ export function crearRevisorVoces() {
 
   async function iniciar(modo) {
     detener();
-    const botones = [preparar, prepararTramo, ...botonesTanda];
+    const botones = [preparar, prepararTramo, prepararFrases, ...botonesTanda];
     for (const b of botones) b.disabled = true;
     estado.textContent = 'Preparando la lista…';
     try {
@@ -261,13 +270,14 @@ export function crearRevisorVoces() {
       for (const b of botones) b.disabled = false;
     }
   }
-  preparar.addEventListener('click', () => iniciar('todas'));
-  prepararTramo.addEventListener('click', () => iniciar('tramo'));
+  preparar.addEventListener('click', () => iniciar('palabras'));
+  prepararTramo.addEventListener('click', () => iniciar('silabas'));
+  prepararFrases.addEventListener('click', () => iniciar('frases'));
 
   // Un botón por cada 200 voces nuevas de Escritura (los pone cuando lee la lista)
   const botonesTanda = [];
   cargarTandaNueva().then((nuevas) => {
-    for (let i = 0; i * POR_TANDA < nuevas.length; i++) {
+    for (let i = 1; i * POR_TANDA < nuevas.length; i++) { // la tanda 1 (i = 0) ya está en las listas por tipo
       const desde = i * POR_TANDA + 1;
       const hasta = Math.min(nuevas.length, (i + 1) * POR_TANDA);
       const b = el('button', { type: 'button', class: 'boton secundario' }, `Probar voces nuevas de Escritura ${desde} a ${hasta}`);
@@ -278,7 +288,7 @@ export function crearRevisorVoces() {
     // las que se regeneraron tras la primera revisión de la tanda 1
     const corregidas = nuevas.filter((x) => x.revisar).length;
     if (corregidas) {
-      const b = el('button', { type: 'button', class: 'boton' }, `Revisión tanda 1: las ${corregidas} que corregí`);
+      const b = el('button', { type: 'button', class: 'boton' }, `Revisión tanda 1: ${corregidas === 1 ? 'la que corregí' : `las ${corregidas} que corregí`}`);
       b.addEventListener('click', () => iniciar('revision1'));
       botonesTanda.push(b);
       filaTandas.prepend(b);
@@ -293,7 +303,7 @@ export function crearRevisorVoces() {
     { class: 'panel revisor-voces' },
     el('h2', {}, 'Revisar las voces'),
     el('p', { class: 'ayuda' }, 'Reproduce de corrido las frases y palabras con la voz de Catalina, para escuchar cuáles suenan mal. Marca las malas y copia la lista para regenerarlas.'),
-    el('div', { class: 'acciones' }, preparar, prepararTramo),
+    el('div', { class: 'acciones' }, preparar, prepararTramo, prepararFrases),
     filaTandas,
     estado,
     actualTexto,
