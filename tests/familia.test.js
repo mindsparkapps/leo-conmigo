@@ -6,7 +6,8 @@ import { crearSincronizador } from '../js/sync.js';
 import { envolverParaFamilia } from '../js/store-familia.js';
 import { materialDe, quitarMaterial } from '../js/material-familia.js';
 import { vistaDeFichas, ErrorVistaPerfil } from '../js/store-perfil.js';
-import { ErrorCurso, aplicarOrigenDeFamilia, idDeFicha, registrosDeFamilia } from '../js/core/curso.js';
+import { ErrorCurso, aplicarOrigenDeFamilia, fotoQueSeMuestra, idDeFicha, registrosDeFamilia } from '../js/core/curso.js';
+import { fotoQueTeniaElPerfil, guardarFotoAlumno } from '../js/foto-alumno.js';
 import { rutaPermitidaAlumno } from '../js/core/dispositivo-alumno.js';
 import { planDeMedios } from '../js/core/sync.js';
 import { cargarMonedas, comprarSobre } from '../js/albumes.js';
@@ -181,6 +182,58 @@ test('la familia agrega una palabra con foto: queda en el Drive del alumno, sus 
   assert.equal(m.nube.hijos(familia.id).length, 2, 'el Drive del alumno no cambió');
   assert.ok(await m.a.store.obtener('medios', 'm-fam'), 'ni el celular del alumno');
   assert.ok(m.nube.peticionesDe(ADULTO).every((p) => p.metodo !== 'DELETE'));
+});
+
+test('foto del alumno: pasa la foto que tenía el perfil a SU foto, queda en su familia/, el adulto solo ve el id hasta traer el material, y B no la recibe', async () => {
+  const m = await montar();
+  // un perfil antiguo con foto: la foto del curso está en la Biblioteca y le llega al alumno
+  await m.tienda.guardar('perfiles', { ...(await m.tienda.obtener('perfiles', 'P1')), fotoMedioId: 'm-img' });
+  await m.adulto.sincronizarAula('P1');
+  const aula = await miAula(m.a);
+  await m.a.aulas.sincronizarComoAlumno({ aula, email: A });
+  const perfilA = await m.a.store.obtener('perfiles', 'P1');
+  const delPerfil = await fotoQueTeniaElPerfil(m.a.store, perfilA);
+  assert.deepEqual(await bytesDe(delPerfil.blob), [4, 5, 6]);
+
+  // la familia la pasa a la foto del alumno: un medio NUEVO de la familia (la del curso no se toca)
+  const guardado = await guardarFotoAlumno(m.a.store, perfilA, delPerfil);
+  const idFoto = guardado.medioFotoAlumnoId;
+  assert.ok(idFoto && idFoto !== 'm-img');
+  assert.equal((await m.a.store.obtener('medios', idFoto)).origen, 'familia');
+  assert.equal(fotoQueSeMuestra(await m.a.store.obtener('perfiles', 'P1')), idFoto);
+  await m.a.aulas.sincronizarComoAlumno({ aula, email: A });
+  assert.equal((await m.a.store.obtener('perfiles', 'P1')).medioFotoAlumnoId, idFoto, 'sincronizar con el curso no la pisa');
+
+  // en SU Drive: el id en alumno.json y el archivo en familia/, de su cuenta; nunca en la Biblioteca
+  const info = (await m.adulto.listarAulas()).P1;
+  const suCarpeta = info.carpetasAlumnos[A];
+  assert.equal(m.nube.json(m.nube.porNombre('alumno.json', suCarpeta).id).almacenes.perfiles[0].medioFotoAlumnoId, idFoto);
+  const familia = m.nube.porNombre('familia', suCarpeta);
+  const archivo = m.nube.hijos(familia.id).find((f) => f.name.startsWith(`medio-${idFoto}.`));
+  assert.equal(archivo?.owner, A);
+  assert.ok(!m.nube.hijos(info.bibliotecaId).some((f) => f.name.includes(idFoto)));
+
+  // el adulto: la ficha trae el id, pero la foto solo con «Traer el material de la familia»
+  await m.adulto.sincronizarAula('P1');
+  const ficha = (await m.tienda.listar('alumnos')).find((f) => f.id === fichaA);
+  assert.equal(ficha.estado.medioFotoAlumnoId, idFoto);
+  assert.equal(await m.tienda.obtener('medios', idFoto), undefined);
+  await m.adulto.traerMaterialDeFamilia('P1', A);
+  assert.deepEqual(await bytesDe((await materialDe(m.tienda, fichaA)).find((x) => x.id === idFoto).blob), [4, 5, 6]);
+  assert.equal((await m.tienda.obtener('perfiles', 'P1')).fotoMedioId, 'm-img', 'el perfil del adulto no cambió');
+
+  // el otro alumno del curso no recibe la foto de A
+  await m.b.aulas.sincronizarComoAlumno({ aula: await miAula(m.b), email: B });
+  assert.equal('medioFotoAlumnoId' in (await m.b.store.obtener('perfiles', 'P1')), false);
+  assert.equal(await m.b.base.obtener('medios', idFoto), undefined);
+
+  // cambiarla deja la anterior borrada; quitarla deja la del perfil (si aún la tiene)
+  const otra = await guardarFotoAlumno(m.a.store, await m.a.store.obtener('perfiles', 'P1'), { blob: imagen(8, 8, 8), mime: 'image/webp' });
+  assert.notEqual(otra.medioFotoAlumnoId, idFoto);
+  assert.equal(await m.a.store.obtener('medios', idFoto), undefined);
+  const sin = await guardarFotoAlumno(m.a.store, otra, {});
+  assert.equal('medioFotoAlumnoId' in sin, false);
+  assert.equal(fotoQueSeMuestra(sin), 'm-img');
 });
 
 test('otro alumno del mismo curso no ve ni recibe lo de la familia de A; borrar lo de la familia propaga el borrado', async () => {

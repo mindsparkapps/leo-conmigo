@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   AJUSTES_DEL_ALUMNO, AJUSTES_DEL_CURSO, CAMPOS_DEL_ALUMNO, CAMPOS_DEL_CURSO, CLAVES_FAMILIA, aFicha, combinarPerfil, contenidoDe,
-  fichaDeCorreo, filasDeContenidoFamilia, idDeFicha, limpiarContenidoFamilia, nuevaFicha, perfilPublicable, separarFamilia,
+  fichaDeCorreo, filasDeContenidoFamilia, fotoQueSeMuestra, idDeFicha, limpiarContenidoFamilia, nuevaFicha, perfilPublicable, separarFamilia,
 } from '../js/core/curso.js';
 import { AJUSTES_POR_DEFECTO, nuevoPerfil, normalizarAjustes } from '../js/core/modelos.js';
 import { evaluarAutoajuste } from '../js/core/autoajuste.js';
@@ -16,7 +16,7 @@ const reg = (id, s, extra = {}) => ({ id, updatedAt: t(s), deleted: false, ...ex
 
 test('la división de campos cubre todo lo que se escribe en el perfil y no se pisa', () => {
   // Lo que se escribe en el perfil (auditado en js/autoajuste.js, js/adulto/album.js, js/adulto/ajustes.js, perfiles.js, asistente.js):
-  const campos = ['id', 'nombre', 'fotoMedioId', 'fechaNacimiento', 'creado', 'album', 'colecciones', 'base', 'ajustes', 'etapaActual', 'cambiosAutomaticos'];
+  const campos = ['id', 'nombre', 'fotoMedioId', 'fechaNacimiento', 'creado', 'album', 'colecciones', 'base', 'ajustes', 'etapaActual', 'cambiosAutomaticos', 'medioFotoAlumnoId'];
   const repartidos = [...CAMPOS_DEL_CURSO, ...CAMPOS_DEL_ALUMNO, 'ajustes'];
   assert.deepEqual([...repartidos].sort(), [...campos].sort());
   assert.equal(new Set(repartidos).size, repartidos.length);
@@ -52,6 +52,27 @@ test('combinarPerfil: con un ajuste en «Automático» gana el valor del alumno;
   assert.deepEqual(r.cambiosAutomaticos, [{ ajuste: 'etapa' }]);
   assert.equal(r.nombre, 'Lectura inicial'); // el resto es del curso
   assert.equal(r.fotoMedioId, 'foto');
+});
+
+test('foto del alumno: es solo suya, la publica, el curso no la pisa y se muestra antes que la foto antigua del perfil', () => {
+  // el curso no trae foto del alumno (aunque alguien la meta): la del alumno se conserva al combinar
+  const c = curso({ medioFotoAlumnoId: 'intrusa' });
+  assert.equal(combinarPerfil(c, { medioFotoAlumnoId: 'foto-victor' }).medioFotoAlumnoId, 'foto-victor');
+  assert.equal('medioFotoAlumnoId' in combinarPerfil(c, null), false);
+  assert.equal('medioFotoAlumnoId' in combinarPerfil(c, { medioFotoAlumnoId: '' }), false);
+  // el alumno la publica (solo el id; el archivo va en su familia/) y nada del curso
+  const p = perfilPublicable({ ...curso(), medioFotoAlumnoId: 'foto-victor' });
+  assert.equal(p.medioFotoAlumnoId, 'foto-victor');
+  assert.equal('fotoMedioId' in p, false);
+  assert.equal('medioFotoAlumnoId' in perfilPublicable(curso()), false);
+  // llega a la ficha del adulto dentro de su estado
+  const { estado } = aFicha({ perfiles: [{ ...curso(), medioFotoAlumnoId: 'foto-victor' }] }, { cursoId: 'C1', fichaId: idDeFicha('C1', 'v@x.cl') });
+  assert.equal(estado.medioFotoAlumnoId, 'foto-victor');
+  // qué se muestra
+  assert.equal(fotoQueSeMuestra({ fotoMedioId: 'curso', medioFotoAlumnoId: 'alumno' }), 'alumno');
+  assert.equal(fotoQueSeMuestra({ fotoMedioId: 'curso' }), 'curso');
+  assert.equal(fotoQueSeMuestra({}), null);
+  assert.equal(fotoQueSeMuestra(null), null);
 });
 
 test('combinarPerfil: un cambio automático del alumno no lo pisa un ajuste manual del curso, y al revés', () => {

@@ -9,6 +9,8 @@ import { normalizarAjustes } from '../core/modelos.js';
 import { crearMiniatura } from '../ui/miniatura.js';
 import { describirError } from '../ui/adulto.js';
 import { urlDeMedio, liberarUrls } from '../medios.js';
+import { fotoQueSeMuestra } from '../core/curso.js';
+import { crearBloqueFotoAlumno } from './foto-alumno.js';
 import { avisosPendientes, deshacerCambio, marcarVisto, nombreDeAjuste } from '../core/autoajuste.js';
 import { FASES, clasePunto, observarAulas, observarNube, refrescarEstado, textoDeEstado } from '../nube.js';
 
@@ -100,6 +102,8 @@ export function montar(contenedor, { ir }) {
     dejarDeObservar();
     dejarDeObservarNube();
     dejarDeObservarAulas();
+    liberarFotoPrevia?.();
+    liberarFotoPrevia = null;
     liberarUrls();
   };
 }
@@ -158,8 +162,12 @@ async function pintarNino(zona, estaVivo) {
     return;
   }
   const palabras = await store.listar('palabras', { perfilId: perfil.id });
-  const url = await urlDeMedio(store, perfil.fotoMedioId);
-  if (!estaVivo()) return;
+  const url = await urlDeMedio(store, fotoQueSeMuestra(perfil));
+  // en el celular de un alumno, la familia elige la foto del alumno (la foto no es del perfil)
+  const bloqueFoto = esAlumno() ? await crearBloqueFotoAlumno({ store, perfil, alGuardar: () => pintarNino(zona, estaVivo).catch(console.error) }) : null;
+  if (!estaVivo()) { bloqueFoto?.liberar(); return; }
+  liberarFotoPrevia?.();
+  liberarFotoPrevia = bloqueFoto ? bloqueFoto.liberar : null;
   const activas = palabras.filter((p) => p.activa !== false).length;
   zona.replaceChildren(
     el('h2', {}, 'El niño'),
@@ -197,8 +205,11 @@ async function pintarNino(zona, estaVivo) {
     esAlumno()
       ? el('p', { class: 'ayuda' }, 'Lo del curso lo pone tu adulto y aquí solo se ve. Lo que agregues tú (palabras, frases, libros, álbumes, premios y monedas) es de la familia: se queda en este celular y en el Drive del alumno.')
       : el('p', { class: 'ayuda' }, el('a', { href: '#/adulto/respaldo' }, 'Copia de seguridad')),
+    ...(bloqueFoto ? [bloqueFoto.elemento] : []), // replaceChildren nativo: nunca un null
   );
 }
+
+let liberarFotoPrevia = null; // el selector de foto del alumno que se pintó la última vez (libera su vista previa)
 
 function avisoActualizacion() {
   return el(

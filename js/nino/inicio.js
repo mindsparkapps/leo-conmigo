@@ -18,6 +18,7 @@ import { acreditarAlbumesPendientes, cargarMonedas } from '../albumes.js';
 import { saltarLeccionActivo } from '../dev.js';
 import { terminarLeccion } from './premio.js';
 import { normalizarAjustes } from '../core/modelos.js';
+import { fotoQueSeMuestra } from '../core/curso.js';
 import { elementosDeEscritura, nivelesDisponibles } from '../core/escritura/elementos.js';
 
 export const titulo = NOMBRE_APP;
@@ -91,7 +92,7 @@ async function pintar(vista, ir, estaVivo) {
     store.listar('progresos', { perfilId: perfil.id }),
     store.listar('niveles', { perfilId: perfil.id }),
     cargarMonedas(store, perfil),
-    urlDeMedio(store, perfil.fotoMedioId),
+    urlDeMedio(store, fotoQueSeMuestra(perfil)), // la foto del alumno (o la que tenía el perfil, si es antiguo)
   ]);
   if (!estaVivo()) return;
 

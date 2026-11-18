@@ -5,7 +5,7 @@ import { el } from '../ui/dom.js';
 import { cabecera, campo, cargando, mostrarError, describirError } from '../ui/adulto.js';
 import { crearMiniatura } from '../ui/miniatura.js';
 import { obtenerStore, perfilActivo, fijarPerfilActivo } from '../contexto.js';
-import { urlDeMedio, liberarUrls } from '../medios.js';
+import { borrarMedio, urlDeMedio, liberarUrls } from '../medios.js';
 import { MAX_LARGO_PALABRA } from '../core/vocabulario.js';
 import { borrarPerfil } from '../core/borrar-perfil.js';
 
@@ -117,11 +117,33 @@ async function pintar(raiz, limpiezas, estaVivo) {
           guardar.disabled = false;
         }
       });
+      // Un perfil antiguo todavía puede tener foto: se puede quitar (la foto es del alumno, que la pone en su celular)
+      const quitarFoto = perfil.fotoMedioId
+        ? el('button', {
+          type: 'button',
+          class: 'boton secundario chico',
+          onclick: async (e) => {
+            if (!globalThis.confirm(`¿Quitar la foto del perfil «${perfil.nombre}»? Ya no se verá en el celular de sus alumnos (cada alumno puede poner la suya). Antes de quitarla, el alumno puede pasarla a su propia foto con «Usar la foto que tenía el perfil».`)) return;
+            e.target.disabled = true;
+            try {
+              await borrarMedio(store, perfil.fotoMedioId);
+              await store.guardar('perfiles', { ...perfil, nombre: entrada.value.trim() || perfil.nombre, fotoMedioId: null });
+              repintar();
+            } catch (err) {
+              console.error(err);
+              error.textContent = describirError(err);
+              error.hidden = false;
+              e.target.disabled = false;
+            }
+          },
+        }, 'Quitar la foto del perfil')
+        : null;
       fila.replaceChildren(
         el(
           'div',
           { class: 'panel-interno' },
           campo('Nombre', entrada),
+          quitarFoto,
           error,
           el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton secundario', onclick: vistaNormal }, 'Cancelar'), guardar),
         ),

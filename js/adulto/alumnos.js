@@ -4,6 +4,7 @@
 
 import { el } from '../ui/dom.js';
 import { cabecera, describirError } from '../ui/adulto.js';
+import { crearMiniatura } from '../ui/miniatura.js';
 import { obtenerStore, fijarPerfilActivo } from '../contexto.js';
 import { leerFondo } from '../ui/fondo.js';
 import { vistaDePerfil } from '../store-perfil.js';
@@ -177,7 +178,7 @@ export function montar(contenedor) {
   /** Lo que agregó la familia de un alumno, y los botones para traer o quitar su material. */
   const panelFamilia = (perfil, ficha, ocupado) => {
     const filas = familia[ficha.id] ?? [];
-    if (!filas.length && !(material[ficha.id] ?? []).length) return null;
+    if (!filas.length && !(material[ficha.id] ?? []).length && !ficha.estado?.medioFotoAlumnoId) return null;
     const cuenta = (almacen) => filas.filter((f) => f.almacen === almacen).length;
     const traido = material[ficha.id] ?? [];
     const { urls, liberar } = urlsDeMaterial(traido);
@@ -196,6 +197,22 @@ export function montar(contenedor) {
             ? el('audio', { controls: true, src: urls.get(m.id), 'aria-label': 'Voz de la familia' })
             : el('img', { src: urls.get(m.id), alt: '', width: 64, height: 64 })))))
         : null);
+  };
+
+  /**
+   * La foto del alumno (la elige su familia en su celular; su archivo está en su `familia/`): se ve aquí solo si se trajo el
+   * material de la familia. Si no, la miniatura muestra la inicial de su nombre.
+   */
+  const fotoDeFicha = (ficha) => {
+    const id = ficha?.estado?.medioFotoAlumnoId;
+    const item = id ? (material[ficha.id] ?? []).find((m) => m.id === id) : null;
+    let url = null;
+    if (item) {
+      const { urls, liberar } = urlsDeMaterial([item]);
+      urlsMaterial.push(liberar);
+      url = urls.get(id) ?? null;
+    }
+    return crearMiniatura({ url, texto: ficha?.nombre ?? '' });
   };
 
   /** Los enlaces a las estadísticas de UN alumno (su ficha): Progreso, «Qué le cuesta» y Álbum. */
@@ -309,7 +326,8 @@ export function montar(contenedor) {
       hecho.push(el('p', { class: 'ayuda' }, 'Todos ven el mismo perfil, pero cada alumno tiene su propia ficha con su avance y sus estadísticas.'));
       const fichaDe = (correo) => (fichas[perfil.id] ?? []).find((f) => f.id === idDeFicha(perfil.id, correo));
       hecho.push(el('ul', { class: 'lista-alumnos' }, ...alumnos.map((a) => el('li', { class: 'alumno-fila', 'data-alumno': a.email },
-        el('div', {}, el('strong', {}, fichaDe(a.email)?.nombre ?? a.email), ` (${a.email}) · `, ESTADOS[a.estado] ?? a.estado),
+        el('div', { class: 'fila-contenido' }, fichaDe(a.email) ? fotoDeFicha(fichaDe(a.email)) : null,
+          el('div', {}, el('strong', {}, fichaDe(a.email)?.nombre ?? a.email), ` (${a.email}) · `, ESTADOS[a.estado] ?? a.estado)),
         ...a.dispositivos.map((d) => el('div', { class: 'ayuda alumno-dispositivo' },
           `${d.nombre || d.idDispositivo} · versión ${d.versionApp ?? '?'} · sincronizó ${haceCuanto(d.haceMs)} `,
           el('button', { type: 'button', class: 'boton secundario chico', disabled: ocupado, onclick: () => desvincular(perfil, d) }, 'Desvincular'))),
@@ -324,7 +342,7 @@ export function montar(contenedor) {
       hecho.push(
         el('h3', {}, 'Antiguos alumnos'),
         el('p', { class: 'ayuda' }, 'Ya no tienen acceso, pero sus estadísticas se conservan.'),
-        el('ul', { class: 'lista-alumnos' }, ...antiguos.map((f) => el('li', { class: 'alumno-fila', 'data-alumno': f.email }, el('div', {}, el('strong', {}, f.nombre), ` (${f.email})`), el('div', { class: 'acciones' }, enlacesDeFicha(f)), panelFamilia(perfil, f, ocupado)))),
+        el('ul', { class: 'lista-alumnos' }, ...antiguos.map((f) => el('li', { class: 'alumno-fila', 'data-alumno': f.email }, el('div', { class: 'fila-contenido' }, fotoDeFicha(f), el('div', {}, el('strong', {}, f.nombre), ` (${f.email})`)), el('div', { class: 'acciones' }, enlacesDeFicha(f)), panelFamilia(perfil, f, ocupado)))),
       );
     }
 

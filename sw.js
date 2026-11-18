@@ -875,6 +875,8 @@ const PRECACHE = [
   'js/store-perfil.js',
   'js/store-familia.js',
   'js/material-familia.js',
+  'js/foto-alumno.js',
+  'js/adulto/foto-alumno.js',
   'js/core/aula.js',
   'js/core/curso.js',
   'js/core/limpieza.js',

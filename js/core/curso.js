@@ -22,8 +22,14 @@ export const CAMPOS_DEL_CURSO = Object.freeze([
   'colecciones', 'base', // los álbumes disponibles: cargados y el de la app
 ]);
 
-/** Campos del perfil que calcula el celular del alumno (solo mientras el ajuste siga en «Automático»). */
-export const CAMPOS_DEL_ALUMNO = Object.freeze(['etapaActual', 'cambiosAutomaticos']);
+/**
+ * Campos del perfil que pone el celular del alumno: lo que calcula solo (solo mientras el ajuste siga en «Automático») y su
+ * foto (`medioFotoAlumnoId`: la elige la familia en su celular; el medio es `origen: 'familia'` y su archivo va a `familia/`).
+ */
+export const CAMPOS_DEL_ALUMNO = Object.freeze(['etapaActual', 'cambiosAutomaticos', 'medioFotoAlumnoId']);
+
+/** La foto que se muestra del que juega: la del alumno si la tiene; si no, la que tenía el perfil antes (perfiles antiguos). */
+export const fotoQueSeMuestra = (perfil) => perfil?.medioFotoAlumnoId || perfil?.fotoMedioId || null;
 
 /**
  * Los ajustes que la app cambia sola: ajuste -> clave que lo marca en `ajustes.automaticos`.
@@ -73,17 +79,22 @@ export function combinarPerfil(curso, propio = null) {
   const etapaActual = auto[AUTOMATICO_DE_ETAPA] && propio?.etapaActual !== undefined && propio?.etapaActual !== null
     ? propio.etapaActual
     : curso?.etapaActual ?? 1;
-  return {
+  const combinado = {
     ...curso,
     ajustes: normalizarAjustes(ajustes),
     etapaActual,
     cambiosAutomaticos: Array.isArray(propio?.cambiosAutomaticos) ? [...propio.cambiosAutomaticos] : [],
   };
+  // la foto del alumno es solo suya: el curso nunca la trae ni la pisa
+  delete combinado.medioFotoAlumnoId;
+  if (typeof propio?.medioFotoAlumnoId === 'string' && propio.medioFotoAlumnoId) combinado.medioFotoAlumnoId = propio.medioFotoAlumnoId;
+  return combinado;
 }
 
 /**
  * Lo que el celular del alumno publica de su perfil: solo lo suyo (los ajustes que están en «Automático», la etapa si
- * es automática y los avisos de cambios). Nada del curso: ni nombre, ni foto, ni álbumes, ni ajustes manuales.
+ * es automática, los avisos de cambios y el id de su foto, si la tiene). Nada del curso: ni nombre, ni la foto del curso, ni
+ * álbumes, ni ajustes manuales. El archivo de la foto no viaja aquí: está en su `familia/` (el adulto lo baja solo con su botón).
  */
 export function perfilPublicable(perfil) {
   const ajustes = normalizarAjustes(perfil?.ajustes);
@@ -95,6 +106,7 @@ export function perfilPublicable(perfil) {
   const salida = { id: perfil?.id, ajustes: propios };
   if (ajustes.automaticos[AUTOMATICO_DE_ETAPA]) salida.etapaActual = perfil?.etapaActual ?? 1;
   salida.cambiosAutomaticos = Array.isArray(perfil?.cambiosAutomaticos) ? [...perfil.cambiosAutomaticos] : [];
+  if (typeof perfil?.medioFotoAlumnoId === 'string' && perfil.medioFotoAlumnoId) salida.medioFotoAlumnoId = perfil.medioFotoAlumnoId;
   if (perfil?.updatedAt !== undefined) salida.updatedAt = perfil.updatedAt;
   return salida;
 }
