@@ -5,3 +5,8 @@ Thumbs.db
 graphify-out/
 # Local secrets written by `elevenlabs onboard`
 /.env.local
+
+# Material de trabajo del avatar: solo se versionan los scripts
+herramientas/avatar/**
+!herramientas/avatar/**/
+!herramientas/avatar/**/*.py
