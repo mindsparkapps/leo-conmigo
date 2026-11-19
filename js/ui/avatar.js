@@ -10,6 +10,7 @@ const ZONAS = ['.zona-opciones', '.esc-piezas', '.esc-cajas', '.libro-opciones',
 const PLAZO_MAXIMO_MS = 3200; // si la voz nunca avisa que terminó, el avatar se va igual
 const SALIDA_MS = 260;
 const FPS = 30;
+const TAMANO = 0.75; // un 25 % más chico que el lado de la zona de respuestas
 
 let recursos = null;
 
@@ -30,7 +31,23 @@ function zonaDeRespuesta(vista) {
   return vista;
 }
 
-const nombreDe = (ruta) => String(ruta ?? '').split('/').pop().replace(/\.mp3$/, '');
+/**
+ * El rectángulo que ocupan de verdad las respuestas: la unión de los hijos visibles de la zona (las cartas o piezas).
+ * La zona puede ser más ancha que lo que muestra (una grilla centrada), y así el avatar queda al medio de las respuestas.
+ */
+function rectanguloDeRespuestas(zona) {
+  let izq = Infinity, arr = Infinity, der = -Infinity, aba = -Infinity;
+  for (const hijo of zona.children) {
+    const h = hijo.getBoundingClientRect();
+    if (h.width === 0 || h.height === 0) continue;
+    izq = Math.min(izq, h.left); arr = Math.min(arr, h.top);
+    der = Math.max(der, h.right); aba = Math.max(aba, h.bottom);
+  }
+  if (izq === Infinity) return zona.getBoundingClientRect();
+  return { left: izq, top: arr, width: der - izq, height: aba - arr };
+}
+
+const nombreDe =(ruta) => String(ruta ?? '').split('/').pop().replace(/\.mp3$/, '');
 
 /**
  * Muestra el avatar sobre la zona de respuestas de `vista` mientras suena `texto` (el elogio).
@@ -78,9 +95,8 @@ export function avatarFelicita(vista, texto, { conVoz = true } = {}) {
 
   prepararAvatar().then(([svg, bocas]) => {
     if (cerrado || !svg || !vista.isConnected) { if (!svg) cerrar(); return; }
-    const zona = zonaDeRespuesta(vista);
-    const r = zona.getBoundingClientRect();
-    const lado = Math.max(140, Math.min(r.width, r.height, window.innerHeight * 0.7) * 0.95);
+    const r = rectanguloDeRespuestas(zonaDeRespuesta(vista));
+    const lado = Math.max(105, Math.min(r.width, r.height, window.innerHeight * 0.7) * 0.95 * TAMANO);
     capa = document.createElement('div');
     capa.className = 'avatar-felicita';
     capa.setAttribute('aria-hidden', 'true');
