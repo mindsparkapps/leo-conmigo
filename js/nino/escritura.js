@@ -15,6 +15,7 @@ import { NOMBRE_APP } from '../config.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
 import { liberarUrls, urlDeMedio } from '../medios.js';
 import { decirTexto, desbloquearAudio, detener, hablarTexto } from '../audio.js';
+import { avatarFelicita, prepararAvatar } from '../ui/avatar.js';
 import { vibrar } from '../hardware.js';
 import { aplicarAutoajusteEscritura } from '../autoajuste.js';
 import { normalizarAjustes } from '../core/modelos.js';
@@ -152,6 +153,8 @@ async function iniciar({ vista, area, ir, sesion, prueba: pruebaForzada }) {
     guardado = guardado.then(tarea).catch((e) => console.error('No se pudo guardar el progreso', e));
   };
 
+  let avatar = null; // el avatar que felicita la última palabra armada (ui/avatar.js)
+  if (ajustes.intensidadCelebracion !== 'ninguna') prepararAvatar();
   const hablar = (texto) => (ajustes.sonido ? hablarTexto(texto, { velocidad: ajustes.velocidadVoz }) : Promise.resolve(false));
   // La pieza se dice en minúscula para que use la grabación de la sílaba («Ma» de una oración suena como «ma»)
   const decirPieza = (texto, unidad) => hablar(unidad === 'silaba' ? String(texto).toLowerCase() : texto);
@@ -330,9 +333,12 @@ async function iniciar({ vista, area, ir, sesion, prueba: pruebaForzada }) {
     if (!sigue()) return;
     manejador.marcarAcierto({ celebrar: celebracion !== 'ninguna' });
     if (celebracion === 'normal') lluviaDeEstrellas(vista);
+    // El avatar aparece antes de pedir la voz, para no perder el aviso de que empezó a sonar
+    avatar = celebracion !== 'ninguna' ? avatarFelicita(vista, r.elogio, { conVoz: ajustes.sonido }) : null;
     if (celebracion !== 'ninguna') hablar(r.elogio);
     if (celebracion !== 'ninguna' && ajustes.vibracion) vibrar(40);
-    temporizador = setTimeout(avanzar, PAUSA_CELEBRACION_MS[celebracion]);
+    const fin = avatar?.terminado ?? Promise.resolve();
+    temporizador = setTimeout(() => fin.then(avanzar), PAUSA_CELEBRACION_MS[celebracion]);
   }
 
   async function avanzar() {
@@ -428,6 +434,7 @@ async function iniciar({ vista, area, ir, sesion, prueba: pruebaForzada }) {
 
   sesion.limpiar = () => {
     clearTimeout(temporizador);
+    avatar?.cerrar();
     manejador?.destruir();
     guardarInterrumpida();
   };

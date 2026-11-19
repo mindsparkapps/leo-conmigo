@@ -14,6 +14,7 @@ import { obtenerStore, perfilActivo } from '../contexto.js';
 import { liberarUrls, urlDeMedio } from '../medios.js';
 import { decirFrase, decirPalabra, desbloquearAudio, detener, hablarTexto } from '../audio.js';
 import { vibrar } from '../hardware.js';
+import { avatarFelicita, prepararAvatar } from '../ui/avatar.js';
 import { crearControlador } from '../core/controlador.js';
 import { aplicarAutoajuste } from '../autoajuste.js';
 
@@ -100,6 +101,8 @@ async function iniciar({ vista, area, ir, sesion }) {
   let ultimoToqueModelo = -Infinity;
   let turno = 0; // invalida audios de ensayos que ya pasaron
   let temporizador = null;
+  let avatar = null; // el avatar que felicita el último acierto (ui/avatar.js)
+  if (celebracion !== 'ninguna') prepararAvatar();
   let guardado = Promise.resolve();
   let quitarAjuste = () => {};
 
@@ -189,10 +192,14 @@ async function iniciar({ vista, area, ir, sesion }) {
     }
     manejador.marcarAcierto(id, { celebrar: celebracion !== 'ninguna' });
     if (celebracion === 'normal') lluviaDeEstrellas(vista);
+    // El avatar aparece antes de pedir la voz, para no perder el aviso de que empezó a sonar
+    avatar = celebracion !== 'ninguna' ? avatarFelicita(vista, r.elogio, { conVoz: ajustes.sonido }) : null;
     if (celebracion !== 'ninguna' && ajustes.sonido) hablarTexto(r.elogio, { velocidad: ajustes.velocidadVoz });
     else detener();
     if (celebracion !== 'ninguna' && ajustes.vibracion) vibrar(40);
-    temporizador = setTimeout(avanzar, PAUSA_CELEBRACION_MS[celebracion]);
+    // se avanza cuando pasó la pausa y el avatar terminó de felicitar (así el elogio no se corta)
+    const fin = avatar?.terminado ?? Promise.resolve();
+    temporizador = setTimeout(() => fin.then(avanzar), PAUSA_CELEBRACION_MS[celebracion]);
   }
 
   async function avanzar() {
@@ -240,6 +247,7 @@ async function iniciar({ vista, area, ir, sesion }) {
   // Si se sale a mitad (botón de la casa), se guarda lo que se alcanzó a hacer
   sesion.limpiar = () => {
     clearTimeout(temporizador);
+    avatar?.cerrar();
     quitarAjuste();
     if (!sesion.finalizada && ctl.ensayosHechos > 0) {
       guardar(() => store.guardar('sesiones', { ...ctl.registro({ inicio, fin: new Date() }), interrumpida: true }));

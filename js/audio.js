@@ -95,13 +95,13 @@ async function hablarTextoInterno(texto, { velocidad = 1 } = {}) {
   if (ruta) {
     try {
       const respuesta = await fetch(ruta);
-      if (respuesta.ok && (await reproducirBlobInterno(await respuesta.blob(), { velocidad }))) return true;
+      if (respuesta.ok && (await reproducirBlobInterno(await respuesta.blob(), { velocidad, texto, ruta }))) return true;
     } catch { /* sin el archivo o sin red: voz sintética */ }
   }
   if (!hayVozSintetica()) return false;
   const voz = elegirVoz(await cargarVoces());
   pararSonido();
-  return new Promise((resolver) => {
+  const fin = new Promise((resolver) => {
     const u = new SpeechSynthesisUtterance(texto);
     u.lang = voz?.lang ?? 'es-CL';
     if (voz) u.voice = voz;
@@ -111,6 +111,18 @@ async function hablarTextoInterno(texto, { velocidad = 1 } = {}) {
     u.onerror = () => { clearTimeout(plazo); resolver(false); };
     speechSynthesis.speak(u);
   });
+  avisarVoz({ texto, ruta: null, audio: null, fin });
+  return fin;
+}
+
+/**
+ * Avisa a quien siga la voz (el avatar que felicita, ui/avatar.js) que empezó a sonar un texto: con grabación,
+ * `audio` es el elemento que suena; con voz sintética es null y la promesa `fin` avisa cuándo termina.
+ */
+function avisarVoz(detalle) {
+  try {
+    globalThis.dispatchEvent?.(new CustomEvent('leo:voz', { detail: detalle }));
+  } catch { /* sin eventos (Node): nada que avisar */ }
 }
 
 /** Dice un texto con la voz sintética. Devuelve false si no hay voz o falló. */
@@ -136,7 +148,7 @@ export async function conTipoDeAudio(blob) {
   return tipo ? new Blob([blob], { type: tipo }) : blob;
 }
 
-async function reproducirBlobInterno(original, { velocidad = 1 } = {}) {
+async function reproducirBlobInterno(original, { velocidad = 1, texto = null, ruta = null } = {}) {
   pararSonido();
   const blob = await conTipoDeAudio(original);
   const url = URL.createObjectURL(blob);
@@ -149,6 +161,7 @@ async function reproducirBlobInterno(original, { velocidad = 1 } = {}) {
     URL.revokeObjectURL(url);
     return false;
   }
+  if (texto) avisarVoz({ texto, ruta, audio });
   return new Promise((resolver) => {
     const limpiar = (ok) => {
       URL.revokeObjectURL(url);

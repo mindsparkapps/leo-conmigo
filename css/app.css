@@ -1463,3 +1463,29 @@ a.boton-respuesta { text-decoration: none; font-size: 2.4rem; }
   .esc-interruptor { flex-direction: row; }
   .esc-opcion { flex: 1; }
 }
+
+/* Avatar que felicita (js/ui/avatar.js): aparece sobre la zona de respuestas, sonríe e inclina la cabeza.
+   Las piezas giran o se mueven alrededor de su propio punto del dibujo (coordenadas del viewBox de 768). */
+.avatar-felicita { position: fixed; z-index: 50; pointer-events: none; animation: avatar-entra 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.avatar-felicita.saliendo { animation: avatar-sale 0.26s ease-in both; }
+.avatar-felicita svg { width: 100%; height: 100%; display: block; overflow: visible; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.18)); }
+.avatar-felicita .av-cabeza, .avatar-felicita .av-ojo, .avatar-felicita .av-ceja, .avatar-felicita .av-parpado,
+.avatar-felicita .av-boca, .avatar-felicita .av-abierta { transform-box: view-box; transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.avatar-felicita .av-cabeza { transform-origin: 384px 500px; transition-duration: 0.45s; }
+.avatar-felicita .av-ojoL { transform-origin: 308px 348px; }
+.avatar-felicita .av-ojoR { transform-origin: 459px 348px; transition-delay: 0.03s; }
+.avatar-felicita .av-boca { transform-origin: 382px 444px; }
+.avatar-felicita .av-abierta { transform-origin: 382px 444px; transform: scaleY(0.02); transition: none; }
+.avatar-felicita .av-parpadoR, .avatar-felicita .av-cejaR { transition-delay: 0.03s; }
+.avatar-felicita.feliz .av-cabeza { transform: rotate(-7deg); }
+.avatar-felicita.feliz .av-ojo { transform: scaleY(0.94); }
+.avatar-felicita.feliz .av-parpado { transform: translateY(-34px); }
+.avatar-felicita.feliz .av-ceja { transform: translateY(-7px); }
+.avatar-felicita.feliz .av-boca { transform: scaleX(1.18); }
+@keyframes avatar-entra { from { opacity: 0; transform: scale(0.6) translateY(12%); } to { opacity: 1; transform: none; } }
+@keyframes avatar-sale { to { opacity: 0; transform: scale(0.85); } }
+@media (prefers-reduced-motion: reduce) {
+  .avatar-felicita, .avatar-felicita.saliendo { animation: none; }
+  .avatar-felicita .av-cabeza { transition: none; }
+  .avatar-felicita.feliz .av-cabeza { transform: none; }
+}

@@ -5,6 +5,7 @@
 import { el } from '../ui/dom.js';
 import { crearCarta } from '../ui/carta.js';
 import { crearBotonAudio } from '../ui/boton-audio.js';
+import { avatarFelicita, prepararAvatar } from '../ui/avatar.js';
 import { deshabilitarAdulto } from '../acceso.js';
 import { NOMBRE_APP } from '../config.js';
 import { obtenerStore, perfilActivo } from '../contexto.js';
@@ -250,8 +251,10 @@ async function pintarLibro({ vista, ir, estado, store, perfilId, libro, frasesPo
   // ---- etapa 4: las preguntas del cuento. Sin error: la opción equivocada se atenúa y la correcta se ilumina ----
   let temporizador = null;
   let ultimoElogio = null;
-  estado.limpiar = () => clearTimeout(temporizador);
+  let avatar = null; // el avatar que felicita la respuesta correcta (ui/avatar.js)
+  estado.limpiar = () => { clearTimeout(temporizador); avatar?.cerrar(); };
   const celebracion = ajustes.intensidadCelebracion;
+  if (celebracion !== 'ninguna') prepararAvatar();
   const sesionId = nuevoId(); // una «sesión» por lectura de las preguntas del cuento
 
   // Registro fino (fase 12): las preguntas no mueven el progreso, pero sirven para el análisis
@@ -317,16 +320,18 @@ async function pintarLibro({ vista, ir, estado, store, perfilId, libro, frasesPo
       acertada.classList.add('acierto');
       if (celebracion !== 'ninguna') acertada.classList.add('celebrar');
       if (celebracion === 'normal') lluviaDeEstrellas(vista);
-      if (celebracion !== 'ninguna' && ajustes.sonido) {
-        ultimoElogio = elegirElogio(ultimoElogio);
-        hablarTexto(ultimoElogio, { velocidad });
-      } else detener();
+      ultimoElogio = elegirElogio(ultimoElogio);
+      // El avatar aparece antes de pedir la voz, para no perder el aviso de que empezó a sonar
+      avatar = celebracion !== 'ninguna' ? avatarFelicita(vista, ultimoElogio, { conVoz: ajustes.sonido }) : null;
+      if (celebracion !== 'ninguna' && ajustes.sonido) hablarTexto(ultimoElogio, { velocidad });
+      else detener();
       if (celebracion !== 'ninguna' && ajustes.vibracion) vibrar(40);
-      temporizador = setTimeout(() => {
+      const fin = avatar?.terminado ?? Promise.resolve();
+      temporizador = setTimeout(() => fin.then(() => {
         if (!estado.vivo) return;
         if (i + 1 < preguntas.length) mostrarPregunta(i + 1);
         else ir('/nino/libros');
-      }, PAUSA_CELEBRACION_MS[celebracion]);
+      }), PAUSA_CELEBRACION_MS[celebracion]);
     }
 
     temporizador = setTimeout(decirPregunta, 300);
