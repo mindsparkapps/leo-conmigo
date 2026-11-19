@@ -96,7 +96,11 @@ export function avatarFelicita(vista, texto, { conVoz = true } = {}) {
   prepararAvatar().then(([svg, bocas]) => {
     if (cerrado || !svg || !vista.isConnected) { if (!svg) cerrar(); return; }
     const r = rectanguloDeRespuestas(zonaDeRespuesta(vista));
-    const lado = Math.max(80,Math.min(r.width, r.height, window.innerHeight * 0.7) * 0.95 * TAMANO);
+    // En el celular acostado (el mismo criterio que css/app.css) la zona es muy baja: el avatar va al triple,
+    // sin pasar del 90 % del alto de la pantalla
+    const acostado = window.matchMedia?.('(orientation: landscape) and (max-height: 520px)').matches;
+    const base = Math.min(r.width, r.height, window.innerHeight * 0.7) * 0.95 * TAMANO;
+    const lado = acostado ? Math.min(base * 3, window.innerHeight * 0.9) : Math.max(80, base);
     capa = document.createElement('div');
     capa.className = 'avatar-felicita';
     capa.setAttribute('aria-hidden', 'true');
