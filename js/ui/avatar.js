@@ -10,7 +10,7 @@ const ZONAS = ['.zona-opciones', '.esc-piezas', '.esc-cajas', '.libro-opciones',
 const PLAZO_MAXIMO_MS = 3200; // si la voz nunca avisa que terminó, el avatar se va igual
 const SALIDA_MS = 260;
 const FPS = 30;
-const TAMANO = 0.75; // un 25 % más chico que el lado de la zona de respuestas
+const TAMANO = 0.5625; // dos reducciones del 25 % (0,75 × 0,75) sobre el lado de la zona de respuestas
 
 let recursos = null;
 
@@ -96,7 +96,7 @@ export function avatarFelicita(vista, texto, { conVoz = true } = {}) {
   prepararAvatar().then(([svg, bocas]) => {
     if (cerrado || !svg || !vista.isConnected) { if (!svg) cerrar(); return; }
     const r = rectanguloDeRespuestas(zonaDeRespuesta(vista));
-    const lado = Math.max(105, Math.min(r.width, r.height, window.innerHeight * 0.7) * 0.95 * TAMANO);
+    const lado = Math.max(80,Math.min(r.width, r.height, window.innerHeight * 0.7) * 0.95 * TAMANO);
     capa = document.createElement('div');
     capa.className = 'avatar-felicita';
     capa.setAttribute('aria-hidden', 'true');
