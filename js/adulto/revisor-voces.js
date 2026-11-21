@@ -61,6 +61,8 @@ async function cargarCorregidas() {
  * que ya anotaste no cambian); «tanda1», «tanda2»… son las voces nuevas, de 200 en 200.
  */
 async function cargarLista(modo = 'todas') {
+  const intento = /^corregidas(\d+)$/.exec(modo);
+  if (intento) return (await cargarCorregidas()).filter((c) => (c.intento ?? 1) === Number(intento[1])).map((c) => ({ texto: c.texto, ruta: rutaDeSilaba(c.texto), tipo: 'sílaba' }));
   if (modo === 'corregidas') return (await cargarCorregidas()).map((c) => ({ texto: c.texto, ruta: rutaDeSilaba(c.texto), tipo: 'sílaba' }));
   const nuevas = await cargarTandaNueva();
   // las que se corrigieron (`revisar`) salen de su tanda y se oyen aparte, en «revision1»
@@ -120,7 +122,7 @@ export function crearRevisorVoces() {
   const etiqueta = (x) => `${x.tipo === 'frase' ? 'Frase' : x.tipo === 'sílaba' ? 'Sílaba' : 'Palabra'}: ${x.texto}`;
   const esMala = (x) => malas.some((m) => m.texto === etiqueta(x));
   // El número es el mismo que se ve arriba cuando suena en su lista: «139 de 280» (tramo) o «442 de 901» (todas)
-  const nombreLista = (l) => (l ?? 'todas').replace(/^tanda(\d+)$/, 'tanda $1').replace(/^revision(\d+)$/, 'revisión tanda $1').replace(/^silabas$/, 'sílabas').replace(/^corregidas$/, 'sílabas corregidas');
+  const nombreLista = (l) => (l ?? 'todas').replace(/^tanda(\d+)$/, 'tanda $1').replace(/^revision(\d+)$/, 'revisión tanda $1').replace(/^silabas$/, 'sílabas').replace(/^corregidas$/, 'sílabas corregidas').replace(/^corregidas(\d+)$/, 'sílabas corregidas, intento $1');
   const textoMala = (m) => `${m.numero ? `N.º ${m.numero} de ${m.total ?? (totalTodas || '…')} (${nombreLista(m.lista)}) · ` : ''}${m.texto}`;
 
   function pintarMalas() {
@@ -308,6 +310,15 @@ export function crearRevisorVoces() {
     b.addEventListener('click', () => iniciar('corregidas'));
     botonesTanda.push(b);
     filaTandas.prepend(b);
+    // las que se volvieron a corregir (`intento` 2, 3…): un botón por intento, el más reciente primero
+    const intentos = [...new Set(lista.map((c) => c.intento ?? 1))].filter((n) => n > 1).sort((x, y) => x - y);
+    for (const n of intentos) {
+      const cuantas = lista.filter((c) => (c.intento ?? 1) === n).length;
+      const bi = el('button', { type: 'button', class: 'boton' }, `Sílabas corregidas, intento ${n} (${cuantas})`);
+      bi.addEventListener('click', () => iniciar(`corregidas${n}`));
+      botonesTanda.push(bi);
+      filaTandas.prepend(bi);
+    }
   }).catch((e) => console.error(e));
 
   pintarMalas();
