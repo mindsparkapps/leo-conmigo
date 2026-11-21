@@ -259,7 +259,7 @@
  {"texto":"El perro corre","palabras":[{"texto":"El","silabas":["El"]},{"texto":"perro","silabas":["pe","rro"]},{"texto":"corre","silabas":["co","rre"]}],"emoji":"🐕","arasaacBusqueda":"perro correr"},
  {"texto":"Yo tengo un globo","palabras":[{"texto":"Yo","silabas":["Yo"]},{"texto":"tengo","silabas":["ten","go"]},{"texto":"un","silabas":["un"]},{"texto":"globo","silabas":["glo","bo"]}],"emoji":"🎈","arasaacBusqueda":"globo"},
  {"texto":"La luna sale","palabras":[{"texto":"La","silabas":["La"]},{"texto":"luna","silabas":["lu","na"]},{"texto":"sale","silabas":["sa","le"]}],"emoji":"🌙","arasaacBusqueda":"luna"},
- {"texto":"El sol calenta","palabras":[{"texto":"El","silabas":["El"]},{"texto":"sol","silabas":["sol"]},{"texto":"calenta","silabas":["ca","len","ta"]}],"emoji":"☀️","arasaacBusqueda":"sol"},
+ {"texto":"El sol calienta","palabras":[{"texto":"El","silabas":["El"]},{"texto":"sol","silabas":["sol"]},{"texto":"calienta","silabas":["ca","lien","ta"]}],"emoji":"☀️","arasaacBusqueda":"sol"},
  {"texto":"Mi abuela canta","palabras":[{"texto":"Mi","silabas":["Mi"]},{"texto":"abuela","silabas":["a","bue","la"]},{"texto":"canta","silabas":["can","ta"]}],"emoji":"👵","arasaacBusqueda":"abuela cantar"},
  {"texto":"El pez nada","palabras":[{"texto":"El","silabas":["El"]},{"texto":"pez","silabas":["pez"]},{"texto":"nada","silabas":["na","da"]}],"emoji":"🐟","arasaacBusqueda":"pez nadar"},
  {"texto":"La rana salta","palabras":[{"texto":"La","silabas":["La"]},{"texto":"rana","silabas":["ra","na"]},{"texto":"salta","silabas":["sal","ta"]}],"emoji":"🐸","arasaacBusqueda":"rana saltar"},

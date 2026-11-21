@@ -55,5 +55,17 @@
   {"texto":"bri","enviado":"brí","problema":"anglo","contexto":true,"intento":2,"tanda":3},
   {"texto":"clu","enviado":"clú","problema":"anglo","contexto":true,"intento":2,"tanda":3},
   {"texto":"coin","enviado":"cóin","problema":"anglo","contexto":true,"intento":2,"tanda":3},
-  {"texto":"dain","enviado":"dáin","problema":"anglo","contexto":true,"intento":2,"tanda":3}
+  {"texto":"dain","enviado":"dáin","problema":"anglo","contexto":true,"intento":2,"tanda":3},
+  {"texto":"lien","enviado":"lién","problema":"nueva (calienta): con la receta anglo desde el inicio","contexto":true,"tanda":4},
+  {"texto":"lain","enviado":"láin","problema":"nueva (calienta): con la receta anglo desde el inicio","contexto":true,"tanda":4},
+  {"texto":"laun","enviado":"láun","problema":"nueva (calienta): con la receta anglo desde el inicio","contexto":true,"tanda":4},
+  {"texto":"lein","enviado":"léin","problema":"nueva (calienta): con la receta anglo desde el inicio","contexto":true,"tanda":4},
+  {"texto":"leun","enviado":"léun","problema":"nueva (calienta): con la receta anglo desde el inicio","contexto":true,"tanda":4},
+  {"texto":"lian","enviado":"lián","problema":"nueva (calienta): con la receta anglo desde el inicio","contexto":true,"tanda":4},
+  {"texto":"lion","enviado":"lión","problema":"nueva (calienta): con la receta anglo desde el inicio","contexto":true,"tanda":4},
+  {"texto":"loin","enviado":"lóin","problema":"nueva (calienta): con la receta anglo desde el inicio","contexto":true,"tanda":4},
+  {"texto":"luan","enviado":"luán","problema":"nueva (calienta): con la receta anglo desde el inicio","contexto":true,"tanda":4},
+  {"texto":"luen","enviado":"luén","problema":"nueva (calienta): con la receta anglo desde el inicio","contexto":true,"tanda":4},
+  {"texto":"luin","enviado":"luín","problema":"nueva (calienta): con la receta anglo desde el inicio","contexto":true,"tanda":4},
+  {"texto":"luon","enviado":"luón","problema":"nueva (calienta): con la receta anglo desde el inicio","contexto":true,"tanda":4}
 ]
