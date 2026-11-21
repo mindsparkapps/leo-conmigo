@@ -65,7 +65,9 @@ async function cargarLista(modo = 'todas') {
   const porTipo = { palabras: 'palabra', silabas: 'sílaba', frases: 'frase' };
   if (porTipo[modo]) {
     const viejas = await cargarLista('todas');
-    return [...viejas.filter((x) => x.tipo === porTipo[modo]), ...aprobadas.filter((x) => x.tipo === porTipo[modo])];
+    // en orden alfabético (las de antes y las nuevas mezcladas)
+    return [...viejas.filter((x) => x.tipo === porTipo[modo]), ...aprobadas.filter((x) => x.tipo === porTipo[modo])]
+      .sort((x, y) => x.texto.localeCompare(y.texto, 'es') || x.ruta.localeCompare(y.ruta));
   }
   const deTanda = new Set(nuevas.map((x) => x.ruta));
   const respuesta = await fetch('data/vocabulario-inicial.json');
