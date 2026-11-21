@@ -12,9 +12,9 @@
 // español que no se pronuncia y stability 0.9) o `stability`. Se oyen en «Probar sílabas» del revisor.
 // No sube VERSION ni hace commit.
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const VOZ = '5yNXxdAaHAkq8N8bGqwQ'; // Catalina
@@ -53,15 +53,47 @@ async function generar(c) {
 const archivoLista = process.argv.find((a) => a.startsWith('--lista='))?.slice(8) ?? 'data/voces/correcciones-silabas.json';
 const lista = JSON.parse(readFileSync(join(RAIZ, archivoLista), 'utf8'));
 const pedidas = new Set(process.argv.slice(2).filter((a) => !a.startsWith('--')));
-const trabajos = lista.filter((c) => !pedidas.size || pedidas.has(c.texto));
+let trabajos = lista.filter((c) => !pedidas.size || pedidas.has(c.texto));
+
+// Lista del diccionario (docs/plan-silabas-diccionario.md, fase 3). Opciones:
+//   --cobertura=99|99.9|100  solo las sílabas de ese corte o menor (campo `cobertura` del JSON)
+//   --desde=N --hasta=M      tanda: posiciones N a M (desde 1) de la lista ya filtrada, que va en orden alfabético
+//   --sin-precache           las anota en SILABAS pero NO en PRECACHE (se guardan en caché al oírlas)
+//   --probar                 solo cuenta lo que haría, sin llamar a ElevenLabs
+const opcion = (n) => process.argv.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3);
+const SIN_PRECACHE = process.argv.includes('--sin-precache');
+const SOLO_PROBAR = process.argv.includes('--probar');
+if (archivoLista.includes('silabas-diccionario')) {
+  const { LISTA_DE_SILABAS } = await import(pathToFileURL(join(RAIZ, 'js/silabas-voz.js')).href);
+  const yaAnotadas = new Set(LISTA_DE_SILABAS.map((s) => s.texto));
+  const archivosUsados = new Map(LISTA_DE_SILABAS.map((s) => [archivoDe(s.texto), s.texto]));
+  const tope = Number(opcion('cobertura') ?? 100);
+  trabajos = trabajos.filter((c) => (c.cobertura ?? 100) <= tope);
+  trabajos = trabajos.slice(Number(opcion('desde') ?? 1) - 1, Number(opcion('hasta') ?? trabajos.length));
+  const omitidas = [];
+  trabajos = trabajos.filter((c) => {
+    if (yaAnotadas.has(c.texto)) return false; // ya está hecha
+    if (!/[aeiouáéíóúü]/.test(c.texto)) { omitidas.push(`${c.texto} (sin vocal)`); return false; }
+    const a = archivoDe(c.texto);
+    const otra = archivosUsados.get(a);
+    if (otra && otra !== c.texto) { omitidas.push(`${c.texto} (su archivo ya es de «${otra}»)`); return false; }
+    archivosUsados.set(a, c.texto);
+    return true;
+  });
+  if (omitidas.length) console.log(`omitidas por choque de archivo o sin vocal: ${omitidas.join(', ')}`);
+  // Si un intento anterior dejó el mp3 pero no llegó a anotarlo, no se vuelve a pagar: solo se anota.
+  for (const c of trabajos) c.yaGenerada = existsSync(join(RAIZ, archivoDe(c.texto)));
+  console.log(`tanda: ${trabajos.length} sílabas (${trabajos.filter((c) => c.yaGenerada).length} ya tenían mp3), ${trabajos.reduce((n, c) => n + [...c.enviado].length, 0)} caracteres`);
+  if (SOLO_PROBAR) process.exit(0);
+}
 let siguiente = 0;
 const fallos = [];
 async function obrero() {
   while (siguiente < trabajos.length) {
     const c = trabajos[siguiente++];
     try {
-      writeFileSync(join(RAIZ, archivoDe(c.texto)), await generar(c));
-      console.log(`  ${c.texto} ← «${c.enviado}»${c.contexto ? ' (contexto)' : ''}`);
+      if (!c.yaGenerada) writeFileSync(join(RAIZ, archivoDe(c.texto)), await generar(c));
+      console.log(`  ${c.texto} ← «${c.enviado}»${c.contexto ? ' (contexto)' : ''}${c.yaGenerada ? ' (ya existía)' : ''}`);
     } catch (e) { fallos.push(`${c.texto}: ${e.message}`); }
   }
 }
@@ -82,7 +114,7 @@ if (agregadas) writeFileSync(join(RAIZ, 'js/silabas-voz.js'), s);
 let sw = readFileSync(join(RAIZ, 'sw.js'), 'utf8');
 const crlf = sw.includes('\r\n');
 sw = sw.replace(/\r\n/g, '\n');
-const lineas = hechas.map((c) => archivoDe(c.texto)).filter((a) => !sw.includes(`'${a}'`)).map((a) => `  '${a}',\n`).join('');
+const lineas = (SIN_PRECACHE ? [] : hechas).map((c) => archivoDe(c.texto)).filter((a) => !sw.includes(`'${a}'`)).map((a) => `  '${a}',\n`).join('');
 if (lineas) writeFileSync(join(RAIZ, 'sw.js'), (crlf ? (x) => x.replace(/\n/g, '\r\n') : (x) => x)(sw.replace("  'data/voces/indice.json',\n", `  'data/voces/indice.json',\n${lineas}`)));
 if (agregadas || lineas) console.log(`anotadas en SILABAS: ${agregadas}; en PRECACHE: ${lineas.split('\n').length - 1}. Falta subir VERSION.`);
 for (const f of fallos) console.log('ERROR', f);

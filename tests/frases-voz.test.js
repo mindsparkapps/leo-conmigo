@@ -8,6 +8,11 @@ import { ELOGIOS } from '../js/core/elogios.js';
 
 const raiz = new URL('../', import.meta.url);
 const SW = readFileSync(new URL('sw.js', raiz), 'utf8');
+const DEL_DICCIONARIO = new Set(
+  JSON.parse(readFileSync(new URL('data/voces/silabas-diccionario.json', raiz), 'utf8'))
+    .map((s) => rutaDeSilaba(s.texto))
+    .filter(Boolean),
+);
 
 test('frases con voz: cada mp3 existe, no está vacío y se precachea', () => {
   assert.equal(new Set(RUTAS_DE_FRASES).size, RUTAS_DE_FRASES.length);
@@ -36,6 +41,8 @@ test('sílabas con voz: cada mp3 existe, se precachea y la primera sílaba de ca
     const url = new URL(ruta, raiz);
     assert.ok(existsSync(url), `falta ${ruta}`);
     assert.ok(readFileSync(url).length > 1000, `${ruta} está vacío`);
+    // Excepción (plan de sílabas del diccionario, fase 3): esas no se precargan; el service worker las guarda al oírlas.
+    if (DEL_DICCIONARIO.has(ruta)) continue;
     assert.ok(SW.includes(`'${ruta}'`), `${ruta} no está en PRECACHE`);
   }
   const catalogo = JSON.parse(readFileSync(new URL('data/vocabulario-inicial.json', raiz), 'utf8'));
