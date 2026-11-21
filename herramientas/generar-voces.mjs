@@ -38,7 +38,7 @@ for (const linea of readFileSync(ruta('data/escritura/faltan-voces.txt'), 'utf8'
   const [texto, archivo] = linea.split('\t');
   if (seccion === 4) {
     const silaba = !/[\s·]/.test(texto.trim());
-    const e = texto.trim().replace(/ñ/g, 'ny'); // la ñ va como «ny» en los nombres de archivo
+    const e = texto.trim().replace(/ñ/g, 'ny').replace(/ü/g, 'uu'); // la ñ va como «ny» en los nombres de archivo
     const nombre = silaba ? sinTildes(e) + (sinTildes(e) !== e ? '-t' : '') : sinTildes(texto).replace(/[\s·]+/g, '-');
     trabajos.push({ seccion, tipo: silaba ? 'silaba' : 'frase', texto: texto.trim(), habla: texto.replace(/·/g, ''), archivo: silaba ? `data/voces/silabas/${nombre}.mp3` : `data/voces/frases/${nombre}.mp3` });
   } else {

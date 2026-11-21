@@ -41,6 +41,31 @@ function duracionDe(ruta) {
 
 const POR_TANDA = 200; // cuántas voces nuevas de Escritura trae cada botón de tanda
 
+// Sílabas del diccionario (docs/plan-silabas-diccionario.md, fase 4): se oyen por tandas de 200, en orden alfabético
+// dentro de cada corte de cobertura (99, 99.9, 100). Mientras una tanda no esté aprobada, sus sílabas NO salen en
+// «Probar sílabas» ni en «todas». Al aprobar una, se anota su número aquí y su botón desaparece.
+const TANDAS_DEL_DICCIONARIO_APROBADAS = new Set([]);
+
+let diccionario = null;
+/** Las sílabas del diccionario que ya tienen mp3, en el orden de revisión. */
+async function cargarDiccionario() {
+  if (diccionario) return diccionario;
+  const r = await fetch('data/voces/silabas-diccionario.json');
+  const lista = r.ok ? await r.json() : [];
+  const corte = (c) => (c <= 99 ? 0 : c <= 99.9 ? 1 : 2);
+  const porRuta = new Map(LISTA_DE_SILABAS.map((x) => [x.texto, x.ruta]));
+  diccionario = lista
+    .filter((s) => porRuta.has(s.texto))
+    .sort((a, b) => corte(a.cobertura) - corte(b.cobertura) || a.texto.localeCompare(b.texto, 'es'))
+    .map((s) => ({ texto: s.texto, ruta: porRuta.get(s.texto), tipo: 'sílaba' }));
+  return diccionario;
+}
+/** Las rutas de las sílabas del diccionario cuya tanda todavía no se aprobó. */
+async function pendientesDelDiccionario() {
+  const todas = await cargarDiccionario();
+  return new Set(todas.filter((_, i) => !TANDAS_DEL_DICCIONARIO_APROBADAS.has(Math.floor(i / POR_TANDA) + 1)).map((x) => x.ruta));
+}
+
 let tandaNueva = null;
 /** Las voces generadas para el modo Escritura (data/voces/tanda-escritura.json), en el orden en que se revisan. */
 async function cargarTandaNueva() {
@@ -56,6 +81,12 @@ async function cargarTandaNueva() {
  */
 async function cargarLista(modo = 'todas') {
   const nuevas = await cargarTandaNueva();
+  const delDiccionario = /^diccionario(\d+)$/.exec(modo);
+  if (delDiccionario) {
+    const n = Number(delDiccionario[1]);
+    return (await cargarDiccionario()).slice((n - 1) * POR_TANDA, n * POR_TANDA);
+  }
+  const sinAprobar = await pendientesDelDiccionario();
   // las que se corrigieron (`revisar`) salen de su tanda y se oyen aparte, en «revision1»
   if (modo === 'revision1') return nuevas.filter((x) => x.revisar);
   const tanda = /^tanda(\d+)$/.exec(modo);
@@ -75,7 +106,7 @@ async function cargarLista(modo = 'todas') {
   const catalogo = await respuesta.json();
   const palabras = catalogo.filter((p) => p.voz && !deTanda.has(p.voz)).map((p) => ({ texto: p.texto, ruta: p.voz, tipo: 'palabra' }));
   const frases = LISTA_DE_FRASES.filter((f) => !deTanda.has(f.ruta)).map((f) => ({ texto: f.texto, ruta: f.ruta, tipo: 'frase' }));
-  const silabas = LISTA_DE_SILABAS.filter((x) => !deTanda.has(x.ruta)).map((x) => ({ texto: x.texto, ruta: x.ruta, tipo: 'sílaba' }));
+  const silabas = LISTA_DE_SILABAS.filter((x) => !deTanda.has(x.ruta) && !sinAprobar.has(x.ruta)).map((x) => ({ texto: x.texto, ruta: x.ruta, tipo: 'sílaba' }));
   if (modo === 'tramo') return [...frases.filter((f) => FRASES_DEL_TRAMO.has(f.texto)), ...silabas];
   return [...frases, ...palabras, ...silabas];
 }
@@ -115,7 +146,7 @@ export function crearRevisorVoces() {
   const etiqueta = (x) => `${x.tipo === 'frase' ? 'Frase' : x.tipo === 'sílaba' ? 'Sílaba' : 'Palabra'}: ${x.texto}`;
   const esMala = (x) => malas.some((m) => m.texto === etiqueta(x));
   // El número es el mismo que se ve arriba cuando suena en su lista: «139 de 280» (tramo) o «442 de 901» (todas)
-  const nombreLista = (l) => (l ?? 'todas').replace(/^tanda(\d+)$/, 'tanda $1').replace(/^revision(\d+)$/, 'revisión tanda $1').replace(/^silabas$/, 'sílabas');
+  const nombreLista = (l) => (l ?? 'todas').replace(/^tanda(\d+)$/, 'tanda $1').replace(/^revision(\d+)$/, 'revisión tanda $1').replace(/^diccionario(\d+)$/, 'diccionario $1').replace(/^silabas$/, 'sílabas');
   const textoMala = (m) => `${m.numero ? `N.º ${m.numero} de ${m.total ?? (totalTodas || '…')} (${nombreLista(m.lista)}) · ` : ''}${m.texto}`;
 
   function pintarMalas() {
@@ -294,6 +325,18 @@ export function crearRevisorVoces() {
       b.addEventListener('click', () => iniciar('revision1'));
       botonesTanda.push(b);
       filaTandas.prepend(b);
+    }
+  }).catch((e) => console.error(e));
+
+  // Un botón por cada 200 sílabas del diccionario que aún no se aprobaron
+  cargarDiccionario().then((silabas) => {
+    for (let i = 0; i * POR_TANDA < silabas.length; i++) {
+      if (TANDAS_DEL_DICCIONARIO_APROBADAS.has(i + 1)) continue;
+      const hasta = Math.min(silabas.length, (i + 1) * POR_TANDA);
+      const b = el('button', { type: 'button', class: 'boton secundario' }, `Probar sílabas del diccionario ${i * POR_TANDA + 1} a ${hasta}`);
+      b.addEventListener('click', () => iniciar(`diccionario${i + 1}`));
+      botonesTanda.push(b);
+      filaTandas.append(b);
     }
   }).catch((e) => console.error(e));
 

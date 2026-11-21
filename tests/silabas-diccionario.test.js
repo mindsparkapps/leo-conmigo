@@ -58,6 +58,27 @@ test('expandir: sufijos, prefijos y combinación', () => {
   assert.deepEqual([...expandir('casa', ['S', 'a'], reglas)].sort(), ['casa', 'casas', 'recasa', 'recasas']);
 });
 
+test('archivo de cada sílaba: ninguna comparte mp3 con otra, también las con «ü», tilde o «ñ»', async () => {
+  const { LISTA_DE_SILABAS, rutaDeSilaba } = await import('../js/silabas-voz.js');
+  const { existsSync, readFileSync } = await import('node:fs');
+  const rutas = LISTA_DE_SILABAS.map((s) => s.ruta);
+  assert.equal(new Set(rutas).size, rutas.length);
+  const ruta = (s) => rutaDeSilaba(s);
+  assert.equal(ruta('güe'), 'data/voces/silabas/guue.mp3');
+  assert.notEqual(ruta('güe'), ruta('gué'));
+  assert.notEqual(ruta('güé'), ruta('gué'));
+  assert.notEqual(ruta('guí'), ruta('güí'));
+  assert.notEqual(ruta('ñu'), ruta('nú'));
+  const raiz = new URL('../', import.meta.url);
+  for (const s of ['güe', 'gué', 'güé', 'güéis', 'guí', 'güí', 'güís', 'güi', 'güis', 'güen', 'gües']) {
+    assert.ok(existsSync(new URL(ruta(s), raiz)), `falta el mp3 de ${s}`);
+  }
+  // todas las del corte de 99 % del diccionario están grabadas
+  const dic = JSON.parse(readFileSync(new URL('data/voces/silabas-diccionario.json', raiz), 'utf8'));
+  const sin = dic.filter((e) => e.cobertura <= 99 && !ruta(e.texto)).map((e) => e.texto);
+  assert.deepEqual(sin, []);
+});
+
 test('analizar: sílabas que faltan y cuántas cubren cada porcentaje', () => {
   const palabras = new Map([['casa', 90], ['mesa', 6], ['pato', 3], ['zorro', 1]]);
   const r = analizar(palabras, new Set(['ca', 'sa']));

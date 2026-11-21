@@ -24,7 +24,7 @@ const CONTEXTO = 'Ahora repite la sílaba en español, con voz tranquila y neutr
 
 /** Igual que archivoDe en js/silabas-voz.js. */
 function archivoDe(silaba) {
-  const sinEne = silaba.replace(/ñ/g, 'ny');
+  const sinEne = silaba.replace(/ñ/g, 'ny').replace(/ü/g, 'uu');
   const base = sinEne.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
   return `data/voces/silabas/${base}${base !== sinEne ? '-t' : ''}.mp3`;
 }

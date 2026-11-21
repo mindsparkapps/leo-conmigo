@@ -23,7 +23,7 @@ const leerJson = (ruta) => JSON.parse(readFileSync(join(RAIZ, ruta), 'utf8').rep
 
 const sinTildes = (t) => String(t).normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 /** Nombre del archivo de una sílaba (igual que `archivoDe` de js/silabas-voz.js). */
-const archivoDeSilaba = (s) => { const e = s.replace(/ñ/g, 'ny'); const base = sinTildes(e); return base + (base !== e ? '-t' : ''); };
+const archivoDeSilaba = (s) => { const e = s.replace(/ñ/g, 'ny').replace(/ü/g, 'uu'); const base = sinTildes(e); return base + (base !== e ? '-t' : ''); };
 const claveDeClip = (palabra) => sinTildes(palabra);
 
 const banco = leerJson('data/escritura/banco.json');

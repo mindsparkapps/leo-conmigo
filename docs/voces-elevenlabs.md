@@ -22,7 +22,7 @@ Si falla con 401 o 400 «invalid key»: la variable tiene un valor incompleto o 
 ## Dónde va cada audio
 
 - **Palabras:** `data/voces/<palabra sin tildes>.mp3`, anotada en `data/voces/indice.json` y en `PRECACHE` de `sw.js`. (Las del catálogo de lectura además llevan `voz` en `data/vocabulario-inicial.json`; casos especiales: `bebe-verbo.mp3`, `con-palabra.mp3`.)
-- **Sílabas:** `data/voces/silabas/<sílaba sin tildes>.mp3`, con sufijo `-t` si la sílaba llevaba tilde (`pá` → `pa-t.mp3`, para que `pa` y `pá` no choquen). Anotada en `SILABAS` de `js/silabas-voz.js` y en `PRECACHE`.
+- **Sílabas:** `data/voces/silabas/<sílaba sin tildes>.mp3`, con sufijo `-t` si la sílaba llevaba tilde (`pá` → `pa-t.mp3`, para que `pa` y `pá` no choquen). La `ñ` se escribe `ny` y la `ü` `uu` (`güe` → `guue.mp3`, para que no choque con `gué` → `gue-t.mp3`). Anotada en `SILABAS` de `js/silabas-voz.js` y en `PRECACHE`.
 - **Frases fijas:** `data/voces/frases/<texto normalizado>.mp3`, anotada en `FRASES` de `js/frases-voz.js` (texto exacto → archivo) y en `PRECACHE`. Las frases de la app deben ser genéricas (sin cantidades variables).
 - Los mp3 nuevos de `PRECACHE` obligan a subir `VERSION` en `js/config.js`.
 
