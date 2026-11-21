@@ -82,6 +82,8 @@ Las 265 sílabas de S1 se generaron el 15 de noviembre **sin** `apply_text_norma
 
 **2.º intento** (las que el acento no arregló): doc («dos»), ja («ya»), jun («yun»: la «j» se lee como «y»), y anglo cor, hor, go, or, sar, far. Se enviaron sin acento, con contexto y stability 0.9 (`hor` como `or`). En el JSON llevan `"intento": 2` y el revisor las ofrece en «Sílabas corregidas, intento 2».
 
+**3.er intento** (siguieron anglo tras el 2.º: hor, go, or, far): acento **y** contexto + stability 0.9 a la vez (`ór`, `gó`, `ór`, `fár`); `"intento": 3`. Resultado del 2.º intento: doc, ja, jun, cor y sar quedaron bien con contexto sin acento.
+
 Para una que siga mal: cambiar `enviado` (o agregar `"contexto": true` o `"stability"`) en el JSON y correr `node herramientas/regenerar-silabas.mjs <sílaba>`; subir `VERSION`.
 
 Orden sugerido para una sílaba que sigue mal: (1) normalización off; (2) acento en la vocal fuerte; (3) sin acento + contexto + stability 0.9; (4) mover el acento a la otra vocal; (5) generarla dentro de una palabra española y recortarla (no hizo falta todavía). Los espacios y guiones meten pausas: evitarlos.
