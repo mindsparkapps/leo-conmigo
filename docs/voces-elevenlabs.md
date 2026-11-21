@@ -92,7 +92,7 @@ Las 265 sílabas de S1 se generaron el 15 de noviembre **sin** `apply_text_norma
 
 Lectura solo dice la primera sílaba de cada palabra (S1), pero Escritura puede usar cualquiera. Se generaron las 72 que faltaban de las palabras del catálogo, el banco de Escritura (palabras, frases y textos) y los cuentos (por ejemplo «riz», «ción», «món», «tá», «toy» y «llue»). Están en `data/voces/silabas-nuevas.json`, con el mismo formato que las correcciones, y se generaron con `node herramientas/regenerar-silabas.mjs --lista=data/voces/silabas-nuevas.json`, que también las anota en `SILABAS` y `PRECACHE`. La receta usada para todas fue acento en la vocal fuerte + contexto + stability 0.9, con dos excepciones: `xi` se envió como `ksí` y `hí` como `í`. En el mismo archivo van las 12 de «calienta» (lien y sus distractoras).
 
-El revisor las ofrece en **«Probar sílabas nuevas»**, junto con las correcciones marcadas con `"revisar": true`, y las saca de «Probar sílabas» mientras tanto. Cuando el usuario las apruebe, se vacía `silabas-nuevas.json` (`[]`) y se quitan las marcas `revisar`: así vuelven a «Probar sílabas» y el botón desaparece.
+Primero se oyeron en un botón aparte, «Probar sílabas nuevas». Después se pasaron a «Probar sílabas» y el botón se quitó. `silabas-nuevas.json` queda solo como registro de qué se envió. `der` sonaba «deegg» con `dér` + contexto, igual que `ber`, y se regeneró como `der` sin acento con contexto.
 
 Para ver si falta alguna, se juntan las sílabas de todas las palabras y frases (con `silabasDe` de `core/silabeo.js` para los textos sin sílabas marcadas), en minúscula, y se comparan con `rutaDeSilaba`.
 

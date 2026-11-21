@@ -4,7 +4,7 @@
 
 import { el } from '../ui/dom.js';
 import { LISTA_DE_FRASES } from '../frases-voz.js';
-import { LISTA_DE_SILABAS, rutaDeSilaba } from '../silabas-voz.js';
+import { LISTA_DE_SILABAS } from '../silabas-voz.js';
 
 const CLAVE_MALAS = 'leo_voces_malas';
 const PAUSA_ENTRE_AUDIOS_MS = 600;
@@ -51,24 +51,10 @@ async function cargarTandaNueva() {
 }
 
 /**
- * Sílabas por revisar, en orden alfabético: las recién generadas (data/voces/silabas-nuevas.json) y las regeneradas con
- * `revisar: true` en data/voces/correcciones-silabas.json. Al aprobarlas se vacía la primera y se quita la marca.
- */
-async function cargarSilabasNuevas() {
-  const leer = async (ruta) => { const r = await fetch(ruta); return r.ok ? r.json() : []; };
-  const [nuevas, corregidas] = await Promise.all([leer('data/voces/silabas-nuevas.json'), leer('data/voces/correcciones-silabas.json')]);
-  return [...nuevas, ...corregidas.filter((c) => c.revisar)]
-    .filter((c) => rutaDeSilaba(c.texto))
-    .map((c) => ({ texto: c.texto, ruta: rutaDeSilaba(c.texto), tipo: 'sílaba' }))
-    .sort((x, y) => x.texto.localeCompare(y.texto, 'es'));
-}
-
-/**
  * Las grabaciones de una lista. «todas» y «tramo» siguen siendo las de antes de las voces de Escritura (así los números
  * que ya anotaste no cambian); «tanda1», «tanda2»… son las voces nuevas, de 200 en 200.
  */
 async function cargarLista(modo = 'todas') {
-  if (modo === 'silabasNuevas') return cargarSilabasNuevas();
   const nuevas = await cargarTandaNueva();
   // las que se corrigieron (`revisar`) salen de su tanda y se oyen aparte, en «revision1»
   if (modo === 'revision1') return nuevas.filter((x) => x.revisar);
@@ -79,11 +65,8 @@ async function cargarLista(modo = 'todas') {
   const porTipo = { palabras: 'palabra', silabas: 'sílaba', frases: 'frase' };
   if (porTipo[modo]) {
     const viejas = await cargarLista('todas');
-    // las sílabas por revisar se oyen solo en «Probar sílabas nuevas»
-    const aparte = modo === 'silabas' ? new Set((await cargarSilabasNuevas()).map((x) => x.ruta)) : new Set();
     // en orden alfabético (las de antes y las nuevas mezcladas)
     return [...viejas.filter((x) => x.tipo === porTipo[modo]), ...aprobadas.filter((x) => x.tipo === porTipo[modo])]
-      .filter((x) => !aparte.has(x.ruta))
       .sort((x, y) => x.texto.localeCompare(y.texto, 'es') || x.ruta.localeCompare(y.ruta));
   }
   const deTanda = new Set(nuevas.map((x) => x.ruta));
@@ -115,7 +98,6 @@ export function crearRevisorVoces() {
   const preparar = el('button', { type: 'button', class: 'boton' }, 'Probar palabras');
   const prepararTramo = el('button', { type: 'button', class: 'boton' }, 'Probar sílabas');
   const prepararFrases = el('button', { type: 'button', class: 'boton' }, 'Probar frases');
-  const prepararNuevas = el('button', { type: 'button', class: 'boton', hidden: true }, 'Probar sílabas nuevas');
   const filaTandas = el('div', { class: 'acciones' });
   const estado = el('p', { class: 'ayuda', role: 'status' });
   const actualTexto = el('p', { class: 'revisor-actual', 'aria-live': 'polite' }, '');
@@ -133,7 +115,7 @@ export function crearRevisorVoces() {
   const etiqueta = (x) => `${x.tipo === 'frase' ? 'Frase' : x.tipo === 'sílaba' ? 'Sílaba' : 'Palabra'}: ${x.texto}`;
   const esMala = (x) => malas.some((m) => m.texto === etiqueta(x));
   // El número es el mismo que se ve arriba cuando suena en su lista: «139 de 280» (tramo) o «442 de 901» (todas)
-  const nombreLista = (l) => (l ?? 'todas').replace(/^tanda(\d+)$/, 'tanda $1').replace(/^revision(\d+)$/, 'revisión tanda $1').replace(/^silabas$/, 'sílabas').replace(/^silabasNuevas$/, 'sílabas nuevas');
+  const nombreLista = (l) => (l ?? 'todas').replace(/^tanda(\d+)$/, 'tanda $1').replace(/^revision(\d+)$/, 'revisión tanda $1').replace(/^silabas$/, 'sílabas');
   const textoMala = (m) => `${m.numero ? `N.º ${m.numero} de ${m.total ?? (totalTodas || '…')} (${nombreLista(m.lista)}) · ` : ''}${m.texto}`;
 
   function pintarMalas() {
@@ -262,7 +244,7 @@ export function crearRevisorVoces() {
 
   async function iniciar(modo) {
     detener();
-    const botones = [preparar, prepararTramo, prepararFrases, prepararNuevas, ...botonesTanda];
+    const botones = [preparar, prepararTramo, prepararFrases, ...botonesTanda];
     for (const b of botones) b.disabled = true;
     estado.textContent = 'Preparando la lista…';
     try {
@@ -293,13 +275,6 @@ export function crearRevisorVoces() {
   preparar.addEventListener('click', () => iniciar('palabras'));
   prepararTramo.addEventListener('click', () => iniciar('silabas'));
   prepararFrases.addEventListener('click', () => iniciar('frases'));
-  prepararNuevas.addEventListener('click', () => iniciar('silabasNuevas'));
-  // el botón de sílabas nuevas solo aparece si hay alguna por revisar
-  cargarSilabasNuevas().then((l) => {
-    if (!l.length) return;
-    prepararNuevas.textContent = `Probar sílabas nuevas (${l.length})`;
-    prepararNuevas.hidden = false;
-  }).catch((e) => console.error(e));
 
   // Un botón por cada 200 voces nuevas de Escritura (los pone cuando lee la lista)
   const botonesTanda = [];
@@ -330,7 +305,7 @@ export function crearRevisorVoces() {
     { class: 'panel revisor-voces' },
     el('h2', {}, 'Revisar las voces'),
     el('p', { class: 'ayuda' }, 'Reproduce de corrido las frases y palabras con la voz de Catalina, para escuchar cuáles suenan mal. Marca las malas y copia la lista para regenerarlas.'),
-    el('div', { class: 'acciones' }, preparar, prepararTramo, prepararFrases, prepararNuevas),
+    el('div', { class: 'acciones' }, preparar, prepararTramo, prepararFrases),
     filaTandas,
     estado,
     actualTexto,

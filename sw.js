@@ -120,8 +120,6 @@ const PRECACHE = [
   'data/voces/silabas/luon.mp3',
   'data/voces/calienta.mp3',
   'data/voces/tanda-escritura.json',
-  'data/voces/silabas-nuevas.json',
-  'data/voces/correcciones-silabas.json',
   'data/voces/silabas/ble.mp3',
   'data/voces/silabas/bla.mp3',
   'data/voces/silabas/blu.mp3',

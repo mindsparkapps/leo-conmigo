@@ -48,7 +48,7 @@
   {"texto":"er","enviado":"ér","problema":"anglo","contexto":true,"intento":2,"tanda":3},
   {"texto":"fre","enviado":"fré","problema":"anglo","contexto":true,"intento":2,"tanda":3},
   {"texto":"gre","enviado":"gré","problema":"anglo","contexto":true,"intento":2,"tanda":3},
-  {"texto":"ber","enviado":"ber","problema":"anglo; con «bér» + contexto sonaba «beegg»","contexto":true,"intento":3,"tanda":3,"revisar":true},
+  {"texto":"ber","enviado":"ber","problema":"anglo; con «bér» + contexto sonaba «beegg»","contexto":true,"intento":3,"tanda":3},
   {"texto":"bin","enviado":"bín","problema":"anglo","contexto":true,"intento":2,"tanda":3},
   {"texto":"bir","enviado":"bír","problema":"anglo","contexto":true,"intento":2,"tanda":3},
   {"texto":"bre","enviado":"bré","problema":"anglo","contexto":true,"intento":2,"tanda":3},
