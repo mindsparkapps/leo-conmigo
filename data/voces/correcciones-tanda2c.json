@@ -1,0 +1,7 @@
+[
+  {"texto":"ge","enviado":"jé","contexto":true,"stability":0.9,"problema":"dice «ye»; debe decir «je»","intento":2},
+  {"texto":"gia","enviado":"jiá","contexto":true,"stability":0.9,"problema":"dice «yia»; debe decir «jia»","intento":2},
+  {"texto":"gie","enviado":"jié","contexto":true,"stability":0.9,"problema":"dice «yie»; debe decir «jie»","intento":2},
+  {"texto":"güi","enviado":"güí","contexto":true,"stability":0.9,"problema":"dice «gi»; debe oírse la u y luego la i","intento":2},
+  {"texto":"peu","enviado":"peú","contexto":true,"stability":0.9,"problema":"suena con acento francés","intento":2}
+]
