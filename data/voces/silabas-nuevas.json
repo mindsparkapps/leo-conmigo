@@ -11,7 +11,7 @@
   {"texto":"cri","enviado":"crí","contexto":true},
   {"texto":"cro","enviado":"cró","contexto":true},
   {"texto":"dad","enviado":"dád","contexto":true},
-  {"texto":"der","enviado":"dér","contexto":true},
+  {"texto":"der","enviado":"der","contexto":true,"revisar":true},
   {"texto":"dín","enviado":"dín","contexto":true},
   {"texto":"dio","enviado":"dió","contexto":true},
   {"texto":"diós","enviado":"diós","contexto":true},
