@@ -4,7 +4,7 @@
 
 import { el } from '../ui/dom.js';
 import { LISTA_DE_FRASES } from '../frases-voz.js';
-import { LISTA_DE_SILABAS } from '../silabas-voz.js';
+import { LISTA_DE_SILABAS, rutaDeSilaba } from '../silabas-voz.js';
 
 const CLAVE_MALAS = 'leo_voces_malas';
 const PAUSA_ENTRE_AUDIOS_MS = 600;
@@ -50,11 +50,18 @@ async function cargarTandaNueva() {
   return tandaNueva;
 }
 
+/** Sílabas regeneradas con otro texto (data/voces/correcciones-silabas.json, ver herramientas/regenerar-silabas.mjs). */
+async function cargarCorregidas() {
+  const r = await fetch('data/voces/correcciones-silabas.json');
+  return r.ok ? (await r.json()).filter((c) => rutaDeSilaba(c.texto)) : [];
+}
+
 /**
  * Las grabaciones de una lista. «todas» y «tramo» siguen siendo las de antes de las voces de Escritura (así los números
  * que ya anotaste no cambian); «tanda1», «tanda2»… son las voces nuevas, de 200 en 200.
  */
 async function cargarLista(modo = 'todas') {
+  if (modo === 'corregidas') return (await cargarCorregidas()).map((c) => ({ texto: c.texto, ruta: rutaDeSilaba(c.texto), tipo: 'sílaba' }));
   const nuevas = await cargarTandaNueva();
   // las que se corrigieron (`revisar`) salen de su tanda y se oyen aparte, en «revision1»
   if (modo === 'revision1') return nuevas.filter((x) => x.revisar);
@@ -113,7 +120,7 @@ export function crearRevisorVoces() {
   const etiqueta = (x) => `${x.tipo === 'frase' ? 'Frase' : x.tipo === 'sílaba' ? 'Sílaba' : 'Palabra'}: ${x.texto}`;
   const esMala = (x) => malas.some((m) => m.texto === etiqueta(x));
   // El número es el mismo que se ve arriba cuando suena en su lista: «139 de 280» (tramo) o «442 de 901» (todas)
-  const nombreLista = (l) => (l ?? 'todas').replace(/^tanda(\d+)$/, 'tanda $1').replace(/^revision(\d+)$/, 'revisión tanda $1').replace(/^silabas$/, 'sílabas');
+  const nombreLista = (l) => (l ?? 'todas').replace(/^tanda(\d+)$/, 'tanda $1').replace(/^revision(\d+)$/, 'revisión tanda $1').replace(/^silabas$/, 'sílabas').replace(/^corregidas$/, 'sílabas corregidas');
   const textoMala = (m) => `${m.numero ? `N.º ${m.numero} de ${m.total ?? (totalTodas || '…')} (${nombreLista(m.lista)}) · ` : ''}${m.texto}`;
 
   function pintarMalas() {
@@ -293,6 +300,14 @@ export function crearRevisorVoces() {
       botonesTanda.push(b);
       filaTandas.prepend(b);
     }
+  }).catch((e) => console.error(e));
+  // las sílabas que se regeneraron con otro texto (acento, sin normalización…)
+  cargarCorregidas().then((lista) => {
+    if (!lista.length) return;
+    const b = el('button', { type: 'button', class: 'boton' }, `Sílabas corregidas (${lista.length})`);
+    b.addEventListener('click', () => iniciar('corregidas'));
+    botonesTanda.push(b);
+    filaTandas.prepend(b);
   }).catch((e) => console.error(e));
 
   pintarMalas();

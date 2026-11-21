@@ -65,6 +65,23 @@ Todas con `language_code: "es"`, `eleven_v4`, `apply_text_normalization: "off"`.
 | Entonación de sorpresa, maullido o cansancio | guau, miau, bua, jo | acento (`guáu`, `miáu`, `buá`, `jó`) no bastó del todo para guau/miau/bua; sirvió: sin acento, `previous_text` (contexto en español que no se pronuncia) y `stability` 0.9 |
 | Francesa con «r» final | ceur, fler | `fler` se arregló con contexto + stability 0.9 sin acento; `ceur` no con `ceur`, `céur` ni `seur`; tampoco `séur` con contexto (sonaba «seeerg»); `sé ur` (con espacio) sonó peor por la pausa; **sirvió `seúr`** (acento en la «u», no en la «e») con contexto + stability 0.9. Idea general para sílabas con «eu»/«ei»/«oi» + «r» que suenan francesas o inglesas: probar el acento en la vocal cerrada o en la otra vocal antes de recurrir a espacios o recortes |
 
+### Tanda 2 de correcciones (sílabas de S1, 21 de noviembre de 2026)
+
+Las 265 sílabas de S1 se generaron el 15 de noviembre **sin** `apply_text_normalization: "off"`, por eso varias leían la palabra abreviada. Se regeneraron con `herramientas/regenerar-silabas.mjs`, que lee `data/voces/correcciones-silabas.json` (sílaba, texto enviado, problema y, si hace falta, `contexto: true`). El revisor las ofrece aparte en el botón **«Sílabas corregidas»**.
+
+**Vocabulario del usuario:** cuando dice que una sílaba suena **«anglo»** quiere decir que suena en inglés (anglosajona). Se trata como la fila «Suena inglesa» de arriba: acento en la vocal y normalización off.
+
+| Problema oído | Casos | Qué se envió (1.er intento) |
+|---|---|---|
+| Anglo | so, man, can, to, glo («glow»), fru, fra, tor, cor, jar, far, car, sar, go, mar, or, lar, guar, por, do, per | acento en la vocal: `só`, `mán`, `cán`, `tó`, `gló`… |
+| Anglo con «h» muda | her, hor, ham | sin la «h» y con acento: `ér`, `ór`, `ám` |
+| Se lee la palabra abreviada | ca («circa»), jue («jueves»), doc («docente»), cal («calle»), lim («límites»), nos («números»), jun («junio»), gen («general») | acento y normalización off: `cá`, `jué`, `dóc`, `cál`, `lím`, `nós`, `jún`, `gén` |
+| Abreviada aunque ya tenía tilde | miér («miércoles»), nú («número») | mismo texto + contexto (`previous_text`) + stability 0.9 |
+| Otra letra | ja («ya»), mie («nie») | `já`, `mié` |
+| La deletrea | lle | `llé` |
+
+Para una que siga mal: cambiar `enviado` (o agregar `"contexto": true` o `"stability"`) en el JSON y correr `node herramientas/regenerar-silabas.mjs <sílaba>`; subir `VERSION`.
+
 Orden sugerido para una sílaba que sigue mal: (1) normalización off; (2) acento en la vocal fuerte; (3) sin acento + contexto + stability 0.9; (4) mover el acento a la otra vocal; (5) generarla dentro de una palabra española y recortarla (no hizo falta todavía). Los espacios y guiones meten pausas: evitarlos.
 
 
