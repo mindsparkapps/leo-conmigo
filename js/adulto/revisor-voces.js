@@ -88,7 +88,9 @@ async function cargarLista(modo = 'todas') {
   }
   const sinAprobar = await pendientesDelDiccionario();
   // las que se corrigieron (`revisar`) salen de su tanda y se oyen aparte, en «revision1»
-  if (modo === 'revision1') return nuevas.filter((x) => x.revisar);
+  // (`revisar` es el número de la tanda de la que salieron; `true` es la tanda 1)
+  const revision = /^revision(\d+)$/.exec(modo);
+  if (revision) return nuevas.filter((x) => (x.revisar === true ? 1 : x.revisar) === Number(revision[1]));
   const tanda = /^tanda(\d+)$/.exec(modo);
   if (tanda) return nuevas.slice((Number(tanda[1]) - 1) * POR_TANDA, Number(tanda[1]) * POR_TANDA).filter((x) => !x.revisar);
   // La tanda 1 ya está revisada: lo aprobado pasa a las listas por tipo (palabras, sílabas, frases)
@@ -319,10 +321,11 @@ export function crearRevisorVoces() {
       filaTandas.append(b);
     }
     // las que se regeneraron tras la primera revisión de la tanda 1
-    const corregidas = nuevas.filter((x) => x.revisar).length;
-    if (corregidas) {
-      const b = el('button', { type: 'button', class: 'boton' }, `Revisión tanda 1: ${corregidas === 1 ? 'la que corregí' : `las ${corregidas} que corregí`}`);
-      b.addEventListener('click', () => iniciar('revision1'));
+    const numeros = [...new Set(nuevas.filter((x) => x.revisar).map((x) => (x.revisar === true ? 1 : x.revisar)))].sort((a, b) => b - a);
+    for (const n of numeros) {
+      const corregidas = nuevas.filter((x) => (x.revisar === true ? 1 : x.revisar) === n).length;
+      const b = el('button', { type: 'button', class: 'boton' }, `Revisión tanda ${n}: ${corregidas === 1 ? 'la que corregí' : `las ${corregidas} que corregí`}`);
+      b.addEventListener('click', () => iniciar(`revision${n}`));
       botonesTanda.push(b);
       filaTandas.prepend(b);
     }

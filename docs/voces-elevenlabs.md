@@ -105,6 +105,18 @@ Orden sugerido para una sílaba que sigue mal: (1) normalización off; (2) acent
 
 `herramientas/generar-voces.mjs` ya manda `apply_text_normalization: "off"` y `stability: 0.6` para las sílabas. Para las que están en `data/voces/tanda-escritura.json` con `"revisar": true`, el revisor las saca de su tanda y las ofrece aparte en el botón «Revisión tanda 1».
 
+### Correcciones de la tanda 2 de Escritura (21 de noviembre de 2026)
+
+Tras oír las voces nuevas 201 a 400 el usuario marcó 37 sílabas. Se regeneraron con `node herramientas/regenerar-silabas.mjs --lista=data/voces/correcciones-tanda2.json` (todas con contexto + stability 0.9, `"intento": 1`) y salieron de su tanda (`"revisar": 2` en `data/voces/tanda-escritura.json`): se oyen en el botón «Revisión tanda 2».
+
+| Problema oído | Casos | Qué se envió |
+|---|---|---|
+| Acento francés | flur, peur, poir, puz, teun, puir | acento en la vocal cerrada: `flúr`, `peúr`, `poír`, `púz`, `teún`, `puír` |
+| Anglo | for, plon, mor, pair, peir, mur, od, liz, gren, grin, rai, sor, tin, tion, tram, sun, tain, tein, sur, gro, grun, gun | acento en la vocal fuerte: `fór`, `plón`, `mór`, `páir`… |
+| Suena agotada | fua | sin acento: `fua` |
+| La deletrea | ie | `ié` |
+| Dice otra palabra | lun («lunes»), min («minutos»), oz («onza»), pos y poz («posición»), pun («punto»), sen («senador») | acento: `lún`, `mín`, `óz`, `pós`, `póz`, `pún`, `sén` |
+
 ## Revisar a oído
 
 La app tiene en Ajustes (modo adulto) el panel **«Revisar las voces»**: reproduce todas las grabaciones seguidas, con pausa, retroceso de 10 s y barra, y permite marcar las malas y copiar la lista («N.º 139 de 280 (tramo) · Sílaba: go»). Para regenerar una mala: borrar su mp3 (o sobrescribirlo) y pedirla otra vez con `language_code: "es"`. Una sílaba suelta puede sonar rara; si pasa, probar escribiéndola de otra forma (por ejemplo con una vocal de apoyo) y regenerar.
