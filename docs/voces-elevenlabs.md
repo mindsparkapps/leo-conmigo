@@ -86,6 +86,16 @@ Las 265 sílabas de S1 se generaron el 15 de noviembre **sin** `apply_text_norma
 
 **Receta que mejor funcionó para las anglo:** acento en la vocal **y** contexto + stability 0.9 a la vez. Por eso en la tanda 3 (21 de noviembre, `"tanda": 3` en el JSON) se usó directamente en due, her, ár, cue, hier (`iér`), sir, vein, bar, ar, bor, er, fre, gre, ber, bin, bir, bre, bri, clu, coin y dain. Varias (ar, bor, er, her) ya habían fallado solo con acento. `dain` se generó de nuevo como `dáin`; `dein` sigue siendo el audio intercambiado de la tanda 1.
 
+**ber** sonaba «beegg» con `bér` + contexto (como «ceur» → «seeerg»): se probó `ber` sin acento con contexto, la receta que arregló cor y sar.
+
+### Sílabas nuevas: todas las sílabas de todas las palabras y frases (21 de noviembre de 2026)
+
+Lectura solo dice la primera sílaba de cada palabra (S1), pero Escritura puede usar cualquiera. Se generaron las 72 que faltaban de las palabras del catálogo, el banco de Escritura (palabras, frases y textos) y los cuentos (por ejemplo «riz», «ción», «món», «tá», «toy» y «llue»). Están en `data/voces/silabas-nuevas.json`, con el mismo formato que las correcciones, y se generaron con `node herramientas/regenerar-silabas.mjs --lista=data/voces/silabas-nuevas.json`, que también las anota en `SILABAS` y `PRECACHE`. La receta usada para todas fue acento en la vocal fuerte + contexto + stability 0.9, con dos excepciones: `xi` se envió como `ksí` y `hí` como `í`. En el mismo archivo van las 12 de «calienta» (lien y sus distractoras).
+
+El revisor las ofrece en **«Probar sílabas nuevas»**, junto con las correcciones marcadas con `"revisar": true`, y las saca de «Probar sílabas» mientras tanto. Cuando el usuario las apruebe, se vacía `silabas-nuevas.json` (`[]`) y se quitan las marcas `revisar`: así vuelven a «Probar sílabas» y el botón desaparece.
+
+Para ver si falta alguna, se juntan las sílabas de todas las palabras y frases (con `silabasDe` de `core/silabeo.js` para los textos sin sílabas marcadas), en minúscula, y se comparan con `rutaDeSilaba`.
+
 Para una que siga mal: cambiar `enviado` (o agregar `"contexto": true` o `"stability"`) en el JSON y correr `node herramientas/regenerar-silabas.mjs <sílaba>`; subir `VERSION`.
 
 Orden sugerido para una sílaba que sigue mal: (1) normalización off; (2) acento en la vocal fuerte; (3) sin acento + contexto + stability 0.9; (4) mover el acento a la otra vocal; (5) generarla dentro de una palabra española y recortarla (no hizo falta todavía). Los espacios y guiones meten pausas: evitarlos.

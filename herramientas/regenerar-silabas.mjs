@@ -3,6 +3,9 @@
 //
 //   node herramientas/regenerar-silabas.mjs             (todas las de la lista)
 //   node herramientas/regenerar-silabas.mjs so ca nú    (solo esas)
+//   node herramientas/regenerar-silabas.mjs --lista=data/voces/silabas-nuevas.json   (sílabas nuevas)
+//
+// Si la sílaba no estaba en SILABAS (js/silabas-voz.js) ni su mp3 en PRECACHE (sw.js), la agrega.
 //
 // Sobrescribe el mp3 de cada sílaba (mismo archivo, solo cambia el texto enviado). Cada entrada lleva `texto` (la
 // sílaba de la app), `enviado` (lo que se manda a ElevenLabs) y, si hace falta, `contexto: true` (frase previa en
@@ -46,8 +49,10 @@ async function generar(c) {
   throw new Error('demasiados reintentos');
 }
 
-const lista = JSON.parse(readFileSync(join(RAIZ, 'data/voces/correcciones-silabas.json'), 'utf8'));
-const pedidas = new Set(process.argv.slice(2));
+// --lista=data/voces/silabas-nuevas.json usa otra lista con el mismo formato
+const archivoLista = process.argv.find((a) => a.startsWith('--lista='))?.slice(8) ?? 'data/voces/correcciones-silabas.json';
+const lista = JSON.parse(readFileSync(join(RAIZ, archivoLista), 'utf8'));
+const pedidas = new Set(process.argv.slice(2).filter((a) => !a.startsWith('--')));
 const trabajos = lista.filter((c) => !pedidas.size || pedidas.has(c.texto));
 let siguiente = 0;
 const fallos = [];
@@ -62,4 +67,22 @@ async function obrero() {
 }
 await Promise.all(Array.from({ length: 3 }, obrero));
 console.log(`regeneradas: ${trabajos.length - fallos.length} de ${trabajos.length}`);
+
+// ---- anotar las sílabas nuevas en la app (igual que generar-voces.mjs) ----
+const fallidas = new Set(fallos.map((f) => f.split(':')[0]));
+const hechas = trabajos.filter((c) => !fallidas.has(c.texto));
+let s = readFileSync(join(RAIZ, 'js/silabas-voz.js'), 'utf8');
+let agregadas = 0;
+s = s.replace(/const SILABAS = new Set\((\[.*?\])\);/, (_, l) => {
+  const todas = JSON.parse(l);
+  for (const c of hechas) if (!todas.includes(c.texto)) { todas.push(c.texto); agregadas++; }
+  return `const SILABAS = new Set(${JSON.stringify(todas)});`;
+});
+if (agregadas) writeFileSync(join(RAIZ, 'js/silabas-voz.js'), s);
+let sw = readFileSync(join(RAIZ, 'sw.js'), 'utf8');
+const crlf = sw.includes('\r\n');
+sw = sw.replace(/\r\n/g, '\n');
+const lineas = hechas.map((c) => archivoDe(c.texto)).filter((a) => !sw.includes(`'${a}'`)).map((a) => `  '${a}',\n`).join('');
+if (lineas) writeFileSync(join(RAIZ, 'sw.js'), (crlf ? (x) => x.replace(/\n/g, '\r\n') : (x) => x)(sw.replace("  'data/voces/indice.json',\n", `  'data/voces/indice.json',\n${lineas}`)));
+if (agregadas || lineas) console.log(`anotadas en SILABAS: ${agregadas}; en PRECACHE: ${lineas.split('\n').length - 1}. Falta subir VERSION.`);
 for (const f of fallos) console.log('ERROR', f);
