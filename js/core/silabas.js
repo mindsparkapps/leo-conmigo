@@ -15,7 +15,7 @@ const FUERTES = new Set(['a', 'e', 'o', 'á', 'é', 'ó']);
 const DEBILES = new Set(['i', 'u', 'ü']);
 const DEBILES_TILDE = new Set(['í', 'ú']);
 const VOCALES = new Set([...FUERTES, ...DEBILES, ...DEBILES_TILDE]);
-const GRUPOS_INSEPARABLES = new Set(['pr', 'br', 'tr', 'dr', 'cr', 'gr', 'fr', 'kr', 'pl', 'bl', 'cl', 'gl', 'fl', 'kl']);
+const GRUPOS_INSEPARABLES = new Set(['pr', 'br', 'tr', 'dr', 'cr', 'gr', 'fr', 'kr', 'pl', 'bl', 'cl', 'gl', 'fl', 'kl', 'tl']);
 
 const letraBase = (v) => ({ í: 'i', ú: 'u', ü: 'u' })[v] ?? v;
 
@@ -86,6 +86,18 @@ function silabearPalabra(palabra) {
     for (;;) {
       const sig = siguienteVocal(tokens, fin);
       if (sig === -1 || !formanDiptongo(tokens[fin], tokens[sig])) break;
+      // Fuerte + débil + fuerte («ahue», «aia»): la débil se une a la fuerte que le sigue (ca-ca-hue-te).
+      if (FUERTES.has(tokens[fin].base) && DEBILES.has(tokens[sig].base)) {
+        const despues = siguienteVocal(tokens, sig);
+        if (despues !== -1 && FUERTES.has(tokens[despues].base)) break;
+      }
+      // Más de dos vocales solo es triptongo si es débil + fuerte + débil (buey, averiguáis);
+      // «ahue» (a-hue) no lo es: la «a» no se une con «ue».
+      if (fin > ini) {
+        const primera = tokens[ini].base;
+        const media = tokens[fin].base;
+        if (FUERTES.has(primera) || !FUERTES.has(media)) break;
+      }
       fin = sig;
     }
     nucleos.push({ ini, fin });
@@ -109,6 +121,8 @@ function silabearPalabra(palabra) {
       else if (n >= 2) {
         const par = tokens[sig.ini - 2].base + tokens[sig.ini - 1].base;
         aLaSiguiente = GRUPOS_INSEPARABLES.has(par) ? 2 : 1;
+        // prefijo «sub» + r: sub-ra-yar (no su-bra-yar)
+        if (k === 0 && aLaSiguiente === 2 && /^subr/i.test(palabra)) aLaSiguiente = 1;
       }
       finSilaba = sig.ini - 1 - aLaSiguiente;
     }

@@ -31,6 +31,17 @@ const CASOS = {
   // Grupos de consonantes
   construir: 'cons-truir', transporte: 'trans-por-te', instrumento: 'ins-tru-men-to',
   obstáculo: 'obs-tá-cu-lo', otro: 'o-tro', honra: 'hon-ra', ancho: 'an-cho', calle: 'ca-lle',
+  // Casos difíciles del plan de sílabas del diccionario (fase 1)
+  ríe: 'rí-e', leer: 'le-er', reír: 're-ír', aéreo: 'a-é-re-o', coatí: 'co-a-tí',
+  buey: 'buey', guau: 'guau', averiguáis: 'a-ve-ri-guáis', biaural: 'biau-ral', reunión: 'reu-nión',
+  guiar: 'guiar', Uruguay: 'U-ru-guay', cacahuete: 'ca-ca-hue-te', ahuecar: 'a-hue-car',
+  pretexto: 'pre-tex-to', ablandar: 'a-blan-dar', abrazo: 'a-bra-zo', abrupto: 'a-brup-to',
+  sublime: 'su-bli-me', subrayar: 'sub-ra-yar', perspectiva: 'pers-pec-ti-va', construcción: 'cons-truc-ción',
+  chico: 'chi-co', carro: 'ca-rro', taxi: 'ta-xi', examen: 'e-xa-men', exacto: 'e-xac-to', México: 'Mé-xi-co',
+  excelente: 'ex-ce-len-te', kilo: 'ki-lo', alcohol: 'al-co-hol', inhumano: 'in-hu-ma-no', adhesivo: 'ad-he-si-vo',
+  geografía: 'ge-o-gra-fí-a', azúcar: 'a-zú-car', huevo: 'hue-vo', cuota: 'cuo-ta', ruido: 'rui-do',
+  // «tl» no se separa (decisión del usuario, 21 nov 2026)
+  atleta: 'a-tle-ta', atlas: 'a-tlas', atlántico: 'a-tlán-ti-co',
   // Con mayúscula (nombres)
   Leo: 'Le-o', María: 'Ma-rí-a', Andrés: 'An-drés', Josefa: 'Jo-se-fa',
 };
