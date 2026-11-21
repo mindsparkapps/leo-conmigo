@@ -117,6 +117,19 @@ Tras oír las voces nuevas 201 a 400 el usuario marcó 37 sílabas. Se regenerar
 | La deletrea | ie | `ié` |
 | Dice otra palabra | lun («lunes»), min («minutos»), oz («onza»), pos y poz («posición»), pun («punto»), sen («senador») | acento: `lún`, `mín`, `óz`, `pós`, `póz`, `pún`, `sén` |
 
+Las 37 salieron bien y pasaron a «Probar sílabas» (`"aprobada": true` en `tanda-escritura.json`). Segunda ronda de la misma tanda, 25 sílabas (`data/voces/correcciones-tanda2b.json`, también «Revisión tanda 2»; `pue` va como entrada `"extra": true` porque no es de ninguna tanda):
+
+| Problema oído | Casos | Qué se envió |
+|---|---|---|
+| Anglo con «h» muda | hei, hia, hie, hio, hoi, hui, huo | sin la «h» y con acento (receta 1): `éi`, `iá`, `ié`, `ió`, `ói`, `uí`, `uó` |
+| Anglo | is, gais, tau, toin, tim, tis, plun, il | acento: `ís`, `gáis`, `táu`, `tóin`, `tím`, `tís`, `plún`, `íl` |
+| «g» suave leída como «y» (debe sonar «j») | ge, gia, gias, gie, gio | con «j» y sin acento: `je`, `jia`, `jias`, `jie`, `jio` |
+| Dice «lii» | gli | `glí` |
+| «güi» sonaba «gui» (debe oírse la u y luego la i) | güi | acento en la «u»: `gúi` |
+| La deletrea en inglés | id | `íd` |
+| Tono de paz | paz | `páz` |
+| Francesa | pue | `pué` |
+
 ## Revisar a oído
 
 La app tiene en Ajustes (modo adulto) el panel **«Revisar las voces»**: reproduce todas las grabaciones seguidas, con pausa, retroceso de 10 s y barra, y permite marcar las malas y copiar la lista («N.º 139 de 280 (tramo) · Sílaba: go»). Para regenerar una mala: borrar su mp3 (o sobrescribirlo) y pedirla otra vez con `language_code: "es"`. Una sílaba suelta puede sonar rara; si pasa, probar escribiéndola de otra forma (por ejemplo con una vocal de apoyo) y regenerar.

@@ -92,9 +92,10 @@ async function cargarLista(modo = 'todas') {
   const revision = /^revision(\d+)$/.exec(modo);
   if (revision) return nuevas.filter((x) => (x.revisar === true ? 1 : x.revisar) === Number(revision[1]));
   const tanda = /^tanda(\d+)$/.exec(modo);
-  if (tanda) return nuevas.slice((Number(tanda[1]) - 1) * POR_TANDA, Number(tanda[1]) * POR_TANDA).filter((x) => !x.revisar);
-  // La tanda 1 ya está revisada: lo aprobado pasa a las listas por tipo (palabras, sílabas, frases)
-  const aprobadas = nuevas.slice(0, POR_TANDA).filter((x) => !x.revisar);
+  if (tanda) return nuevas.slice((Number(tanda[1]) - 1) * POR_TANDA, Number(tanda[1]) * POR_TANDA).filter((x) => !x.revisar && !x.aprobada);
+  // La tanda 1 ya está revisada, y lo que se aprobó después (`aprobada`) también: pasa a las listas por tipo
+  // (palabras, sílabas, frases)
+  const aprobadas = nuevas.filter((x, i) => x.aprobada || (i < POR_TANDA && !x.revisar));
   const porTipo = { palabras: 'palabra', silabas: 'sílaba', frases: 'frase' };
   if (porTipo[modo]) {
     const viejas = await cargarLista('todas');
@@ -312,9 +313,11 @@ export function crearRevisorVoces() {
   // Un botón por cada 200 voces nuevas de Escritura (los pone cuando lee la lista)
   const botonesTanda = [];
   cargarTandaNueva().then((nuevas) => {
-    for (let i = 1; i * POR_TANDA < nuevas.length; i++) { // la tanda 1 (i = 0) ya está en las listas por tipo
+    // (`extra`: una sílaba corregida que no es de ninguna tanda; solo cuenta en su botón de revisión)
+    const enTandas = nuevas.filter((x) => !x.extra).length;
+    for (let i = 1; i * POR_TANDA < enTandas; i++) { // la tanda 1 (i = 0) ya está en las listas por tipo
       const desde = i * POR_TANDA + 1;
-      const hasta = Math.min(nuevas.length, (i + 1) * POR_TANDA);
+      const hasta = Math.min(enTandas, (i + 1) * POR_TANDA);
       const b = el('button', { type: 'button', class: 'boton secundario' }, `Probar voces nuevas de Escritura ${desde} a ${hasta}`);
       b.addEventListener('click', () => iniciar(`tanda${i + 1}`));
       botonesTanda.push(b);
