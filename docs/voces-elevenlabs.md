@@ -67,7 +67,7 @@ Todas con `language_code: "es"`, `eleven_v4`, `apply_text_normalization: "off"`.
 
 ### Tanda 2 de correcciones (sílabas de S1, 21 de noviembre de 2026)
 
-Las 265 sílabas de S1 se generaron el 15 de noviembre **sin** `apply_text_normalization: "off"`, por eso varias leían la palabra abreviada. Se regeneraron con `herramientas/regenerar-silabas.mjs`, que lee `data/voces/correcciones-silabas.json` (sílaba, texto enviado, problema y, si hace falta, `contexto: true`). El revisor las ofrece aparte en el botón **«Sílabas corregidas»**.
+Las 265 sílabas de S1 se generaron el 15 de noviembre **sin** `apply_text_normalization: "off"`, por eso varias leían la palabra abreviada. Se regeneraron con `herramientas/regenerar-silabas.mjs`, que lee `data/voces/correcciones-silabas.json` (sílaba, texto enviado, problema y, si hace falta, `contexto: true`). Ya revisadas, están en «Probar sílabas» del revisor (los botones aparte se quitaron).
 
 **Vocabulario del usuario:** cuando dice que una sílaba suena **«anglo»** quiere decir que suena en inglés (anglosajona). Se trata como la fila «Suena inglesa» de arriba: acento en la vocal y normalización off.
 
@@ -80,7 +80,7 @@ Las 265 sílabas de S1 se generaron el 15 de noviembre **sin** `apply_text_norma
 | Otra letra | ja («ya»), mie («nie») | `já`, `mié` |
 | La deletrea | lle | `llé` |
 
-**2.º intento** (las que el acento no arregló): doc («dos»), ja («ya»), jun («yun»: la «j» se lee como «y»), y anglo cor, hor, go, or, sar, far. Se enviaron sin acento, con contexto y stability 0.9 (`hor` como `or`). En el JSON llevan `"intento": 2` y el revisor las ofrece en «Sílabas corregidas, intento 2».
+**2.º intento** (las que el acento no arregló): doc («dos»), ja («ya»), jun («yun»: la «j» se lee como «y»), y anglo cor, hor, go, or, sar, far. Se enviaron sin acento, con contexto y stability 0.9 (`hor` como `or`). En el JSON llevan `"intento": 2`.
 
 **3.er intento** (siguieron anglo tras el 2.º: hor, go, or, far): acento **y** contexto + stability 0.9 a la vez (`ór`, `gó`, `ór`, `fár`); `"intento": 3`. Resultado del 2.º intento: doc, ja, jun, cor y sar quedaron bien con contexto sin acento.
 

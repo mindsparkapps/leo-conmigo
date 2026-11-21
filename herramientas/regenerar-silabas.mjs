@@ -6,8 +6,8 @@
 //
 // Sobrescribe el mp3 de cada sílaba (mismo archivo, solo cambia el texto enviado). Cada entrada lleva `texto` (la
 // sílaba de la app), `enviado` (lo que se manda a ElevenLabs) y, si hace falta, `contexto: true` (frase previa en
-// español que no se pronuncia y stability 0.9) o `stability`. El revisor de voces las ofrece aparte en el botón
-// «Sílabas corregidas». No sube VERSION ni hace commit.
+// español que no se pronuncia y stability 0.9) o `stability`. Se oyen en «Probar sílabas» del revisor.
+// No sube VERSION ni hace commit.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
