@@ -4,7 +4,8 @@
 //
 //   node herramientas/silabas-diccionario.mjs --hunspell=<carpeta con es_ES.dic y es_ES.aff>
 //   node herramientas/silabas-diccionario.mjs --crea=<listado de frecuencias del CREA (txt)>
-//   Opciones: --sin-escribir (solo informe)   --informe=<archivo.json> (guarda también los números del informe)
+//   Opciones: --cobertura=99|99.9|100 (cuáles sílabas se escriben en el JSON; por defecto 100 = todas; cada sílaba
+//             lleva su campo `cobertura`, así la fase 3 también puede filtrar después)   --sin-escribir (solo informe)   --informe=<archivo.json> (guarda también los números del informe)
 //
 // Las fuentes son datos no confiables: se leen como texto, nunca se ejecuta nada de ellas, y NO entran al repositorio
 // (solo la lista de sílabas derivada). Hunspell no trae frecuencias: cada forma vale 1. Con el CREA cada forma vale su
@@ -265,7 +266,15 @@ function principal(argv) {
   const palabras = crea ? cargarCrea(resolve(crea)) : cargarHunspell(resolve(hunspell));
   const grabadas = new Set(LISTA_DE_SILABAS.map((s) => s.texto));
   const r = analizar(palabras, grabadas);
-  const entradas = r.orden.map(entradaDe);
+  // `cobertura` de cada sílaba: la opción más pequeña que la incluye (99, 99.9 o 100). Así quien genera el audio
+  // (fase 3) puede quedarse con las de 99, las de 99 y 99.9, o todas.
+  const { necesarias } = r.todas;
+  const entradas = r.orden.map(entradaDe).map((e, i) => ({
+    ...e,
+    cobertura: i < necesarias[99] ? 99 : i < necesarias[99.9] ? 99.9 : 100,
+  }));
+  const elegida = Number(arg('cobertura') ?? 100);
+  if (![99, 99.9, 100].includes(elegida)) throw new Error('--cobertura debe ser 99, 99.9 o 100');
   const caracteres = (n) => entradas.slice(0, n).reduce((suma, e) => suma + [...e.enviado].length, 0);
 
   const filas = (cob) => [99, 99.9, 100].map((pct) => {
@@ -290,7 +299,7 @@ function principal(argv) {
   };
 
   if (!argv.includes('--sin-escribir')) {
-    const alfabetico = [...entradas].sort((a, b) => a.texto.localeCompare(b.texto, 'es'));
+    const alfabetico = entradas.filter((e) => e.cobertura <= elegida).sort((a, b) => a.texto.localeCompare(b.texto, 'es'));
     writeFileSync(SALIDA, `[\n${alfabetico.map((e) => `  ${JSON.stringify(e)}`).join(',\n')}\n]\n`);
   }
   const rutaInforme = arg('informe');
