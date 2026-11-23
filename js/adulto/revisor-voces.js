@@ -150,7 +150,24 @@ export function crearRevisorVoces() {
   const esMala = (x) => malas.some((m) => m.texto === etiqueta(x));
   // El número es el mismo que se ve arriba cuando suena en su lista: «139 de 280» (tramo) o «442 de 901» (todas)
   const nombreLista = (l) => (l ?? 'todas').replace(/^tanda(\d+)$/, 'tanda $1').replace(/^revision(\d+)$/, 'revisión tanda $1').replace(/^diccionario(\d+)$/, 'diccionario $1').replace(/^silabas$/, 'sílabas');
-  const textoMala = (m) => `${m.numero ? `N.º ${m.numero} de ${m.total ?? (totalTodas || '…')} (${nombreLista(m.lista)}) · ` : ''}${m.texto}`;
+  // De qué botón de tanda viene cada grabación (ruta -> «Probar voces nuevas de Escritura 201 a 400»), aunque la marca
+  // se haya hecho oyéndola en «Probar sílabas» o en otra lista. Se llena al leer las tandas.
+  const tandaDe = new Map();
+  async function aprenderTandas() {
+    const nuevas = await cargarTandaNueva();
+    const enTandas = nuevas.filter((x) => !x.extra);
+    enTandas.forEach((x, i) => {
+      const t = Math.floor(i / POR_TANDA);
+      if (t >= 1) tandaDe.set(x.ruta, `Probar voces nuevas de Escritura ${t * POR_TANDA + 1} a ${Math.min(enTandas.length, (t + 1) * POR_TANDA)}`);
+    });
+    const diccionarioLista = await cargarDiccionario();
+    diccionarioLista.forEach((x, i) => {
+      const t = Math.floor(i / POR_TANDA);
+      tandaDe.set(x.ruta, `Probar sílabas del diccionario ${t * POR_TANDA + 1} a ${Math.min(diccionarioLista.length, (t + 1) * POR_TANDA)}`);
+    });
+    pintarMalas();
+  }
+  const textoMala = (m) => `${m.numero ? `N.º ${m.numero} de ${m.total ?? (totalTodas || '…')} (${nombreLista(m.lista)}) · ` : ''}${m.texto}${tandaDe.has(m.ruta) ? ` · tanda: «${tandaDe.get(m.ruta)}»` : ''}`;
 
   function pintarMalas() {
     listaMalas.replaceChildren(
@@ -347,6 +364,7 @@ export function crearRevisorVoces() {
   }).catch((e) => console.error(e));
 
   pintarMalas();
+  aprenderTandas().catch((e) => console.error(e));
   normalizarMarcas().catch((e) => console.error(e));
 
   const panel = el(
