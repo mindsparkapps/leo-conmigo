@@ -1353,10 +1353,16 @@ Contestadas: ver «Lo que respondió el usuario al aprobar».
 | Web Speech API (`SpeechRecognition`, `processLocally`) | Palabras | Solo en Chrome 139+ si el paquete de idioma existe; el español en Chrome **no está confirmado** (sí en Edge) y la instalación falla en algunos navegadores ([MDN](https://developer.mozilla.org/docs/Web/API/SpeechRecognition/processLocally), [Chromium](https://groups.google.com/a/chromium.org/g/chrome-ai-dev-preview-discuss/c/Rlyc2uAsFCY)) | 0 (lo baja el navegador) | **Descartada** para diagnóstico: corrige hacia palabras y no da fonemas ni confianza por sonido. |
 | Whisper (whisper.cpp / Transformers.js) | Palabras | Sí | 75 MB a 1,5 GB | **Descartada:** normaliza y «alucina» palabras correctas; lento en celulares de gama media. |
 | Vosk (`vosk-browser`, Kaldi en WASM) | Palabras con confianza; gramática cerrada | Sí | ~40 MB (español pequeño) | **Plan C**: sirve para «¿dijo la palabra?» con una lista cerrada, no para saber qué sonido falló. |
-| **ZIPA-CR pequeño** (Zipformer + CTC, 64 M parámetros, reconoce fonemas IPA de cualquier idioma, ACL 2025, Apache-2.0) | **Fonemas** con probabilidad por cuadro de 20–40 ms | Sí, con `onnxruntime-web` (WASM; WebGPU si hay) | Estimado **~70 MB en int8** (el checkpoint PyTorch publicado pesa ~1 GB con estados de entrenamiento; **hay que exportarlo a ONNX y medirlo**) | **Elegida (plan A)**: según el paper, la versión de 64 M supera a modelos previos de 300 M ([ZIPA, arXiv](https://arxiv.org/abs/2505.23170v1), [modelo](https://huggingface.co/anyspeech/zipa-cr-s)). |
+| **ZIPA-CR pequeño** (Zipformer + CTC, 64 M parámetros, reconoce fonemas IPA de cualquier idioma, ACL 2025; modelo **CC BY 4.0**, código MIT) | **Fonemas** (127 símbolos) con probabilidad por cuadro | Sí, con `onnxruntime-web` (WASM; WebGPU si hay) | **70,7 MB** (`model.int8.onnx` **oficial** en [`anyspeech/zipa-small-crctc-300k`](https://huggingface.co/anyspeech/zipa-small-crctc-300k); también fp16 132 MB y fp32 260 MB). No hay que exportar nada. | **Elegida (plan A)**: según el paper, la versión de 64 M supera a modelos previos de 300 M ([ZIPA, arXiv](https://arxiv.org/abs/2505.23170v1), [repositorio](https://github.com/lingjzhu/zipa)). **No usar** las variantes `ns` (CC BY-NC-SA). |
 | wav2vec2 Large «CommonPhone» (Klumpp; 6 idiomas con español, 101 fonemas IPA, error de fonemas 8,8 % en español, CC0) | Fonemas | Sí, con `onnxruntime-web` | ~320 MB en int8 (300 M parámetros) | **Plan B** si ZIPA no rinde: más pesado y lento, pero entrenado con español ([modelo](https://huggingface.co/pklumpp/Wav2Vec2_CommonPhone)). |
 
 Hay un precedente que confirma que el camino es viable: un reconocedor de fonemas wav2vec2 exportado a ONNX int8 (~355 MB) que corre en el navegador para puntuar pronunciación en inglés ([speako](https://huggingface.co/robg/speako-phoneme-recognizer)). No existe uno listo para español: lo armamos con ZIPA + nuestra propia lógica.
+
+**Lo que se sabe del ONNX de ZIPA (del repositorio oficial, `inference/inference.py` y `inference/utils.py`; lo no verificado lo confirma la fase 33):**
+- **Entrada:** no es la onda cruda sino **fbank log-Mel de 80 bandas** estilo Kaldi (lhotse `FbankConfig(num_filters=80, dither=0.0, snip_edges=False)`), audio mono a 16 kHz, sin normalización aparte. Entradas del grafo: `x` (float32 `[1, T, 80]`) y `x_lens` (int64 `[1]`). Ventana 25 ms y paso 10 ms son los valores por defecto de lhotse (**a verificar**). Hay que **reescribir ese fbank en JavaScript** (puro, en `core/habla/fbank.js`) y compararlo con lhotse.
+- **Salida:** `log_probs` `[T', 127]` (primer resultado del grafo; nombre y factor de submuestreo **a verificar**). Tokens en `tokens.txt` (`símbolo id`): `<blk>` = 0 (blanco de CTC), `<sos/eos>` = 1, `<unk>` = 2, `▁` = 3 (límite de palabra: se ignora), `a`…`z` = 4–29 y luego símbolos IPA hasta 126 (`ɾ` = 80, `β` = 122, `θ` = 123, `χ` = 124).
+- **Decodificación de referencia:** argmax por cuadro, saltar el blanco y juntar repetidos (CTC voraz).
+- **Sin datos por idioma:** el paper no da la precisión en español; la mide la fase 33.
 
 **3. El método: «bondad de la pronunciación» (GOP) con alineación forzada.** Es la técnica estándar de los evaluadores de pronunciación:
 1. El texto que debía decir («perro») pasa por un **G2P propio** (texto → fonemas, fácil en español porque la ortografía es transparente): `/ˈpe.ro/`.
@@ -1373,10 +1379,10 @@ Hay un precedente que confirma que el camino es viable: un reconocedor de fonema
 - No se re-entrena la red en el celular (demasiado pesado). Lo que aprende es la **calibración**: umbrales por persona y por sonido, sus confusiones típicas y **plantillas de su propia voz** cuando lo dice bien.
 - **No es un diagnóstico clínico**: es una observación para el adulto y para la fonoaudióloga, con informe exportable.
 
-### Cambios explícitos a las reglas del §2 (hay que aprobarlos; valen **solo** en el modo Hablar)
+### Cambios explícitos a las reglas del §2 (aprobados, respuesta 2; valen **solo** en el modo Hablar)
 | Regla | Lo que cambia | Cómo se protege a la persona |
 |---|---|---|
-| §2.11 «No se evalúa el habla» | La app **escucha y analiza** lo que dice. | El resultado **nunca se muestra a la persona** ni cambia lo que ve: no hay «mal», puntaje, rojo, cruz ni sonido de error. Siempre recibe elogio **por intentarlo** («¡Qué bien lo dijiste!», «¡Buena voz!»). Si el análisis ve un posible error, como mucho se ofrece **una** vez más el modelo («Escucha otra vez… ahora tú») y luego se sigue igual, con elogio. Lo que dijo no decide aciertos de la lectura ni de la escritura. |
+| §2.11 «No se evalúa el habla» | La app **escucha y analiza** lo que dice. | El resultado **nunca se muestra a la persona** ni cambia lo que ve: no hay «mal», puntaje, rojo, cruz ni sonido de error. Siempre recibe elogio **por intentarlo** («¡Bien intentado!», «¡Buena voz!»; tono de la respuesta 1). Si el análisis ve un posible error, como mucho se ofrece **una** vez más el modelo («Escucha otra vez… ahora tú») y luego se sigue igual, con elogio. Lo que dijo no decide aciertos de la lectura ni de la escritura. |
 | §2.9 «solo toques simples» | Se habla en vez de tocar. | Un solo botón grande de micrófono (≥ 120 px); también se puede usar **sin tocar** (escucha sola tras el modelo, se corta con el silencio). |
 
 Todo lo demás del §2 sigue igual: sesiones cortas, éxito asegurado (~70 % de cosas que ya dice bien), fatiga (3 intentos seguidos con posible error → una fácil y termina con premio), sin cronómetro ni tiempo límite, apoyo visual siempre, pantalla tranquila.
@@ -1393,6 +1399,14 @@ Todo lo demás del §2 sigue igual: sesiones cortas, éxito asegurado (~70 % de 
 | Quién marca | Después de cada sesión (o en el momento, con «Escuchar y marcar»), el adulto oye cada grabación dudosa y toca **«Bien» / «Casi» / «No»** y, si quiere, «En vez de ___ dijo ___» (con botones de sonidos, sin teclear IPA). En el **diagnóstico inicial** se recomienda hacerlo en el momento (modo «con adulto al lado», por defecto). |
 | Grabaciones | Se guardan **solo en el dispositivo** (almacén `grabaciones`), las dudosas hasta que el adulto las marque y luego 30 días; las marcadas «Bien» que se eligen como **plantilla** se guardan siempre (máx. 5 por sonido). Solo suben a Drive con los botones «Subir a Drive» (una) o «Respaldo completo en Drive» (todas), respuesta 3; no van en la sincronización automática ni en la copia de seguridad `.json` de siempre. Lo que sí viaja son los **resultados** (números y marcas), como las respuestas de hoy. |
 | Fichas y curso (Ampliación 4) | Del **curso**: `habilitada`, `sensibilidad`, `aspiracionAceptada`, objetivos fijados a mano, sonidos bloqueados. Del **alumno**: su perfil fonético, calibración, plantillas, objetivos automáticos y nivel en cada jerarquía. La familia en el celular del alumno puede **hacer sesiones y marcar grabaciones** (es quien más lo escucha); no cambia los ajustes del curso. |
+
+### Quién puede tocar qué en el modo Hablar (obligatorio; se suma a la tabla de la Ampliación 4)
+| Quién | Qué puede hacer | Qué no puede |
+|---|---|---|
+| **El adolescente** (modo niño, en cualquier dispositivo) | Hacer el diagnóstico y las sesiones; oír el modelo y su propia grabación justo después de decirla («Escúchate»). | Ver marcas, GOP, procesos, informes ni ajustes; borrar o subir grabaciones. |
+| **El adulto** (su dispositivo) | Todo: ajustes del curso, descargar o borrar el modelo, marcar, elegir plantillas, objetivos a mano, informes, subir y respaldar grabaciones hechas en **su** dispositivo, ver los resultados (números y marcas) que llegan de los demás. | Oír grabaciones hechas en otro celular si nadie las subió (nunca viajan solas). |
+| **La familia** (menú reducido en el celular del alumno) | Descargar el modelo en ese celular, marcar y oír las grabaciones de ese celular, subirlas o respaldarlas en `alumnos/<correo>/habla/`, ver Progreso y «Qué le cuesta» de habla. | Cambiar ajustes del curso (sensibilidad, habilitar, objetivos a mano, bloqueados). |
+| **La ficha de prueba** (`prueba:<perfilId>`, modo administrador) | Igual que la Escritura: guarda todo aparte y se borra con «Borrar los datos de prueba». | Contar para el perfil real, la calibración real ni el aula. |
 
 ### El diagnóstico inicial (actividad `H0`)
 - **Batería** `data/habla/diagnostico.json` en **dos partes** (respuesta 7), con palabras concretas e ilustrables y de su edad (emoji + búsqueda ARASAAC, como el banco de escritura). Juntas cubren **cada fonema del español chileno al inicio, entre vocales y al final de sílaba**, los **grupos** `pl bl kl gl fl pr br tr dr kr gr fr`, **diptongos** y palabras de **1 a 5 sílabas**. La cobertura se revisa contra los procesos del TEPROSIF-R (estructura de la sílaba, sustitución y asimilación), **sin copiar sus ítems ni láminas**.
@@ -1480,11 +1494,22 @@ respuesta  { ...fase 12, modo: 'habla', actividad: 'H0'..'H7', objetivo: 'perro'
 ```
 **Separar lectura, escritura y habla (obligatorio, con pruebas):** `esDeHabla(registro)` (`actividad` `H`+número o `modo: 'habla'`) en `core/habla/comun.js`; todo lo que hoy ignora la escritura con `esDeEscritura` debe ignorar también el habla (conviene una sola `esDeOtroModo` para no olvidar ninguno). Actualizar `CAMPOS_DEL_*` / `AJUSTES_DEL_*` y `ALMACENES_DE_FICHA` de `core/curso.js`.
 
-### Fase 33 — Prueba técnica y elección del modelo (antes de escribir la app)
-- `herramientas/habla/exportar-zipa.py`: baja `anyspeech/zipa-cr-s`, lo exporta a ONNX y lo cuantiza a int8 (solo MatMul si las Conv cuantizadas fallan en `onnxruntime-web`, como pasó en speako); deja el **mapa de símbolos** de ZIPA al inventario chileno (`data/habla/simbolos.json`, unir alófonos).
-- `tests/navegador/habla-banco.html`: carga el modelo, mide tiempo de carga, tiempo por segundo de audio (RTF) con WASM y WebGPU, memoria, y muestra fonemas decodificados de grabaciones de prueba.
-- **Lo hace el usuario:** probar en **2 celulares Android reales** (uno de gama media) y grabar un set de prueba: ~20 palabras dichas bien por un adulto, las mismas dichas «con errores» a propósito (pato por plato, pelo por perro), y, si se puede, ~20 de la persona.
-- **Acepta si:** RTF < 0,5 en el de gama media, < 3 s por palabra, el decodificador encuentra al menos 8 de cada 10 errores provocados. Si no, se repite con el **plan B** (CommonPhone) y se anota la decisión (peso, velocidad, precisión, licencia) en «Decisiones de implementación».
+### Fase 33 — Prueba técnica del modelo (antes de escribir la app)
+Se divide en **33a** (la hace Sonnet en el PC) y **33b** (la hace el usuario con celulares). La fase 34 puede empezar con 33a cerrada; la 35 espera a 33b.
+
+**33a — En el PC**
+- **Motor:** copiar a `vendor/onnxruntime/` la última versión estable de `onnxruntime-web` (el `.mjs` del paquete y sus `.wasm`; anotar la versión exacta y su licencia MIT). Sin npm en la app: solo archivos copiados.
+- **Modelo:** usar el `model.int8.onnx` **oficial** de `anyspeech/zipa-small-crctc-300k` (no exportar nada). Fijar la URL a un **commit** del repositorio (`https://huggingface.co/anyspeech/zipa-small-crctc-300k/resolve/<commit>/model.int8.onnx`) y anotar su SHA-256 y tamaño en `js/config.js` (`MODELO_HABLA`). Copiar `tokens.txt` a `data/habla/tokens-zipa.txt` (pequeño, va al repositorio y a `PRECACHE`). No subir el `.onnx` al repositorio: para probar se descarga a una carpeta ignorada por git (`.modelos/`, agregar a `.gitignore`).
+- **Fbank en JavaScript:** `js/core/habla/fbank.js`, puro y con pruebas: Kaldi fbank de 80 bandas, 16 kHz, dither 0, `snip_edges` falso y el resto de parámetros por defecto de lhotse (ventana Povey, preénfasis 0,97, quitar DC, FFT 512, piso del logaritmo). `herramientas/habla/fbank-referencia.py` (se corre una vez con `pip install lhotse soundfile`) genera `tests/datos/fbank-referencia.json` con 3 audios cortos (silencio, tono, voz sintética) y la prueba compara: **error absoluto medio < 0,01** por banda. Si falta algún parámetro, se lee en el código de lhotse y se anota aquí.
+- **Grafo:** con un script en Python (`onnx`) o Netron, anotar nombres de entradas y salidas, forma de la salida y **factor de submuestreo** (cuántos ms dura un cuadro de salida).
+- **Símbolos:** `data/habla/simbolos.json`: cada uno de los 127 tokens de ZIPA → fonema del inventario chileno o «otro» (unir alófonos: `β`→b, `ð`→d, `ɣ`→g, `ʃ`→tʃ en la variante chilena, `h` en coda → s aspirada, `ɹ̝`/`ʐ` → r asibilada; `θ` → «otro» porque en Chile no se usa). Prueba: todo fonema del inventario tiene al menos un token.
+- **Banco de pruebas:** `tests/navegador/habla-banco.html`: carga el modelo (desde `.modelos/` o la URL), elige WASM o WebGPU, mide tiempo de carga, tiempo por segundo de audio (RTF) y memoria, graba con el micrófono o abre un `.wav`/`.webm`, y muestra los fonemas decodificados (CTC voraz) ya traducidos con `simbolos.json`. Correrlo en el PC con 5 palabras de voz sintética es-CL y anotar los resultados.
+- **Acepta 33a si:** `npm test` en verde (fbank igual a lhotse), el banco de pruebas decodifica en el PC algo reconocible para «perro», «plato» y «casa», y las medidas del PC están anotadas en «Decisiones de implementación».
+
+**33b — Con celulares (la hace el usuario; Sonnet deja las instrucciones en `docs/habla-prueba-celular.md`)**
+- Abrir el banco de pruebas en **2 celulares Android reales** (uno de gama media) y anotar carga, RTF con WASM y WebGPU, y memoria.
+- Grabar un set de prueba con el mismo banco (se guarda en el celular y se exporta como archivo): ~20 palabras de la batería dichas bien por un adulto, las mismas dichas «con errores» a propósito («pato» por «plato», «pelo» por «perro», «tes» por «tres»), y, si se puede, ~20 dichas por el adolescente.
+- **Acepta 33b si:** RTF < 0,5 en el de gama media, < 3 s por palabra desde que termina de hablar, y la decodificación encuentra al menos 8 de cada 10 errores provocados. Si no, se prueba fp16 / WebGPU y, si tampoco, el **plan B** (CommonPhone, que sí hay que exportar). La decisión final (peso, velocidad, precisión, licencia) queda en «Decisiones de implementación».
 
 ### Fase 34 — Núcleo puro de fonética (sin DOM)
 - `js/core/habla/`: `fonemas.js` (inventario es-CL con rasgos: punto, modo, sonoridad; orden aproximado de adquisición), `g2p.js` (texto → fonemas con sílabas y acento, reutiliza `core/silabas.js`; alófonos aceptables por dialecto), `alineacion.js` (Viterbi CTC forzado y alineación por edición entre esperado y decodificado), `gop.js`, `procesos.js` (de la alineación a los procesos de simplificación), `comun.js` (`esDeHabla`).
@@ -1509,14 +1534,14 @@ respuesta  { ...fase 12, modo: 'habla', actividad: 'H0'..'H7', objetivo: 'perro'
 - `tests/simulador.js`: persona simulada con errores conocidos (/r/ → /l/ 80 %, reducción de grupos 60 %) y un «adulto» que marca bien el 95 %: medir en cuántas sesiones la calibración encuentra los dos objetivos y deja de marcar lo que ya dice bien.
 
 ### Fase 39 — Privacidad, ayuda y prueba real
-- Ayuda del adulto, «Acerca de» (licencias: ZIPA Apache-2.0, onnxruntime MIT, fuentes en `docs/habla-fuentes.md`), `privacidad.html` (micrófono, qué se guarda, que no es diagnóstico clínico), README.
+- Ayuda del adulto, «Acerca de» (licencias: modelo ZIPA **CC BY 4.0, con atribución obligatoria** a sus autores, onnxruntime MIT, fuentes en `docs/habla-fuentes.md`), `privacidad.html` (micrófono, qué se guarda, que no es diagnóstico clínico), README.
 - **Lo hace el usuario:** probar con él durante 2 a 4 semanas y, si se puede, mostrar el informe a una fonoaudióloga.
 
 ### Preguntas abiertas
 Contestadas: ver «Lo que respondió el usuario al aprobar».
 
 ### Dónde va cada respuesta del usuario (para no olvidarla en su fase)
-- Fase 33: el modelo se aloja en Hugging Face y se descarga (4); si se exporta uno propio, el usuario lo sube a su cuenta y la URL va en `js/config.js`.
+- Fase 33: el modelo se descarga desde Hugging Face (4): el int8 oficial de ZIPA con la URL fijada a un commit; solo si se cae al plan B (exportado por nosotros) el usuario lo sube a su propia cuenta de Hugging Face y la URL va en `js/config.js`.
 - Fase 34: /r/ asibilada y demás variantes chilenas aceptadas; orden de adquisición con su fuente (1, 5).
 - Fase 35: descarga desde la app con SHA-256 (4).
 - Fase 36: batería en dos partes, de su edad (1, 7); subir y respaldar grabaciones (3); aviso «no es diagnóstico clínico» (5).

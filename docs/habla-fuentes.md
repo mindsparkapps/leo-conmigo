@@ -9,7 +9,10 @@ Fuentes consultadas el 2026-11-25 para diseñar el modo Hablar. «Acerca de», l
 - [Evaluación automática de la inteligibilidad en trastornos motores del habla del desarrollo, incluido el SD (PMC)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12345943/)
 
 ## Motores y modelos
-- [ZIPA: modelos eficientes de reconocimiento de fonemas multilingüe (ACL 2025, arXiv)](https://arxiv.org/abs/2505.23170v1) y [checkpoint `anyspeech/zipa-cr-s` (Apache-2.0)](https://huggingface.co/anyspeech/zipa-cr-s): plan A. La versión de 64 M parámetros supera a modelos previos de 300 M.
+- [ZIPA: modelos eficientes de reconocimiento de fonemas multilingüe (ACL 2025, arXiv)](https://arxiv.org/abs/2505.23170v1): plan A. La versión de 64 M parámetros supera a modelos previos de 300 M.
+  - [Repositorio `lingjzhu/zipa`](https://github.com/lingjzhu/zipa) (código MIT): `inference/inference.py` y `inference/utils.py` muestran la entrada (fbank lhotse de 80 bandas, `dither=0`, `snip_edges=False`, 16 kHz), las entradas `x`/`x_lens` y la decodificación CTC voraz; `ipa_simplified/tokens.txt` tiene los 127 tokens (`<blk>` = 0).
+  - [ONNX oficial `anyspeech/zipa-small-crctc-300k`](https://huggingface.co/anyspeech/zipa-small-crctc-300k) (**CC BY 4.0**): `model.int8.onnx` 70,7 MB, `model.fp16.onnx` 132 MB, `model.onnx` 260 MB, `tokens.txt`. Las variantes `ns` son CC BY-NC-SA (no usar).
+  - [Checkpoint PyTorch `anyspeech/zipa-cr-s`](https://huggingface.co/anyspeech/zipa-cr-s).
 - [Wav2Vec2 Large «CommonPhone» (Klumpp, CC0)](https://huggingface.co/pklumpp/Wav2Vec2_CommonPhone): plan B. Seis idiomas con español, 101 fonemas IPA, error de fonemas de 8,8 % en español.
 - [speako-phoneme-recognizer](https://huggingface.co/robg/speako-phoneme-recognizer): precedente de un reconocedor de fonemas wav2vec2 en ONNX int8 (~355 MB) en el navegador; solo cuantizar MatMul porque las Conv cuantizadas fallan en onnxruntime.
 - [Wav2Vec2-XLSR-53 espeak (Facebook)](https://huggingface.co/facebook/wav2vec2-xlsr-53-espeak-cv-ft): otro reconocedor de fonemas multilingüe; no tiene ONNX oficial.
