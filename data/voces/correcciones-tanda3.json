@@ -1,0 +1,12 @@
+[
+  {"texto":"tric","enviado":"tríc","contexto":true,"stability":0.9,"problema":"anglo","intento":1},
+  {"texto":"trim","enviado":"trím","contexto":true,"stability":0.9,"problema":"anglo","intento":1},
+  {"texto":"tuin","enviado":"tuín","contexto":true,"stability":0.9,"problema":"anglo","intento":1},
+  {"texto":"tur","enviado":"túr","contexto":true,"stability":0.9,"problema":"anglo","intento":1},
+  {"texto":"ur","enviado":"úr","contexto":true,"stability":0.9,"problema":"anglo","intento":1},
+  {"texto":"ul","enviado":"úl","contexto":true,"stability":0.9,"problema":"dice «calle»","intento":1},
+  {"texto":"vau","enviado":"váu","contexto":true,"stability":0.9,"problema":"dice «vao»","intento":1},
+  {"texto":"tractor","ruta":"data/voces/tractor.mp3","enviado":"tractór","contexto":"Ahora repite la palabra en español, con voz tranquila y neutra: ","stability":0.9,"problema":"anglo","intento":1},
+  {"texto":"guau","ruta":"data/voces/guau.mp3","enviado":"guau","contexto":"Ahora repite la palabra en español, con voz tranquila y neutra: ","stability":0.9,"problema":"entonación de asombro","intento":1},
+  {"texto":"miau","ruta":"data/voces/miau.mp3","enviado":"miau","contexto":"Ahora repite la palabra en español, con voz tranquila y neutra: ","stability":0.9,"problema":"entonación de maullido","intento":1}
+]

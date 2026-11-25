@@ -136,7 +136,18 @@ Tercera ronda (`data/voces/correcciones-tanda2c.json`, `"intento": 2`): de las 2
 
 **`güi` quedó bien** con la receta de la tanda 1 de Escritura: `güi` **sin contexto**, stability 0,5 (se eligió entre cuatro pruebas: `gwí`, `guwí` y `guúi` con contexto, y esta). Es la excepción: para las sílabas con diéresis no usar contexto ni acento. Todas las corregidas de la tanda 2 pasaron a «Probar sílabas» y el resto de la tanda 2 se vuelve a oír completo.
 
-Al volver a oír la tanda 2 (25 de noviembre) solo `fro` sonaba muy anglo: va en `correcciones-tanda2e.json` con la receta de las anglo (`fró` + contexto + stability 0.9) y `"revisar": 2` («Revisión tanda 2»). Las otras 137 pasaron a «Probar sílabas» y el botón «Probar voces nuevas de Escritura 201 a 400» se quitó (el revisor esconde el botón de una tanda que ya no tiene nada por oír).
+Al volver a oír la tanda 2 (25 de noviembre) solo `fro` sonaba muy anglo: va en `correcciones-tanda2e.json` con la receta de las anglo (`fró` + contexto + stability 0.9) y `"revisar": 2` («Revisión tanda 2»). Las otras 137 pasaron a «Probar sílabas» y el botón «Probar voces nuevas de Escritura 201 a 400» se quitó (el revisor esconde el botón de una tanda que ya no tiene nada por oír). `fró` con contexto salió bien y pasó a «Probar sílabas».
+
+### Correcciones de la tanda 3 de Escritura (25 de noviembre de 2026)
+
+De las voces nuevas 401 a 600 el usuario marcó 10. Van en `data/voces/correcciones-tanda3.json`, todas con contexto + stability 0.9 (`"intento": 1`), y salieron de su tanda con `"revisar": 3` («Revisión tanda 3»). Tres son **palabras** (`tractor`, `guau`, `miau`): llevan `ruta` (el mp3 de la palabra, que `regenerar-silabas.mjs` sobrescribe sin anotarla como sílaba) y `contexto` con la frase «Ahora repite la palabra en español…» en vez de «la sílaba».
+
+| Problema oído | Casos | Qué se envió |
+|---|---|---|
+| Anglo | tric, trim, tuin, tur, ur, tractor | acento: `tríc`, `trím`, `tuín`, `túr`, `úr`, `tractór` |
+| Se lee la palabra abreviada | ul («calle») | `úl` |
+| Otra vocal | vau («vao») | `váu` |
+| Entonación de asombro / de maullido | guau, miau (palabras) | sin acento, como se arreglaron las sílabas `guau` y `miau` en la tanda 1 |
 
 ## Revisar a oído
 

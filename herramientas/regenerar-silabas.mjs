@@ -9,7 +9,8 @@
 //
 // Sobrescribe el mp3 de cada sílaba (mismo archivo, solo cambia el texto enviado). Cada entrada lleva `texto` (la
 // sílaba de la app), `enviado` (lo que se manda a ElevenLabs) y, si hace falta, `contexto: true` (frase previa en
-// español que no se pronuncia y stability 0.9) o `stability`. Se oyen en «Probar sílabas» del revisor.
+// español que no se pronuncia y stability 0.9; si es un texto, esa frase) o `stability`. Con `ruta` sobrescribe ese
+// mp3 en vez del de la sílaba (para una palabra que ya está en la app). Se oyen en «Probar sílabas» del revisor.
 // No sube VERSION ni hace commit.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -35,7 +36,7 @@ async function generar(c) {
     model_id: 'eleven_v4',
     language_code: 'es',
     apply_text_normalization: 'off',
-    ...(c.contexto ? { previous_text: CONTEXTO } : {}),
+    ...(c.contexto ? { previous_text: typeof c.contexto === 'string' ? c.contexto : CONTEXTO } : {}),
     voice_settings: { stability: c.stability ?? (c.contexto ? 0.9 : 0.6), similarity_boost: 0.75 },
   };
   for (let intento = 1; intento <= 4; intento++) {
@@ -92,7 +93,7 @@ async function obrero() {
   while (siguiente < trabajos.length) {
     const c = trabajos[siguiente++];
     try {
-      if (!c.yaGenerada) writeFileSync(join(RAIZ, archivoDe(c.texto)), await generar(c));
+      if (!c.yaGenerada) writeFileSync(join(RAIZ, c.ruta ?? archivoDe(c.texto)), await generar(c));
       console.log(`  ${c.texto} ← «${c.enviado}»${c.contexto ? ' (contexto)' : ''}${c.yaGenerada ? ' (ya existía)' : ''}`);
     } catch (e) { fallos.push(`${c.texto}: ${e.message}`); }
   }
@@ -102,7 +103,8 @@ console.log(`regeneradas: ${trabajos.length - fallos.length} de ${trabajos.lengt
 
 // ---- anotar las sílabas nuevas en la app (igual que generar-voces.mjs) ----
 const fallidas = new Set(fallos.map((f) => f.split(':')[0]));
-const hechas = trabajos.filter((c) => !fallidas.has(c.texto));
+// (las que traen `ruta` son palabras que ya estaban en la app: no se anotan como sílabas)
+const hechas = trabajos.filter((c) => !fallidas.has(c.texto) && !c.ruta);
 let s = readFileSync(join(RAIZ, 'js/silabas-voz.js'), 'utf8');
 let agregadas = 0;
 s = s.replace(/const SILABAS = new Set\((\[.*?\])\);/, (_, l) => {
