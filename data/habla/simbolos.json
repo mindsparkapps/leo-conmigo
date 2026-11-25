@@ -1,0 +1,991 @@
+{
+ "version": 1,
+ "fuente": "Tokens de anyspeech/zipa-small-crctc-300k (data/habla/tokens-zipa.txt). Generado por herramientas/habla/generar-simbolos.mjs",
+ "inventario": [
+  {
+   "id": "a",
+   "clase": "vocal"
+  },
+  {
+   "id": "e",
+   "clase": "vocal"
+  },
+  {
+   "id": "i",
+   "clase": "vocal"
+  },
+  {
+   "id": "o",
+   "clase": "vocal"
+  },
+  {
+   "id": "u",
+   "clase": "vocal"
+  },
+  {
+   "id": "j",
+   "clase": "deslizada",
+   "nota": "deslizada de los diptongos (hierba, aire)"
+  },
+  {
+   "id": "w",
+   "clase": "deslizada",
+   "nota": "deslizada de los diptongos (huevo, auto)"
+  },
+  {
+   "id": "p",
+   "clase": "oclusiva"
+  },
+  {
+   "id": "b",
+   "clase": "oclusiva",
+   "nota": "incluye [β] (b, v y w entre vocales)"
+  },
+  {
+   "id": "t",
+   "clase": "oclusiva"
+  },
+  {
+   "id": "d",
+   "clase": "oclusiva",
+   "nota": "incluye [ð]"
+  },
+  {
+   "id": "k",
+   "clase": "oclusiva"
+  },
+  {
+   "id": "g",
+   "clase": "oclusiva",
+   "nota": "incluye [ɣ]"
+  },
+  {
+   "id": "tʃ",
+   "clase": "africada",
+   "nota": "ZIPA no tiene el símbolo de la africada: la da como «t» + «ʃ»; la alineación (fase 34) las junta"
+  },
+  {
+   "id": "f",
+   "clase": "fricativa"
+  },
+  {
+   "id": "s",
+   "clase": "fricativa"
+  },
+  {
+   "id": "h",
+   "clase": "fricativa",
+   "nota": "/s/ aspirada en final de sílaba (\"lo' perro'\"); solo vale como variante de /s/ en coda"
+  },
+  {
+   "id": "x",
+   "clase": "fricativa",
+   "nota": "jota: [x], [χ] y [ç] ante e/i"
+  },
+  {
+   "id": "ʝ",
+   "clase": "fricativa",
+   "nota": "«y» y «ll» (yeísmo); suena [ʝ] o [ɟ]"
+  },
+  {
+   "id": "m",
+   "clase": "nasal"
+  },
+  {
+   "id": "n",
+   "clase": "nasal"
+  },
+  {
+   "id": "ɲ",
+   "clase": "nasal"
+  },
+  {
+   "id": "l",
+   "clase": "lateral"
+  },
+  {
+   "id": "ɾ",
+   "clase": "vibrante",
+   "nota": "vibrante simple (pera, comer)"
+  },
+  {
+   "id": "r",
+   "clase": "vibrante",
+   "nota": "vibrante múltiple (perro, rojo)"
+  },
+  {
+   "id": "ř",
+   "clase": "vibrante",
+   "nota": "rótica asibilada chilena [ɹ̝] (muy común, se acepta como /r/); la «tr» suena [tɹ̝̥]"
+  }
+ ],
+ "tokens": [
+  {
+   "id": 0,
+   "ipa": "<blk>",
+   "tipo": "especial",
+   "fonema": null,
+   "nota": "blanco de CTC"
+  },
+  {
+   "id": 1,
+   "ipa": "<sos/eos>",
+   "tipo": "especial",
+   "fonema": null,
+   "nota": "inicio/fin"
+  },
+  {
+   "id": 2,
+   "ipa": "<unk>",
+   "tipo": "especial",
+   "fonema": null,
+   "nota": "desconocido"
+  },
+  {
+   "id": 3,
+   "ipa": "▁",
+   "tipo": "especial",
+   "fonema": null,
+   "nota": "límite de palabra: se ignora"
+  },
+  {
+   "id": 4,
+   "ipa": "a",
+   "tipo": "fonema",
+   "fonema": "a"
+  },
+  {
+   "id": 5,
+   "ipa": "b",
+   "tipo": "fonema",
+   "fonema": "b"
+  },
+  {
+   "id": 6,
+   "ipa": "c",
+   "tipo": "fonema",
+   "fonema": "k",
+   "nota": "oclusiva palatal: /k/ ante e/i"
+  },
+  {
+   "id": 7,
+   "ipa": "d",
+   "tipo": "fonema",
+   "fonema": "d"
+  },
+  {
+   "id": 8,
+   "ipa": "e",
+   "tipo": "fonema",
+   "fonema": "e"
+  },
+  {
+   "id": 9,
+   "ipa": "f",
+   "tipo": "fonema",
+   "fonema": "f"
+  },
+  {
+   "id": 10,
+   "ipa": "g",
+   "tipo": "fonema",
+   "fonema": "g"
+  },
+  {
+   "id": 11,
+   "ipa": "h",
+   "tipo": "fonema",
+   "fonema": "h",
+   "nota": "aspirada"
+  },
+  {
+   "id": 12,
+   "ipa": "i",
+   "tipo": "fonema",
+   "fonema": "i"
+  },
+  {
+   "id": 13,
+   "ipa": "j",
+   "tipo": "fonema",
+   "fonema": "j",
+   "nota": "aproximante palatal: deslizada (o «y» suave)"
+  },
+  {
+   "id": 14,
+   "ipa": "k",
+   "tipo": "fonema",
+   "fonema": "k"
+  },
+  {
+   "id": 15,
+   "ipa": "l",
+   "tipo": "fonema",
+   "fonema": "l"
+  },
+  {
+   "id": 16,
+   "ipa": "m",
+   "tipo": "fonema",
+   "fonema": "m"
+  },
+  {
+   "id": 17,
+   "ipa": "n",
+   "tipo": "fonema",
+   "fonema": "n"
+  },
+  {
+   "id": 18,
+   "ipa": "o",
+   "tipo": "fonema",
+   "fonema": "o"
+  },
+  {
+   "id": 19,
+   "ipa": "p",
+   "tipo": "fonema",
+   "fonema": "p"
+  },
+  {
+   "id": 20,
+   "ipa": "q",
+   "tipo": "fonema",
+   "fonema": "k",
+   "nota": "oclusiva uvular"
+  },
+  {
+   "id": 21,
+   "ipa": "r",
+   "tipo": "fonema",
+   "fonema": "r"
+  },
+  {
+   "id": 22,
+   "ipa": "s",
+   "tipo": "fonema",
+   "fonema": "s"
+  },
+  {
+   "id": 23,
+   "ipa": "t",
+   "tipo": "fonema",
+   "fonema": "t"
+  },
+  {
+   "id": 24,
+   "ipa": "u",
+   "tipo": "fonema",
+   "fonema": "u"
+  },
+  {
+   "id": 25,
+   "ipa": "v",
+   "tipo": "fonema",
+   "fonema": "b",
+   "nota": "la «v» se dice /b/"
+  },
+  {
+   "id": 26,
+   "ipa": "w",
+   "tipo": "fonema",
+   "fonema": "w"
+  },
+  {
+   "id": 27,
+   "ipa": "x",
+   "tipo": "fonema",
+   "fonema": "x"
+  },
+  {
+   "id": 28,
+   "ipa": "y",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "vocal anterior redondeada: no existe en español"
+  },
+  {
+   "id": 29,
+   "ipa": "z",
+   "tipo": "fonema",
+   "fonema": "s",
+   "nota": "/s/ sonora (asimilación ante consonante sonora)"
+  },
+  {
+   "id": 30,
+   "ipa": "æ",
+   "tipo": "fonema",
+   "fonema": "a",
+   "nota": "casi abierta"
+  },
+  {
+   "id": 31,
+   "ipa": "ç",
+   "tipo": "fonema",
+   "fonema": "x",
+   "nota": "jota palatal ante e/i"
+  },
+  {
+   "id": 32,
+   "ipa": "ð",
+   "tipo": "fonema",
+   "fonema": "d",
+   "nota": "alófono aproximante"
+  },
+  {
+   "id": 33,
+   "ipa": "ø",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "vocal media anterior redondeada"
+  },
+  {
+   "id": 34,
+   "ipa": "ħ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "fricativa faríngea"
+  },
+  {
+   "id": 35,
+   "ipa": "ŋ",
+   "tipo": "fonema",
+   "fonema": "n",
+   "nota": "nasal velar ante /k g x/"
+  },
+  {
+   "id": 36,
+   "ipa": "œ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "vocal"
+  },
+  {
+   "id": 37,
+   "ipa": "ǀ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "chasquido"
+  },
+  {
+   "id": 38,
+   "ipa": "ǁ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "chasquido"
+  },
+  {
+   "id": 39,
+   "ipa": "ǂ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "chasquido"
+  },
+  {
+   "id": 40,
+   "ipa": "ǃ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "chasquido"
+  },
+  {
+   "id": 41,
+   "ipa": "ɐ",
+   "tipo": "fonema",
+   "fonema": "a",
+   "nota": "casi abierta central"
+  },
+  {
+   "id": 42,
+   "ipa": "ɑ",
+   "tipo": "fonema",
+   "fonema": "a",
+   "nota": "abierta posterior"
+  },
+  {
+   "id": 43,
+   "ipa": "ɒ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "abierta posterior redondeada"
+  },
+  {
+   "id": 44,
+   "ipa": "ɓ",
+   "tipo": "fonema",
+   "fonema": "b",
+   "nota": "implosiva"
+  },
+  {
+   "id": 45,
+   "ipa": "ɔ",
+   "tipo": "fonema",
+   "fonema": "o",
+   "nota": "media-abierta posterior"
+  },
+  {
+   "id": 46,
+   "ipa": "ɕ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "fricativa alveolopalatal"
+  },
+  {
+   "id": 47,
+   "ipa": "ɖ",
+   "tipo": "fonema",
+   "fonema": "d",
+   "nota": "retrofleja"
+  },
+  {
+   "id": 48,
+   "ipa": "ɗ",
+   "tipo": "fonema",
+   "fonema": "d",
+   "nota": "implosiva"
+  },
+  {
+   "id": 49,
+   "ipa": "ɘ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "vocal media central"
+  },
+  {
+   "id": 50,
+   "ipa": "ə",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "vocal neutra (schwa)"
+  },
+  {
+   "id": 51,
+   "ipa": "ɛ",
+   "tipo": "fonema",
+   "fonema": "e",
+   "nota": "media-abierta anterior"
+  },
+  {
+   "id": 52,
+   "ipa": "ɜ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "vocal"
+  },
+  {
+   "id": 53,
+   "ipa": "ɞ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "vocal"
+  },
+  {
+   "id": 54,
+   "ipa": "ɟ",
+   "tipo": "fonema",
+   "fonema": "ʝ",
+   "nota": "oclusiva palatal sonora: «y» fuerte"
+  },
+  {
+   "id": 55,
+   "ipa": "ɠ",
+   "tipo": "fonema",
+   "fonema": "g",
+   "nota": "implosiva"
+  },
+  {
+   "id": 56,
+   "ipa": "ɢ",
+   "tipo": "fonema",
+   "fonema": "g",
+   "nota": "oclusiva uvular sonora"
+  },
+  {
+   "id": 57,
+   "ipa": "ɣ",
+   "tipo": "fonema",
+   "fonema": "g",
+   "nota": "alófono aproximante"
+  },
+  {
+   "id": 58,
+   "ipa": "ɤ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "vocal"
+  },
+  {
+   "id": 59,
+   "ipa": "ɥ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "aproximante labiopalatal"
+  },
+  {
+   "id": 60,
+   "ipa": "ɦ",
+   "tipo": "fonema",
+   "fonema": "h",
+   "nota": "aspirada sonora"
+  },
+  {
+   "id": 61,
+   "ipa": "ɧ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "fricativa"
+  },
+  {
+   "id": 62,
+   "ipa": "ɨ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "vocal cerrada central"
+  },
+  {
+   "id": 63,
+   "ipa": "ɪ",
+   "tipo": "fonema",
+   "fonema": "i",
+   "nota": "cerrada relajada"
+  },
+  {
+   "id": 64,
+   "ipa": "ɬ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "lateral fricativa"
+  },
+  {
+   "id": 65,
+   "ipa": "ɭ",
+   "tipo": "fonema",
+   "fonema": "l",
+   "nota": "lateral retrofleja"
+  },
+  {
+   "id": 66,
+   "ipa": "ɮ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "lateral fricativa sonora"
+  },
+  {
+   "id": 67,
+   "ipa": "ɯ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "vocal cerrada posterior no redondeada"
+  },
+  {
+   "id": 68,
+   "ipa": "ɰ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "aproximante velar"
+  },
+  {
+   "id": 69,
+   "ipa": "ɱ",
+   "tipo": "fonema",
+   "fonema": "n",
+   "nota": "nasal labiodental ante /f/"
+  },
+  {
+   "id": 70,
+   "ipa": "ɲ",
+   "tipo": "fonema",
+   "fonema": "ɲ"
+  },
+  {
+   "id": 71,
+   "ipa": "ɳ",
+   "tipo": "fonema",
+   "fonema": "n",
+   "nota": "nasal retrofleja"
+  },
+  {
+   "id": 72,
+   "ipa": "ɴ",
+   "tipo": "fonema",
+   "fonema": "n",
+   "nota": "nasal uvular"
+  },
+  {
+   "id": 73,
+   "ipa": "ɵ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "vocal"
+  },
+  {
+   "id": 74,
+   "ipa": "ɶ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "vocal"
+  },
+  {
+   "id": 75,
+   "ipa": "ɸ",
+   "tipo": "fonema",
+   "fonema": "f",
+   "nota": "fricativa bilabial"
+  },
+  {
+   "id": 76,
+   "ipa": "ɹ",
+   "tipo": "fonema",
+   "fonema": "ř",
+   "nota": "aproximante alveolar: «r» asibilada chilena"
+  },
+  {
+   "id": 77,
+   "ipa": "ɺ",
+   "tipo": "fonema",
+   "fonema": "ɾ",
+   "nota": "vibrante lateral"
+  },
+  {
+   "id": 78,
+   "ipa": "ɻ",
+   "tipo": "fonema",
+   "fonema": "ř",
+   "nota": "aproximante retrofleja: «r» asibilada"
+  },
+  {
+   "id": 79,
+   "ipa": "ɽ",
+   "tipo": "fonema",
+   "fonema": "ɾ",
+   "nota": "vibrante simple retrofleja"
+  },
+  {
+   "id": 80,
+   "ipa": "ɾ",
+   "tipo": "fonema",
+   "fonema": "ɾ"
+  },
+  {
+   "id": 81,
+   "ipa": "ʀ",
+   "tipo": "fonema",
+   "fonema": "r",
+   "nota": "vibrante múltiple uvular"
+  },
+  {
+   "id": 82,
+   "ipa": "ʁ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "fricativa uvular"
+  },
+  {
+   "id": 83,
+   "ipa": "ʂ",
+   "tipo": "fonema",
+   "fonema": "ř",
+   "nota": "fricativa retrofleja sorda: la «tr» chilena [ʈʂ]"
+  },
+  {
+   "id": 84,
+   "ipa": "ʃ",
+   "tipo": "fonema",
+   "fonema": "tʃ",
+   "nota": "en Chile solo aparece en «ch»"
+  },
+  {
+   "id": 85,
+   "ipa": "ʄ",
+   "tipo": "fonema",
+   "fonema": "ʝ",
+   "nota": "implosiva palatal"
+  },
+  {
+   "id": 86,
+   "ipa": "ʈ",
+   "tipo": "fonema",
+   "fonema": "t",
+   "nota": "retrofleja"
+  },
+  {
+   "id": 87,
+   "ipa": "ʉ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "vocal cerrada central redondeada"
+  },
+  {
+   "id": 88,
+   "ipa": "ʊ",
+   "tipo": "fonema",
+   "fonema": "u",
+   "nota": "cerrada relajada"
+  },
+  {
+   "id": 89,
+   "ipa": "ʋ",
+   "tipo": "fonema",
+   "fonema": "b",
+   "nota": "aproximante labiodental"
+  },
+  {
+   "id": 90,
+   "ipa": "ʌ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "vocal media posterior"
+  },
+  {
+   "id": 91,
+   "ipa": "ʍ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "aproximante labiovelar sorda"
+  },
+  {
+   "id": 92,
+   "ipa": "ʎ",
+   "tipo": "fonema",
+   "fonema": "ʝ",
+   "nota": "lateral palatal: yeísmo"
+  },
+  {
+   "id": 93,
+   "ipa": "ʏ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "vocal"
+  },
+  {
+   "id": 94,
+   "ipa": "ʐ",
+   "tipo": "fonema",
+   "fonema": "ř",
+   "nota": "fricativa retrofleja sonora: «r» asibilada"
+  },
+  {
+   "id": 95,
+   "ipa": "ʑ",
+   "tipo": "fonema",
+   "fonema": "ʝ",
+   "nota": "fricativa alveolopalatal sonora"
+  },
+  {
+   "id": 96,
+   "ipa": "ʒ",
+   "tipo": "fonema",
+   "fonema": "ʝ",
+   "nota": "fricativa postalveolar sonora: «y» rehilada"
+  },
+  {
+   "id": 97,
+   "ipa": "ʔ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "oclusión glotal"
+  },
+  {
+   "id": 98,
+   "ipa": "ʕ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "fricativa faríngea sonora"
+  },
+  {
+   "id": 99,
+   "ipa": "ʘ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "chasquido"
+  },
+  {
+   "id": 100,
+   "ipa": "ʙ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "vibrante bilabial"
+  },
+  {
+   "id": 101,
+   "ipa": "ʛ",
+   "tipo": "fonema",
+   "fonema": "g",
+   "nota": "implosiva uvular"
+  },
+  {
+   "id": 102,
+   "ipa": "ʜ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "fricativa epiglotal"
+  },
+  {
+   "id": 103,
+   "ipa": "ʝ",
+   "tipo": "fonema",
+   "fonema": "ʝ"
+  },
+  {
+   "id": 104,
+   "ipa": "ʟ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "lateral velar"
+  },
+  {
+   "id": 105,
+   "ipa": "ʡ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "oclusión epiglotal"
+  },
+  {
+   "id": 106,
+   "ipa": "ʢ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "fricativa epiglotal sonora"
+  },
+  {
+   "id": 107,
+   "ipa": "ʰ",
+   "tipo": "modificador",
+   "fonema": null,
+   "nota": "aspirado"
+  },
+  {
+   "id": 108,
+   "ipa": "ʲ",
+   "tipo": "modificador",
+   "fonema": null,
+   "nota": "palatalizado"
+  },
+  {
+   "id": 109,
+   "ipa": "ʷ",
+   "tipo": "modificador",
+   "fonema": null,
+   "nota": "labializado"
+  },
+  {
+   "id": 110,
+   "ipa": "ʼ",
+   "tipo": "modificador",
+   "fonema": null,
+   "nota": "eyectivo"
+  },
+  {
+   "id": 111,
+   "ipa": "ː",
+   "tipo": "modificador",
+   "fonema": null,
+   "nota": "largo"
+  },
+  {
+   "id": 112,
+   "ipa": "˞",
+   "tipo": "modificador",
+   "fonema": null,
+   "nota": "rotacizado"
+  },
+  {
+   "id": 113,
+   "ipa": "ˠ",
+   "tipo": "modificador",
+   "fonema": null,
+   "nota": "velarizado"
+  },
+  {
+   "id": 114,
+   "ipa": "ˤ",
+   "tipo": "modificador",
+   "fonema": null,
+   "nota": "faringalizado"
+  },
+  {
+   "id": 115,
+   "ipa": "̃",
+   "tipo": "modificador",
+   "fonema": null,
+   "nota": "nasalizado"
+  },
+  {
+   "id": 116,
+   "ipa": "̚",
+   "tipo": "modificador",
+   "fonema": null,
+   "nota": "sin soltar"
+  },
+  {
+   "id": 117,
+   "ipa": "̥",
+   "tipo": "modificador",
+   "fonema": null,
+   "nota": "sordo"
+  },
+  {
+   "id": 118,
+   "ipa": "̩",
+   "tipo": "modificador",
+   "fonema": null,
+   "nota": "silábico"
+  },
+  {
+   "id": 119,
+   "ipa": "̪",
+   "tipo": "modificador",
+   "fonema": null,
+   "nota": "dental"
+  },
+  {
+   "id": 120,
+   "ipa": "̴",
+   "tipo": "modificador",
+   "fonema": null,
+   "nota": "velarizado o faringalizado"
+  },
+  {
+   "id": 121,
+   "ipa": "̺",
+   "tipo": "modificador",
+   "fonema": null,
+   "nota": "apical"
+  },
+  {
+   "id": 122,
+   "ipa": "β",
+   "tipo": "fonema",
+   "fonema": "b",
+   "nota": "alófono aproximante"
+  },
+  {
+   "id": 123,
+   "ipa": "θ",
+   "tipo": "otro",
+   "fonema": null,
+   "nota": "fricativa interdental: en Chile no se usa (seseo)"
+  },
+  {
+   "id": 124,
+   "ipa": "χ",
+   "tipo": "fonema",
+   "fonema": "x",
+   "nota": "fricativa uvular: jota"
+  },
+  {
+   "id": 125,
+   "ipa": "ᶑ",
+   "tipo": "fonema",
+   "fonema": "d",
+   "nota": "implosiva retrofleja"
+  },
+  {
+   "id": 126,
+   "ipa": "ⱱ",
+   "tipo": "fonema",
+   "fonema": "ɾ",
+   "nota": "vibrante labiodental"
+  }
+ ]
+}

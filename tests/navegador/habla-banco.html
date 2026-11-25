@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Banco de pruebas · modo Hablar (fase 33)</title>
+<style>
+  body { font: 15px/1.4 system-ui, sans-serif; margin: 0; padding: 12px; max-width: 900px; margin-inline: auto; background: #fafafa; color: #222; }
+  h1 { font-size: 1.2rem; margin: 0 0 4px; }
+  h2 { font-size: 1.02rem; margin: 18px 0 6px; border-bottom: 1px solid #ccc; }
+  fieldset { border: 1px solid #ccc; border-radius: 8px; margin: 8px 0; padding: 8px 10px; background: #fff; }
+  label { display: inline-block; margin: 3px 10px 3px 0; }
+  button { font: inherit; padding: 8px 12px; margin: 3px 4px 3px 0; border-radius: 8px; border: 1px solid #888; background: #eef; min-height: 40px; }
+  button:disabled { opacity: .45; }
+  input[type=text], input[type=number], select { font: inherit; padding: 6px; max-width: 100%; }
+  pre { background: #111; color: #cfc; padding: 8px; border-radius: 8px; overflow: auto; max-height: 220px; font-size: 12px; white-space: pre-wrap; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: left; vertical-align: top; }
+  .ok { color: #070; } .mal { color: #a00; } .peq { font-size: 12px; color: #555; }
+  #nivel { height: 10px; background: #ddd; border-radius: 5px; overflow: hidden; } #nivel > div { height: 100%; width: 0; background: #4a8; }
+</style>
+</head>
+<body>
+<h1>Banco de pruebas · modo «Hablar» (fase 33)</h1>
+<p class="peq">Carga el reconocedor de fonemas ZIPA (onnxruntime-web), mide velocidad y memoria, y muestra los fonemas que oye (CTC voraz, ya traducidos al español de Chile). Todo ocurre en este dispositivo: ningún audio sale de aquí.</p>
+
+<h2>1 · Dispositivo</h2>
+<pre id="entorno"></pre>
+
+<h2>2 · Modelo y motor</h2>
+<fieldset>
+  <label>Motor
+    <select id="proveedor"><option value="wasm">WASM (CPU)</option><option value="webgpu">WebGPU</option><option value="jspi">WebGPU con JSPI (Chrome reciente)</option></select>
+  </label>
+  <label>Hilos <input id="hilos" type="number" min="1" max="8" value="1" style="width:4em"></label>
+  <label>Modelo
+    <select id="fuente">
+      <option value="local">Servidor de pruebas: /.modelos/model.int8.onnx</option>
+      <option value="url">Descargar de Hugging Face (MODELO_HABLA)</option>
+      <option value="archivo">Elegir un .onnx del dispositivo</option>
+    </select>
+  </label>
+  <input id="archivoModelo" type="file" accept=".onnx" hidden>
+  <div><button id="cargar">Cargar el modelo</button> <span id="estadoCarga" class="peq"></span></div>
+  <div id="nivel" hidden><div></div></div>
+  <div class="peq">Si cambias de motor después de cargar, recarga la página (cada motor trae su propio WASM).</div>
+</fieldset>
+
+<h2>3 · Audio de prueba</h2>
+<fieldset>
+  <div>Voces del repositorio (ElevenLabs, es-CL):
+    <span id="voces"></span>
+  </div>
+  <div>Un archivo (.wav, .mp3, .webm, .m4a…): <input id="archivoAudio" type="file" accept="audio/*"></div>
+  <div>
+    <label><input type="checkbox" id="supresor"> supresión de ruido</label>
+    <label><input type="checkbox" id="eco"> cancelación de eco</label>
+    <label><input type="checkbox" id="agc"> control automático de ganancia</label>
+  </div>
+  <div><button id="grabar">● Grabar</button> <button id="parar" disabled>■ Parar y analizar</button> <span id="estadoGrabacion" class="peq"></span></div>
+  <div>Esperado (fonemas separados por espacio; opcional): <input id="esperado" type="text" size="24" placeholder="p e r o"></div>
+  <div><button id="repetir">Repetir el último análisis 5 veces (RTF)</button></div>
+</fieldset>
+
+<h2>4 · Resultados</h2>
+<table id="tabla"><thead><tr><th>#</th><th>Audio</th><th>Duración</th><th>fbank</th><th>Modelo</th><th>RTF</th><th>Fonemas oídos (IPA crudo)</th><th>En español de Chile</th><th>Esperado</th></tr></thead><tbody></tbody></table>
+
+<h2>5 · Set de grabaciones (fase 33b)</h2>
+<fieldset>
+  <p class="peq">Cada grabación nueva del punto 3 puede guardarse aquí (queda en este dispositivo, en IndexedDB). Después se exporta a un archivo para llevarlo al PC.</p>
+  <label>Palabra <input id="palabra" type="text" size="10" placeholder="perro"></label>
+  <label>Cómo la dijo
+    <select id="tipo"><option value="bien">bien (como se debe)</option><option value="error">con un error a propósito</option><option value="adolescente">la dice el adolescente</option></select>
+  </label>
+  <label>Lo que dijo en realidad (opcional) <input id="realidad" type="text" size="12" placeholder="p e l o"></label>
+  <div><button id="guardar" disabled>Guardar la última grabación en el set</button>
+  <button id="analizarSet">Analizar todo el set</button> <button id="exportar">Exportar el set (.json)</button>
+  <label class="peq">Importar: <input id="importar" type="file" accept=".json"></label></div>
+  <div id="resumenSet" class="peq"></div>
+  <table id="tablaSet"><thead><tr><th>Palabra</th><th>Tipo</th><th>Audio</th><th>Oído</th><th>Resultado</th><th></th></tr></thead><tbody></tbody></table>
+</fieldset>
+
+<h2>Registro</h2>
+<pre id="registro"></pre>
+
+<script type="module">
+import { MODELO_HABLA } from '../../js/config.js';
+import { calcularFbank } from '../../js/core/habla/fbank.js';
+import { leerTokens, decodificarVoraz, traducirSegmentos, fonemasComoTexto, MS_POR_CUADRO } from '../../js/core/habla/decodificar.js';
+
+const $ = (id) => document.getElementById(id);
+const RAIZ_ORT = new URL('../../vendor/onnxruntime/', import.meta.url).href;
+const ESPERADOS = {
+  perro: 'p e r o', plato: 'p l a t o', casa: 'k a s a', tres: 't r e s', pelo: 'p e l o', pato: 'p a t o',
+  tes: 't e s', pera: 'p e ɾ a', carro: 'k a r o', sol: 's o l', mesa: 'm e s a', luna: 'l u n a',
+  flor: 'f l o ɾ', brazo: 'b ɾ a s o', gracias: 'g ɾ a s j a s', hola: 'o l a', agua: 'a g w a', nieve: 'n j e b e',
+};
+const registro = $('registro');
+const log = (...partes) => { registro.textContent += partes.join(' ') + '\n'; registro.scrollTop = registro.scrollHeight; };
+
+const estado = { ort: null, proveedor: null, sesion: null, tokens: null, simbolos: null, ultimo: null, n: 0, medidas: {} };
+const banco = (window.__banco = { estado, resultados: [] });
+
+// Memoria WASM: el navegador no da la de la página (measureUserAgentSpecificMemory falla sin aislamiento y
+// no existe en Android), así que se anotan las WebAssembly.Memory que crea onnxruntime y se suma su tamaño.
+const memoriasWasm = [];
+{
+  const Original = WebAssembly.Memory;
+  WebAssembly.Memory = function Memory(descriptor) { const m = new Original(descriptor); memoriasWasm.push(m); return m; };
+  WebAssembly.Memory.prototype = Original.prototype;
+}
+const memoriaWasmMB = () => memoriasWasm.reduce((s, m) => s + (m.buffer.byteLength || 0), 0) / 1048576;
+
+// ---- entorno ----------------------------------------------------------------------------------
+function mostrarEntorno() {
+  const mem = performance.memory;
+  $('entorno').textContent = [
+    `navegador: ${navigator.userAgent}`,
+    `núcleos: ${navigator.hardwareConcurrency} · memoria (aprox.): ${navigator.deviceMemory ?? '¿?'} GB`,
+    `aislado entre orígenes (hilos de WASM): ${self.crossOriginIsolated} · SharedArrayBuffer: ${typeof SharedArrayBuffer !== 'undefined'}`,
+    `WebGPU: ${'gpu' in navigator ? 'sí hay navigator.gpu' : 'no'} · contexto seguro (micrófono): ${isSecureContext}`,
+    `heap de JS: ${mem ? (mem.usedJSHeapSize / 1048576).toFixed(0) + ' MB' : 'no disponible'}`,
+  ].join('\n');
+}
+mostrarEntorno();
+const params = new URLSearchParams(location.search);
+for (const campo of ['proveedor', 'hilos', 'fuente']) if (params.get(campo)) $(campo).value = params.get(campo);
+
+// ---- carga ------------------------------------------------------------------------------------
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+
+async function descargar(url, alAvance) {
+  const t0 = performance.now();
+  const resp = await fetch(url, { cache: 'no-store' });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status} al pedir ${url}`);
+  const total = Number(resp.headers.get('content-length')) || MODELO_HABLA.bytes;
+  const lector = resp.body.getReader();
+  const trozos = [];
+  let recibido = 0;
+  for (;;) {
+    const { done, value } = await lector.read();
+    if (done) break;
+    trozos.push(value);
+    recibido += value.length;
+    alAvance(recibido / total);
+  }
+  const datos = new Uint8Array(recibido);
+  let pos = 0;
+  for (const t of trozos) { datos.set(t, pos); pos += t.length; }
+  return { datos, ms: performance.now() - t0 };
+}
+
+async function cargarModelo() {
+  const proveedor = $('proveedor').value;
+  if (estado.ort && estado.proveedor !== proveedor) { log('Cambiaste de motor: recarga la página.'); return; }
+  $('cargar').disabled = true;
+  const barra = $('nivel'); barra.hidden = false;
+  const avance = (f) => { barra.firstElementChild.style.width = `${Math.min(100, f * 100).toFixed(0)}%`; $('estadoCarga').textContent = `descargando ${(f * 100).toFixed(0)} %`; };
+  try {
+    const m = {};
+    const t0 = performance.now();
+    estado.tokens = leerTokens(await (await fetch(new URL('../../data/habla/tokens-zipa.txt', import.meta.url))).text());
+    estado.simbolos = await (await fetch(new URL('../../data/habla/simbolos.json', import.meta.url))).json();
+    let datos;
+    const fuente = $('fuente').value;
+    if (fuente === 'archivo') {
+      const f = $('archivoModelo').files[0];
+      if (!f) { $('archivoModelo').click(); throw new Error('Elige primero el archivo .onnx y toca «Cargar» otra vez'); }
+      const t = performance.now(); datos = new Uint8Array(await f.arrayBuffer()); m.lecturaMs = performance.now() - t;
+    } else {
+      const r = await descargar(fuente === 'url' ? MODELO_HABLA.url : new URL('../../.modelos/model.int8.onnx', import.meta.url).href, avance);
+      datos = r.datos; m.descargaMs = r.ms;
+    }
+    m.bytes = datos.length;
+    const t1 = performance.now();
+    m.sha256 = hex(await crypto.subtle.digest('SHA-256', datos));
+    m.shaMs = performance.now() - t1;
+    m.shaCoincide = m.sha256 === MODELO_HABLA.sha256;
+    log(`Modelo: ${(m.bytes / 1048576).toFixed(1)} MB · SHA-256 ${m.shaCoincide ? 'COINCIDE' : 'NO coincide'} con MODELO_HABLA (${m.shaMs.toFixed(0)} ms)`);
+    $('estadoCarga').textContent = 'creando la sesión…';
+
+    const t2 = performance.now();
+    if (!estado.ort) {
+      const paquete = { wasm: 'ort.wasm.min.mjs', webgpu: 'ort.webgpu.min.mjs', jspi: 'ort.jspi.min.mjs' }[proveedor];
+      estado.ort = await import(RAIZ_ORT + paquete);
+      estado.proveedor = proveedor;
+      estado.ort.env.wasm.wasmPaths = RAIZ_ORT;
+      estado.ort.env.wasm.numThreads = Number($('hilos').value) || 1;
+    }
+    m.motorMs = performance.now() - t2;
+    const t3 = performance.now();
+    estado.sesion = await estado.ort.InferenceSession.create(datos, { executionProviders: [proveedor === 'wasm' ? 'wasm' : 'webgpu'], graphOptimizationLevel: 'all' });
+    m.sesionMs = performance.now() - t3;
+    m.cargaTotalMs = performance.now() - t0;
+    log(`Sesión creada (${proveedor}, ${estado.ort.env.wasm.numThreads} hilo(s)): motor ${m.motorMs.toFixed(0)} ms, sesión ${m.sesionMs.toFixed(0)} ms, total ${m.cargaTotalMs.toFixed(0)} ms`);
+    log(`Entradas: ${estado.sesion.inputNames} · Salidas: ${estado.sesion.outputNames}`);
+    // calentamiento
+    const t4 = performance.now();
+    await inferir(new Float32Array(16000));
+    m.primeraInferenciaMs = performance.now() - t4;
+    const mem = performance.memory;
+    if (mem) m.heapJsMB = mem.usedJSHeapSize / 1048576;
+    m.wasmMB = memoriaWasmMB();
+    estado.medidas = { ...m, proveedor, hilos: estado.ort.env.wasm.numThreads };
+    log(`Primera inferencia (1 s de silencio, calentamiento): ${m.primeraInferenciaMs.toFixed(0)} ms · memoria WASM ${m.wasmMB.toFixed(0)} MB` + (mem ? ` · heap JS ${m.heapJsMB.toFixed(0)} MB` : ''));
+    $('estadoCarga').textContent = 'listo';
+    $('estadoCarga').className = 'peq ok';
+    mostrarEntorno();
+    medirMemoriaDelNavegador();
+  } catch (e) {
+    $('estadoCarga').textContent = `error: ${e.message}`;
+    $('estadoCarga').className = 'peq mal';
+    log('ERROR al cargar:', e.stack || e.message);
+  } finally {
+    $('cargar').disabled = false;
+    barra.hidden = true;
+  }
+}
+async function medirMemoriaDelNavegador() {
+  if (!performance.measureUserAgentSpecificMemory || !self.crossOriginIsolated) return;
+  try { const r = await performance.measureUserAgentSpecificMemory(); estado.medidas.memoriaTotalMB = r.bytes / 1048576; log(`Memoria de la página (measureUserAgentSpecificMemory): ${estado.medidas.memoriaTotalMB.toFixed(0)} MB`); } catch {}
+}
+
+// ---- inferencia -------------------------------------------------------------------------------
+async function inferir(audio) {
+  const t0 = performance.now();
+  const { datos, cuadros, bandas } = calcularFbank(audio);
+  const t1 = performance.now();
+  const { Tensor } = estado.ort;
+  const salida = await estado.sesion.run({
+    x: new Tensor('float32', datos, [1, cuadros, bandas]),
+    x_lens: new Tensor('int64', BigInt64Array.from([BigInt(cuadros)]), [1]),
+  });
+  const t2 = performance.now();
+  const lp = salida.log_probs;
+  const [, T, V] = lp.dims;
+  const fonemas = decodificarVoraz(lp.data, T, V);
+  return { fbankMs: t1 - t0, modeloMs: t2 - t1, cuadrosEntrada: cuadros, cuadrosSalida: T, vocabulario: V, segmentos: fonemas, logProbs: lp.data };
+}
+
+// ---- audio ------------------------------------------------------------------------------------
+async function aMono16k(arrayBuffer) {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  let buf;
+  try { buf = await ctx.decodeAudioData(arrayBuffer.slice(0)); } finally { ctx.close?.(); }
+  const largo = Math.max(1, Math.ceil(buf.duration * 16000));
+  const off = new OfflineAudioContext(1, largo, 16000);
+  const fuente = off.createBufferSource();
+  fuente.buffer = buf; fuente.connect(off.destination); fuente.start();
+  const render = await off.startRendering();
+  return render.getChannelData(0).slice();
+}
+function aWav(muestras) {
+  const b = new ArrayBuffer(44 + muestras.length * 2); const v = new DataView(b);
+  const t = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  t(0, 'RIFF'); v.setUint32(4, 36 + muestras.length * 2, true); t(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true); v.setUint32(24, 16000, true); v.setUint32(28, 32000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  t(36, 'data'); v.setUint32(40, muestras.length * 2, true);
+  muestras.forEach((x, i) => v.setInt16(44 + i * 2, Math.max(-32768, Math.min(32767, Math.round(x * 32767))), true));
+  return new Blob([b], { type: 'audio/wav' });
+}
+
+const plano = (f) => f.replace(/[ř]/g, 'r').replace(/ɾ/g, 'r').replace(/h/g, 's');
+function distancia(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+/** Une la «t» + «tʃ» (que ZIPA da como t ʃ) y compara contra lo esperado, sin y con equivalencias (r ɾ ř, h = s). */
+function comparar(oidos, esperadoTexto) {
+  const esperado = esperadoTexto.trim().split(/\s+/).filter(Boolean);
+  const oido = oidos.filter((t) => t.fonema).map((t) => t.fonema);
+  const dura = distancia(oido, esperado);
+  const flexible = distancia(oido.map(plano), esperado.map(plano));
+  return { esperado, oido, estricta: dura, flexible, igual: flexible === 0 };
+}
+
+async function analizar(audio, etiqueta, esperadoTexto = '', repeticiones = 1) {
+  if (!estado.sesion) { log('Primero carga el modelo.'); return null; }
+  const duracion = audio.length / 16000;
+  let r, tiempos = [];
+  for (let i = 0; i < repeticiones; i++) { r = await inferir(audio); tiempos.push((r.fbankMs + r.modeloMs) / 1000 / duracion); }
+  tiempos.sort((a, b) => a - b);
+  const rtf = tiempos[Math.floor(tiempos.length / 2)];
+  const traducidos = traducirSegmentos(r.segmentos, estado.simbolos);
+  const crudo = r.segmentos.map((s) => estado.tokens[s.id]).join(' ');
+  const cmp = esperadoTexto ? comparar(traducidos, esperadoTexto) : null;
+  const fila = { n: ++estado.n, etiqueta, duracion, fbankMs: r.fbankMs, modeloMs: r.modeloMs, rtf, rtfs: tiempos, cuadrosSalida: r.cuadrosSalida, crudo, texto: fonemasComoTexto(traducidos), traducidos, cmp };
+  banco.resultados.push(fila);
+  const tr = document.createElement('tr');
+  const celdas = [fila.n, etiqueta, `${duracion.toFixed(2)} s`, `${r.fbankMs.toFixed(0)} ms`, `${r.modeloMs.toFixed(0)} ms`, rtf.toFixed(3), crudo, fila.texto,
+    cmp ? `${cmp.esperado.join(' ')} → ${cmp.igual ? 'IGUAL' : 'difiere (' + cmp.flexible + ')'}` : ''];
+  celdas.forEach((c, i) => { const td = document.createElement('td'); td.textContent = c; if (i === 8 && cmp) td.className = cmp.igual ? 'ok' : 'mal'; tr.append(td); });
+  $('tabla').tBodies[0].append(tr);
+  estado.ultimo = { audio, etiqueta, esperadoTexto };
+  $('guardar').disabled = false;
+  log(`#${fila.n} ${etiqueta}: ${duracion.toFixed(2)} s · fbank ${r.fbankMs.toFixed(0)} ms + modelo ${r.modeloMs.toFixed(0)} ms · RTF ${rtf.toFixed(3)}${repeticiones > 1 ? ` (mediana de ${repeticiones})` : ''} · ${r.cuadrosEntrada} → ${r.cuadrosSalida} cuadros · ${fila.texto}`);
+  return fila;
+}
+
+// voces del repositorio
+for (const p of ['perro', 'plato', 'casa', 'tres', 'pelo', 'pato']) {
+  const b = document.createElement('button'); b.textContent = p;
+  b.onclick = async () => {
+    const r = await fetch(new URL(`../../data/voces/${p}.mp3`, import.meta.url));
+    const audio = await aMono16k(await r.arrayBuffer());
+    $('esperado').value = ESPERADOS[p] || '';
+    await analizar(audio, `voces/${p}.mp3`, ESPERADOS[p] || '');
+  };
+  $('voces').append(b);
+}
+banco.analizarVoz = async (p, reps = 1) => {
+  const r = await fetch(new URL(`../../data/voces/${p}.mp3`, import.meta.url));
+  return analizar(await aMono16k(await r.arrayBuffer()), `voces/${p}.mp3`, ESPERADOS[p] || '', reps);
+};
+banco.analizarArchivoUrl = async (url, esperado = '', reps = 1) => {
+  const r = await fetch(url);
+  return analizar(await aMono16k(await r.arrayBuffer()), url, esperado, reps);
+};
+$('archivoAudio').onchange = async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  await analizar(await aMono16k(await f.arrayBuffer()), f.name, $('esperado').value);
+};
+$('repetir').onclick = async () => {
+  const u = estado.ultimo; if (!u) return log('Analiza algo primero.');
+  await analizar(u.audio, `${u.etiqueta} ×5`, u.esperadoTexto, 5);
+};
+
+// micrófono
+let grabador = null, trozos = [], flujo = null;
+$('grabar').onclick = async () => {
+  try {
+    flujo = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, noiseSuppression: $('supresor').checked, echoCancellation: $('eco').checked, autoGainControl: $('agc').checked } });
+    const ajustes = flujo.getAudioTracks()[0].getSettings();
+    log(`Micrófono: ruido ${ajustes.noiseSuppression} · eco ${ajustes.echoCancellation} · agc ${ajustes.autoGainControl} · ${ajustes.sampleRate ?? '?'} Hz`);
+    grabador = new MediaRecorder(flujo); trozos = [];
+    grabador.ondataavailable = (e) => trozos.push(e.data);
+    grabador.onstop = async () => {
+      flujo.getTracks().forEach((t) => t.stop());
+      const blob = new Blob(trozos, { type: grabador.mimeType });
+      const audio = await aMono16k(await blob.arrayBuffer());
+      await analizar(audio, 'micrófono', $('esperado').value);
+    };
+    grabador.start(); $('grabar').disabled = true; $('parar').disabled = false; $('estadoGrabacion').textContent = 'grabando… (máximo 6 s)';
+    setTimeout(() => { if (grabador?.state === 'recording') $('parar').click(); }, 6000);
+  } catch (e) { log('Micrófono: ', e.message); }
+};
+$('parar').onclick = () => { if (grabador?.state === 'recording') grabador.stop(); $('grabar').disabled = false; $('parar').disabled = true; $('estadoGrabacion').textContent = ''; };
+$('cargar').onclick = cargarModelo;
+$('fuente').onchange = () => { if ($('fuente').value === 'archivo') $('archivoModelo').click(); };
+$('palabra').oninput = () => { const e = ESPERADOS[$('palabra').value.trim().toLowerCase()]; if (e) $('esperado').value = e; };
+
+// ---- set de grabaciones (IndexedDB) -------------------------------------------------------------
+const abrirBD = () => new Promise((ok, mal) => {
+  const q = indexedDB.open('habla-banco', 1);
+  q.onupgradeneeded = () => q.result.createObjectStore('grabaciones', { keyPath: 'id', autoIncrement: true });
+  q.onsuccess = () => ok(q.result); q.onerror = () => mal(q.error);
+});
+const pedir = (modo, fn) => abrirBD().then((db) => new Promise((ok, mal) => {
+  const tx = db.transaction('grabaciones', modo); const r = fn(tx.objectStore('grabaciones'));
+  tx.oncomplete = () => ok(r?.result); tx.onerror = () => mal(tx.error);
+}));
+const todas = () => pedir('readonly', (s) => s.getAll());
+async function pintarSet() {
+  const lista = await todas();
+  const cuerpo = $('tablaSet').tBodies[0]; cuerpo.replaceChildren();
+  for (const g of lista) {
+    const tr = document.createElement('tr');
+    const datos = [g.palabra, g.tipo, `${(g.muestras / 16000).toFixed(2)} s`, g.oido ?? '', g.resultado ?? ''];
+    datos.forEach((d) => { const td = document.createElement('td'); td.textContent = d; tr.append(td); });
+    const td = document.createElement('td');
+    const bw = document.createElement('button'); bw.textContent = '.wav';
+    bw.onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(g.wav); a.download = `${g.tipo}_${g.palabra}_${g.id}.wav`; a.click(); };
+    const bb = document.createElement('button'); bb.textContent = 'Borrar';
+    bb.onclick = async () => { await pedir('readwrite', (s) => s.delete(g.id)); pintarSet(); };
+    td.append(bw, bb); tr.append(td); cuerpo.append(tr);
+  }
+  return lista;
+}
+$('guardar').onclick = async () => {
+  const u = estado.ultimo; if (!u) return;
+  const palabra = $('palabra').value.trim().toLowerCase() || 'sin-nombre';
+  const esperado = ESPERADOS[palabra] || $('esperado').value;
+  await pedir('readwrite', (s) => s.add({ palabra, tipo: $('tipo').value, esperado, realidad: $('realidad').value, muestras: u.audio.length, wav: aWav(u.audio), creado: new Date().toISOString() }));
+  log(`Guardada en el set: ${palabra} (${$('tipo').value})`);
+  pintarSet();
+};
+async function analizarSet() {
+  const lista = await todas();
+  let bien = 0, bienOk = 0, error = 0, errorVisto = 0;
+  const filas = [];
+  for (const g of lista) {
+    const audio = await aMono16k(await g.wav.arrayBuffer());
+    const f = await analizar(audio, `set/${g.tipo}/${g.palabra}`, g.esperado || '');
+    g.oido = f?.texto;
+    if (f?.cmp) {
+      if (g.tipo === 'error') { error++; if (!f.cmp.igual) errorVisto++; g.resultado = f.cmp.igual ? 'NO vio el error' : 'vio la diferencia'; }
+      else { bien++; if (f.cmp.igual) bienOk++; g.resultado = f.cmp.igual ? 'igual a lo esperado' : `difiere (${f.cmp.flexible})`; }
+    }
+    filas.push(g);
+  }
+  await pedir('readwrite', (s) => { filas.forEach((g) => s.put(g)); });
+  $('resumenSet').textContent = `Bien dichas que coinciden: ${bienOk}/${bien} · Errores provocados que se notaron: ${errorVisto}/${error}`;
+  log('Set:', $('resumenSet').textContent);
+  pintarSet();
+}
+$('analizarSet').onclick = analizarSet;
+const aB64 = (blob) => new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(r.result.split(',')[1]); r.readAsDataURL(blob); });
+$('exportar').onclick = async () => {
+  const lista = await todas();
+  const salida = { version: 1, creado: new Date().toISOString(), entorno: $('entorno').textContent, medidas: estado.medidas, resultados: banco.resultados.map(({ traducidos, rtfs, ...r }) => r),
+    grabaciones: await Promise.all(lista.map(async (g) => ({ ...g, wav: await aB64(g.wav) }))) };
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(salida)], { type: 'application/json' }));
+  a.download = `habla-banco_${new Date().toISOString().slice(0, 10)}.json`; a.click();
+};
+$('importar').onchange = async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const d = JSON.parse(await f.text());
+  for (const g of d.grabaciones) {
+    const bytes = Uint8Array.from(atob(g.wav), (c) => c.charCodeAt(0));
+    const { id, ...resto } = g;
+    await pedir('readwrite', (s) => s.add({ ...resto, wav: new Blob([bytes], { type: 'audio/wav' }) }));
+  }
+  log(`Importadas ${d.grabaciones.length} grabaciones`); pintarSet();
+};
+pintarSet();
+if (params.get('auto') === '1') cargarModelo();
+</script>
+</body>
+</html>

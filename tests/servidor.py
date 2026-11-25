@@ -27,6 +27,11 @@ ESTADO_NUBE = {'datos': b'{}'}
 class Manejador(server.SimpleHTTPRequestHandler):
     def end_headers(self):
         self.send_header('Cache-Control', 'no-store')
+        # Con AISLAR=1 la página queda «aislada entre orígenes» (SharedArrayBuffer): hace falta para probar WASM con
+        # varios hilos en tests/navegador/habla-banco.html. Rompe lo que carga de otros dominios (Google, ARASAAC).
+        if os.environ.get('AISLAR') == '1':
+            self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
+            self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
         super().end_headers()
 
     def _nube(self):

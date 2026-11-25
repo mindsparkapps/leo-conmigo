@@ -10,3 +10,6 @@ graphify-out/
 herramientas/avatar/**
 !herramientas/avatar/**/
 !herramientas/avatar/**/*.py
+
+# Modelos para probar (no se suben: el de Hablar se descarga desde Hugging Face)
+.modelos/
