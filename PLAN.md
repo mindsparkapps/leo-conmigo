@@ -1316,15 +1316,31 @@ Contestadas: ver «Lo que respondió el usuario al aprobar».
 
 ---
 
-## Ampliación 6 — Fases 33 a 39: modo «Hablar» (diagnóstico y práctica de la articulación) — PROPUESTA del 2026-11-25, **pendiente de aprobación**
+## Ampliación 6 — Fases 33 a 39: modo «Hablar» (diagnóstico y práctica de la articulación) (pedida el 2026-11-25, aprobada por el usuario el 2026-11-25 con «Lo que respondió el usuario al aprobar»)
 
-> **Para Sonnet:** no empieces ninguna fase de esta ampliación hasta que el título diga «aprobada» y exista la sección «Lo que respondió el usuario al aprobar» (manda sobre el resto). Cada fase en **su propia sesión**, solo la que te pidieron, con su lista de aceptación, `npm test` en verde, prueba en el navegador, `graphify update .` y un commit. Lee antes §2, §4, las fases 12 a 14, la Ampliación 4 («Quién puede tocar qué», fichas) y la Ampliación 5 (cómo se separó un modo nuevo de la lectura con `esDeEscritura`, el perfil de prueba y el modo administrador): **este modo copia ese patrón, no lo reinventa.** Usa `graphify query` antes de leer código.
+> **Para Sonnet:** la sección «Lo que respondió el usuario al aprobar» **manda sobre el resto** de esta ampliación. Las fuentes están en [docs/habla-fuentes.md](docs/habla-fuentes.md): si investigas algo nuevo, agrégalo ahí. Cada fase en **su propia sesión**, solo la que te pidieron, con su lista de aceptación, `npm test` en verde, prueba en el navegador, `graphify update .` y un commit. Lee antes §2, §4, las fases 12 a 14, la Ampliación 4 («Quién puede tocar qué», fichas) y la Ampliación 5 (cómo se separó un modo nuevo de la lectura con `esDeEscritura`, el perfil de prueba y el modo administrador): **este modo copia ese patrón, no lo reinventa.** Usa `graphify query` antes de leer código.
 
 ### Qué pidió el usuario
 1. Un modo de **reconocimiento de voz** para una persona con síndrome de Down, **muy sensible** y **orientado al español**, que detecte **qué sonidos debe practicar** para mejorar su dicción y lo vaya **guiando**.
 2. Que funcione **sin conexión en el celular**.
 3. Que haga un **diagnóstico inicial** y que **mejore su análisis** a medida que interactúa con la persona.
 4. Investigar qué librería es la mejor opción y dejar un plan para implementarla.
+
+### Lo que respondió el usuario al aprobar (obligatorio; manda sobre cualquier otra parte de esta ampliación)
+1. **Es para un adolescente de 14 años** con síndrome de Down. Consecuencias (las decidió Claude como experto, ver 5):
+   - Palabras, imágenes y frases **de su edad** (colegio, celular, fútbol, música, amigos, comida), nunca infantiles. Pictogramas ARASAAC o fotos; nada de dibujos de bebé.
+   - Elogios y consignas con tono juvenil y chileno, sin diminutivos: «¡Bien!», «¡Eso!», «¡Buena!», «¡Se escuchó clarito!» (solo cuando el análisis lo da por bueno; si no, elogio por intentarlo: «¡Buena voz!», «¡Bien intentado!»). Los premios (álbum, monedas) siguen igual.
+   - A los 14 años ya no se mira «lo que corresponde a su edad»: se espera **todo** el sistema de sonidos del español. El orden de adquisición solo se usa para **empezar por la base** (un sonido temprano que falla va antes que uno tardío).
+   - En adolescentes con SD la baja inteligibilidad viene sobre todo de un componente **motor** del habla (Wilson 2019) y lo que más la mejora es **hablar claro y fuerte** (Darling-White y McHugh 2025). Por eso, además de los sonidos, hay un recorrido **«Habla clara»** (`H7`, ver la práctica guiada) que se trabaja siempre en paralelo.
+2. **Se aprueba el cambio a §2.11** tal como está en «Cambios explícitos a las reglas del §2».
+3. **Grabaciones: solo en el celular**, con dos opciones a mano:
+   - **«Subir a Drive»** en cada grabación (una por una), desde «Escuchar y marcar» o el detalle de una respuesta.
+   - **«Respaldo completo en Drive»** de todas las grabaciones del alumno (y **«Restaurar»** desde ese respaldo en otro celular).
+   - Van a una carpeta **visible** (para poder mostrárselas a quien quiera): en el adulto, `Leo Conmigo/Grabaciones/<alumno>/`; en el celular del alumno, su carpeta `alumnos/<correo>/habla/` (la ve el adulto). Archivos `AAAA-MM-DD_<palabra>_<id>.webm` + `grabaciones.json` con las marcas. Nunca suben solas: siempre por un botón.
+4. **El modelo se descarga** desde la app la primera vez (no va dentro del repositorio ni en `PRECACHE`). Se aloja en **Hugging Face** (permite archivos grandes y CORS); la URL y su SHA-256 van en `js/config.js`. Después queda en el celular y funciona sin conexión.
+5. **No hay fonoaudióloga: Claude actúa como experto.** Las decisiones clínicas (batería, orden de los sonidos, técnicas de práctica) quedan escritas en esta ampliación con su fuente. La app igual dice al adulto que **no es un diagnóstico clínico** y recomienda mostrar el informe a una fonoaudióloga si es posible.
+6. **Guardar las fuentes** para futuras consultas: [docs/habla-fuentes.md](docs/habla-fuentes.md).
+7. **Diagnóstico con palabras comunes y con los sonidos que más cuestan** (como la r): ver «El diagnóstico inicial», que se reescribió así.
 
 ### Lo que se encontró al investigar
 
@@ -1369,27 +1385,43 @@ Todo lo demás del §2 sigue igual: sesiones cortas, éxito asegurado (~70 % de 
 | Tema | Decisión |
 |---|---|
 | Habilitar | Igual que la Escritura: `ajustes.habla.habilitada` (por defecto `false`), casilla **«Hablar (experimental)»**; mientras esté apagada el botón **«Hablar»** del inicio solo aparece en **modo administrador** (`esAdministrador()`), con su etiqueta, y guarda en la ficha `prueba:<perfilId>`. |
-| Descarga del modelo | No va en `PRECACHE`. En el menú «Hablar» del adulto: **«Preparar el modo Hablar (≈ N MB)»**, con aviso de espacio (`navigator.storage.estimate`), barra de avance, comprobación SHA-256 y guardado en la caché `leo-habla-modelo-v1`. Después funciona **sin conexión**. Se puede borrar desde «Espacio». |
+| Descarga del modelo | Desde Hugging Face (respuesta 4). No va en `PRECACHE`. En el menú «Hablar» del adulto: **«Preparar el modo Hablar (≈ N MB)»**, con aviso de espacio (`navigator.storage.estimate`), barra de avance, comprobación SHA-256 y guardado en la caché `leo-habla-modelo-v1`. Después funciona **sin conexión**. Se puede borrar desde «Espacio». |
 | Motor | `onnxruntime-web` copiado a `vendor/onnxruntime/` (sin compilación), en un **Web Worker** (`js/habla/trabajador.js`) para no congelar la pantalla. WASM con SIMD por defecto; WebGPU si está y la fase 33 muestra que es más rápido. Hilos múltiples solo si la fase 33 comprueba que el aislamiento entre orígenes (COOP/COEP) no rompe Google ni ARASAAC. |
 | Captura | `getUserMedia` mono → `AudioWorklet` → 16 kHz `Float32`. `noiseSuppression` y `echoCancellation`: lo que la fase 33 mida como mejor (el supresor de Android puede borrar consonantes suaves como /s/ o /f/). Detección de voz (VAD) con energía y piso de ruido adaptativo (puro, probado); Silero VAD (~2 MB) solo si la energía falla con ruido real. Máximo 6 s por intento. |
-| Variante del español | **Chile** (§0). El G2P y el comparador aceptan como **correctas** las variantes dialectales: seseo (no hay /θ/), yeísmo (ll = y), /s/ final aspirada u omitida («lo' perro'»), /d/ entre vocales o final debilitada («cansao», «verdá»), «tr» y «ch» chilenas, /x/ suave ante e/i, b/d/g suaves entre vocales. Interruptor `aspiracionAceptada` (por defecto `true`). |
+| Variante del español | **Chile** (§0). El G2P y el comparador aceptan como **correctas** las variantes dialectales: seseo (no hay /θ/), yeísmo (ll = y), /s/ final aspirada u omitida («lo' perro'»), /d/ entre vocales o final debilitada («cansao», «verdá»), «tr» y «ch» chilenas, **/r/ asibilada** (muy común en Chile), /x/ suave ante e/i, b/d/g suaves entre vocales. Interruptor `aspiracionAceptada` (por defecto `true`). |
 | Sensibilidad | `ajustes.habla.sensibilidad`: `'alta'` (por defecto, como pidió el usuario), `'media'`, `'baja'`. Mueve el umbral de GOP para marcar «posible error» **para el adulto**. No cambia nada de lo que ve la persona. |
 | Quién marca | Después de cada sesión (o en el momento, con «Escuchar y marcar»), el adulto oye cada grabación dudosa y toca **«Bien» / «Casi» / «No»** y, si quiere, «En vez de ___ dijo ___» (con botones de sonidos, sin teclear IPA). En el **diagnóstico inicial** se recomienda hacerlo en el momento (modo «con adulto al lado», por defecto). |
-| Grabaciones | Se guardan **solo en el dispositivo** (almacén `grabaciones`), las dudosas hasta que el adulto las marque y luego 30 días; las marcadas «Bien» que se eligen como **plantilla** se guardan siempre (máx. 5 por sonido). No viajan a Drive salvo que el usuario diga otra cosa al aprobar (ver preguntas). Lo que sí viaja son los **resultados** (números y marcas), como las respuestas de hoy. |
+| Grabaciones | Se guardan **solo en el dispositivo** (almacén `grabaciones`), las dudosas hasta que el adulto las marque y luego 30 días; las marcadas «Bien» que se eligen como **plantilla** se guardan siempre (máx. 5 por sonido). Solo suben a Drive con los botones «Subir a Drive» (una) o «Respaldo completo en Drive» (todas), respuesta 3; no van en la sincronización automática ni en la copia de seguridad `.json` de siempre. Lo que sí viaja son los **resultados** (números y marcas), como las respuestas de hoy. |
 | Fichas y curso (Ampliación 4) | Del **curso**: `habilitada`, `sensibilidad`, `aspiracionAceptada`, objetivos fijados a mano, sonidos bloqueados. Del **alumno**: su perfil fonético, calibración, plantillas, objetivos automáticos y nivel en cada jerarquía. La familia en el celular del alumno puede **hacer sesiones y marcar grabaciones** (es quien más lo escucha); no cambia los ajustes del curso. |
 
 ### El diagnóstico inicial (actividad `H0`)
-- **Batería** `data/habla/diagnostico.json`: ~50 palabras concretas e ilustrables (emoji + búsqueda ARASAAC, como el banco de escritura), elegidas para cubrir **cada fonema del español chileno en posición inicial, entre vocales y final de sílaba**, los **grupos** `pl bl kl gl fl pr br tr dr kr gr fr`, **diptongos** crecientes y decrecientes, y palabras de **1 a 4 sílabas**. Se usan como referencia de cobertura las pruebas que usan los fonoaudiólogos en Chile (TEPROSIF-R), **sin copiar sus ítems ni láminas**. Las palabras del vocabulario del perfil que cubran un sonido **reemplazan** a las del banco (§2.3: con significado personal primero).
+- **Batería** `data/habla/diagnostico.json` en **dos partes** (respuesta 7), con palabras concretas e ilustrables y de su edad (emoji + búsqueda ARASAAC, como el banco de escritura). Juntas cubren **cada fonema del español chileno al inicio, entre vocales y al final de sílaba**, los **grupos** `pl bl kl gl fl pr br tr dr kr gr fr`, **diptongos** y palabras de **1 a 5 sílabas**. La cobertura se revisa contra los procesos del TEPROSIF-R (estructura de la sílaba, sustitución y asimilación), **sin copiar sus ítems ni láminas**.
+  - **A. «Palabras de todos los días»** (24): las que más usa y que más le sirve que se entiendan. Miden la **inteligibilidad funcional**: hola, gracias, sí, agua, casa, mamá, papá, comer, baño, colegio, amigo, celular, fútbol, música, perro, auto, leche, pan, café, bueno, quiero, tengo, dos, tres.
+  - **B. «Sonidos que cuestan»** (40): los que más fallan en el SD y en el español (róticas, grupos, /s/, diptongos, palabras largas), cada uno en varias posiciones:
+    - /r/ fuerte: ratón, rojo, radio (inicio); carro, tierra, guitarra (entre vocales); sonrisa (tras n).
+    - /ɾ/ suave: pera, loro, naranja (entre vocales); puerta, verde, árbol, mar (final de sílaba).
+    - Grupos con r: tren, brazo, fresa, grande, crema, dragón, profesor, primo.
+    - Grupos con l: plato, blanco, clase, globo, flor.
+    - /s/, /l/, /ʝ/: sol, mesa, semana, luna, llave, pollo.
+    - Diptongos: nieve, peine, huevo, ciudad.
+    - Palabras largas: bicicleta, mariposa, computador, helicóptero, refrigerador.
+  - **Del perfil primero (§2.3):** si una palabra de su vocabulario cubre el mismo sonido en la misma posición, **reemplaza** a la del banco (su nombre, el de su colegio, su equipo de fútbol).
+  - **Orden:** cada tramo mezcla ~2/3 de la parte A y ~1/3 de la B (empieza y termina con una fácil), para que no sienta que todo le cuesta.
 - **Cómo se pide cada palabra:** primero **nombrar la imagen** (sin modelo); si no dice nada en 5 s o dice otra cosa, la app **dice la palabra y la persona repite**. Se registra cuál fue (`elicitacion: 'nombrar' | 'repetir'`), porque cambia el perfil (Vergara Ponce).
-- **En tramos cortos:** 4 sesiones de ~12 palabras (fatiga, §2.4). Se puede pausar y seguir otro día.
+- **En tramos cortos:** 5 sesiones de ~13 palabras (fatiga, §2.4). Se puede pausar y seguir otro día.
 - **Resultado (pantalla del adulto «Diagnóstico inicial»):**
   1. **Inventario de sonidos:** cuáles produce bien, cuáles a veces, cuáles nunca (por posición).
   2. **Procesos de simplificación** encontrados con su frecuencia: reducción de grupo consonántico («plato» → «pato»), omisión de consonante final, omisión de sílaba átona («pelota» → «tota»), sustitución de vibrantes (/ɾ/ y /r/ → /l/, /d/), frontalización y posteriorización (/k/ ↔ /t/), asimilación, sonorización o ensordecimiento, simplificación de diptongos.
   3. **Inteligibilidad estimada** (porcentaje de palabras en que todos los fonemas pasaron el umbral) y **estimulabilidad** (cuánto mejora cuando repite tras el modelo).
-  4. **Sonidos sugeridos para practicar** (máximo 2 a la vez), con el porqué: aparece mucho en su vocabulario, es estimulable, y según el **orden aproximado de adquisición** del español (vocales y /p m n t k b/ antes; /ɾ/, grupos y /r/ al final). El orden vive en `core/habla/fonemas.js`, editable, marcado «a validar con la fonoaudióloga».
+  4. **Sonidos sugeridos para practicar** (máximo 2 a la vez, más «Habla clara» siempre), con el porqué. Prioridad (respuesta 1, de mayor a menor peso):
+     1. **Cuánto afecta lo que se le entiende**: lo frecuente que es el sonido en la parte A y en su vocabulario × cuánto falla.
+     2. **Estimulabilidad**: si mejora al repetir tras el modelo, se logra antes (primero un éxito).
+     3. **La base primero**: según el orden aproximado de adquisición del español (vocales y /p b m n t k/ → /l f s x tʃ ʝ g d ɲ/ → /ɾ/ y grupos con l → /r/ y grupos con r). Un sonido temprano que falla va antes que uno tardío.
+     4. **Los visibles primero** a igual peso (/p b m f/ y la lengua entre los dientes se ven en el espejo: aprovecha su fortaleza visual).
+     El orden vive en `core/habla/fonemas.js` con su fuente y el adulto puede fijar o bloquear objetivos a mano.
   5. Botón **«Informe para la fonoaudióloga»** (página imprimible / PDF con tablas y ejemplos de audio solo si el adulto los adjunta).
 
-### La práctica guiada (actividades `H1`–`H6`)
+### La práctica guiada (actividades `H1`–`H7`)
 Sigue la jerarquía clásica de la terapia de articulación: **oír → sonido → sílaba → palabra → frase**, con pares mínimos y siempre apoyo visual (§2.7).
 
 | Código | Actividad | Qué hace la persona | ¿Usa micrófono? |
@@ -1400,6 +1432,16 @@ Sigue la jerarquía clásica de la terapia de articulación: **oír → sonido �
 | `H4` | Repite la palabra | Imagen + modelo hablado → repite. Posición del sonido: inicial → entre vocales → final. | Sí |
 | `H5` | Nombra la imagen | Imagen sin modelo → la nombra (si no puede, pasa a `H4` con modelo, sin «error»). | Sí |
 | `H6` | Di la frase | Frases cortas del perfil (F1–F3) que contienen el sonido. | Sí |
+| `H7` | Habla clara | Frases de la parte A dichas **fuerte y despacio**, sílaba por sílaba con un golpe visual por sílaba («co-le-gio»). Mide volumen (RMS) y sílabas por segundo; se elogia hablar fuerte y a buen ritmo. Recorrido aparte que siempre está (Darling-White y McHugh 2025). | Sí |
+
+**Técnicas por sonido** (las que usa la terapia de articulación; van en `data/habla/tecnicas.json` con su texto para el adulto y su ilustración):
+- **/r/ fuerte:** casi siempre es lo último. Se llega por pasos: /ɾ/ suave entre vocales («pera») → /ɾ/ tras /t/ o /d/ («tres», «dragón», donde el golpe de lengua sale solo) → «d-d-d» rápido con la lengua arriba hasta que suena «rrr» → sílabas «rra rre rri» → palabras. Se acepta la /r/ asibilada chilena. Si en 8 semanas no avanza, la app lo dice al adulto y sugiere seguir con otros sonidos (no insistir hasta frustrar).
+- **/ɾ/ suave:** desde la /d/ rápida entre vocales («eda» rápido → «era»).
+- **Grupos (pl, tr…):** primero separados con una vocal corta («pe-lato» → «plato»), luego juntos cada vez más rápido.
+- **/s/:** sonido largo «sssss» con los dientes juntos y sonrisa (se ve en el espejo); en Chile se acepta la /s/ final aspirada.
+- **/l/:** la punta de la lengua toca detrás de los dientes de arriba, visible con la boca abierta.
+- **Diptongos:** se dicen las dos vocales separadas y se van juntando («pu-er-ta» → «puer-ta»).
+- **Palabras largas:** aplaudir o tocar una vez por sílaba (como `H7`), luego sin apoyo.
 
 - **Mientras habla:** una onda tranquila que se mueve con su voz (le muestra que lo están escuchando y anima a hablar fuerte, sin colores de acierto o error).
 - **Avance:** cada sonido objetivo tiene su nivel en la jerarquía; los pares (sonido, actividad) usan el motor del §4 (Leitner, avance rápido, «aprendida»), **reutilizando** `core/progreso.js` y `crearSesion` con un parámetro, como hizo la Escritura. Se sube de actividad con ≥ 80 % de intentos que el análisis (o el adulto) da por buenos en las últimas 10; se sugiere bajar con < 50 %, nunca solo.
@@ -1425,11 +1467,12 @@ perfil.ajustes.habla = {
 }
 perfil.ajustes.automaticos += { objetivosHabla: true, nivelHabla: true }
 // almacenes nuevos (subir la versión de IndexedDB):
-grabacion { id, perfilId, respuestaId, blob (solo local), ms, plantilla: false, fonema?, caduca? }
+grabacion { id, perfilId, respuestaId, blob (solo local), ms, plantilla: false, fonema?, caduca?,
+            driveFileId?, subidaEn? }   // solo con «Subir a Drive» o «Respaldo completo en Drive»
 fonetica  { id: `${perfilId}:${fonema}:${posicion}`, perfilId, fonema, posicion, a, b,   // Beta
             calibracion: { w0, w1, n }, confusiones: { [fonema]: n }, estado: 'sin-datos'|'a-practicar'|'en-practica'|'logrado' }
 diagnostico { id, perfilId, fecha, items: [...], resumen: { inventario, procesos, inteligibilidad, estimulabilidad, sugeridos } }
-respuesta  { ...fase 12, modo: 'habla', actividad: 'H0'..'H6', objetivo: 'perro', esperado: ['p','e','r','o'],
+respuesta  { ...fase 12, modo: 'habla', actividad: 'H0'..'H7', objetivo: 'perro', esperado: ['p','e','r','o'],
              elicitacion: 'nombrar'|'repetir', decodificado: ['p','e','l','o'],
              fonemas: [{ esperado, gop, alineado: [ini, fin], probable, plantilla? }],
              procesos: ['sustitucion-vibrante'], posibleError, marcaAdulto?: 'bien'|'casi'|'no', dijoEnVez?: {...},
@@ -1454,10 +1497,11 @@ respuesta  { ...fase 12, modo: 'habla', actividad: 'H0'..'H6', objetivo: 'perro'
 
 ### Fase 36 — Diagnóstico inicial
 - `data/habla/diagnostico.json`, `js/core/habla/diagnostico.js` (elegir ítems con el vocabulario del perfil primero, cobertura, resumen), pantalla `H0` del niño (`js/nino/hablar.js`), pantalla adulta **«Escuchar y marcar»** y **«Diagnóstico inicial»** (`js/adulto/habla-diagnostico.js`) con el informe imprimible.
-- **Acepta si:** la batería cubre todos los fonemas y grupos en sus posiciones (prueba), el resumen sale bien con respuestas simuladas, y se puede hacer en 4 tramos.
+- Grabaciones a Drive (respuesta 3): `js/habla/grabaciones-drive.js` con «Subir a Drive» por grabación, «Respaldo completo en Drive» y «Restaurar», en las carpetas visibles de la respuesta 3, reutilizando `js/drive.js` y los permisos de la Ampliación 4 (sin nuevos alcances de OAuth si se puede; si hace falta uno, anotarlo en `docs/google-cloud.md`). Se prueba con la nube simulada (`crearNubeFalsa`).
+- **Acepta si:** la batería cubre todos los fonemas y grupos en sus posiciones (prueba), las palabras son de su edad, el resumen sale bien con respuestas simuladas, se puede hacer en 5 tramos, y subir, respaldar y restaurar grabaciones funciona en la nube simulada sin que nada suba solo.
 
 ### Fase 37 — Práctica guiada
-- `H1`–`H6` en `js/actividades/`, selección de objetivos (`core/habla/objetivos.js`), sesión y controlador reutilizando los del §4 con un parámetro (sin duplicar), ilustraciones de la boca (SVG simples, sin rojo), espejo opcional, elogio por intentar, premio de siempre.
+- `H1`–`H7` en `js/actividades/`, `data/habla/tecnicas.json`, selección de objetivos (`core/habla/objetivos.js`, con la prioridad del diagnóstico), sesión y controlador reutilizando los del §4 con un parámetro (sin duplicar), ilustraciones de la boca (SVG simples, sin rojo), espejo opcional, elogio por intentar, premio de siempre.
 - **Acepta si:** nunca aparece un mensaje, color o sonido de error para la persona (prueba con el análisis forzado a «posible error»), la fatiga funciona y las sesiones de habla no cambian nada de la lectura ni la escritura.
 
 ### Fase 38 — Aprendizaje continuo y «Qué le cuesta al hablar»
@@ -1466,14 +1510,19 @@ respuesta  { ...fase 12, modo: 'habla', actividad: 'H0'..'H6', objetivo: 'perro'
 
 ### Fase 39 — Privacidad, ayuda y prueba real
 - Ayuda del adulto, «Acerca de» (licencias: ZIPA Apache-2.0, onnxruntime MIT, fuentes en `docs/habla-fuentes.md`), `privacidad.html` (micrófono, qué se guarda, que no es diagnóstico clínico), README.
-- **Lo hace el usuario:** probar con la persona y, si se puede, mostrar el informe a su fonoaudióloga.
+- **Lo hace el usuario:** probar con él durante 2 a 4 semanas y, si se puede, mostrar el informe a una fonoaudióloga.
 
-### Preguntas abiertas (para aprobar)
-1. **¿Para quién es?** ¿El mismo niño de 4–10 años de la app, o un adolescente o adulto? Cambia las palabras, las imágenes y la voz del modelo.
-2. **¿Apruebas el cambio a §2.11** (la app escucha y analiza, pero la persona nunca ve un error)?
-3. **Grabaciones:** ¿solo en el dispositivo (por defecto) o también en el Drive del adulto (permite oírlas en otro equipo y mostrarlas a la fono)?
-4. **Dónde se aloja el modelo** (~70 MB, o ~320 MB con el plan B): ¿en Hugging Face (deja bajarlo desde la app sin límites de GitHub Pages) o dentro del repositorio?
-5. ¿Hay una **fonoaudióloga** que pueda revisar el orden de adquisición y la batería antes de la fase 36?
+### Preguntas abiertas
+Contestadas: ver «Lo que respondió el usuario al aprobar».
+
+### Dónde va cada respuesta del usuario (para no olvidarla en su fase)
+- Fase 33: el modelo se aloja en Hugging Face y se descarga (4); si se exporta uno propio, el usuario lo sube a su cuenta y la URL va en `js/config.js`.
+- Fase 34: /r/ asibilada y demás variantes chilenas aceptadas; orden de adquisición con su fuente (1, 5).
+- Fase 35: descarga desde la app con SHA-256 (4).
+- Fase 36: batería en dos partes, de su edad (1, 7); subir y respaldar grabaciones (3); aviso «no es diagnóstico clínico» (5).
+- Fase 37: tono juvenil de elogios y consignas, `H7` «Habla clara» y técnicas por sonido (1, 5).
+- Fase 38: prioridad de objetivos para 14 años (1).
+- Fase 39: fuentes de [docs/habla-fuentes.md](docs/habla-fuentes.md) en «Acerca de» y la ayuda (6); `privacidad.html` con las subidas a Drive (3).
 
 ### Fuera de alcance (preguntar antes)
 - Re-entrenar la red neuronal con la voz de la persona (se calibra, no se re-entrena).
