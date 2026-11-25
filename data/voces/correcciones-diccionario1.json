@@ -1,0 +1,4 @@
+[
+  {"texto":"ahu","enviado":"aú","contexto":true,"stability":0.9,"problema":"decía «aju» (la h muda se leía como j)","intento":2},
+  {"texto":"cher","enviado":"chér","contexto":true,"stability":0.9,"problema":"francesa: «cherrgg»","intento":2}
+]

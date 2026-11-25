@@ -138,6 +138,10 @@ Tercera ronda (`data/voces/correcciones-tanda2c.json`, `"intento": 2`): de las 2
 
 Al volver a oír la tanda 2 (25 de noviembre) solo `fro` sonaba muy anglo: va en `correcciones-tanda2e.json` con la receta de las anglo (`fró` + contexto + stability 0.9) y `"revisar": 2` («Revisión tanda 2»). Las otras 137 pasaron a «Probar sílabas» y el botón «Probar voces nuevas de Escritura 201 a 400» se quitó (el revisor esconde el botón de una tanda que ya no tiene nada por oír). `fró` con contexto salió bien y pasó a «Probar sílabas».
 
+### Correcciones de «Probar sílabas del diccionario 1 a 200» (25 de noviembre de 2026)
+
+Se oyeron mal `ahu` (decía «aju»: la «h» muda se leía como «j»), `bér` («berggg», francesa) y `cher` («cherrgg»). `correcciones-diccionario1.json`: `ahu` → `aú` (sin la «h», acento en la «u» para mantener el hiato) y `cher` → `chér`, con contexto + stability 0.9. `bér`: se copió `ber.mp3` (aprobada, la receta «sin acento + contexto») a `ber-t.mp3`; aislada, `bér` y `ber` suenan igual. Las tres van como entradas `"extra": true` con `"revisar": 4` en `tanda-escritura.json` (botón «Revisión tanda 4») y el revisor las saca de su lista del diccionario mientras estén en revisión. Los mp3 del diccionario NO van a `PRECACHE`: `regenerar-silabas.mjs` los anota ahí aunque no estén en la lista del diccionario; revertir `sw.js` después.
+
 ### Correcciones de la tanda 3 de Escritura (25 de noviembre de 2026)
 
 De las voces nuevas 401 a 600 el usuario marcó 10. Van en `data/voces/correcciones-tanda3.json`, todas con contexto + stability 0.9 (`"intento": 1`), y salieron de su tanda con `"revisar": 3` («Revisión tanda 3»). Tres son **palabras** (`tractor`, `guau`, `miau`): llevan `ruta` (el mp3 de la palabra, que `regenerar-silabas.mjs` sobrescribe sin anotarla como sílaba) y `contexto` con la frase «Ahora repite la palabra en español…» en vez de «la sílaba».

@@ -84,7 +84,9 @@ async function cargarLista(modo = 'todas') {
   const delDiccionario = /^diccionario(\d+)$/.exec(modo);
   if (delDiccionario) {
     const n = Number(delDiccionario[1]);
-    return (await cargarDiccionario()).slice((n - 1) * POR_TANDA, n * POR_TANDA);
+    // las que se corrigieron (`revisar`) se oyen aparte, en su botón de revisión
+    const enRevision = new Set(nuevas.filter((x) => x.revisar).map((x) => x.ruta));
+    return (await cargarDiccionario()).slice((n - 1) * POR_TANDA, n * POR_TANDA).filter((x) => !enRevision.has(x.ruta));
   }
   const sinAprobar = await pendientesDelDiccionario();
   // las que se corrigieron (`revisar`) salen de su tanda y se oyen aparte, en «revision1»
