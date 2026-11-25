@@ -149,6 +149,8 @@ De las voces nuevas 401 a 600 el usuario marcó 10. Van en `data/voces/correccio
 | Otra vocal | vau («vao») | `váu` |
 | Entonación de asombro / de maullido | guau, miau (palabras) | sin acento, como se arreglaron las sílabas `guau` y `miau` en la tanda 1 |
 
+`guau` y `miau` siguieron con el mismo problema (algo menos) con contexto de palabra. Como la sílaba y la palabra suenan igual, se copiaron los mp3 de las sílabas ya aprobadas (`silabas/guau.mp3` → `guau.mp3`, `silabas/miau.mp3` → `miau.mp3`) en vez de seguir probando: es gratis y ya se sabe que suenan bien. Si una palabra suena igual que una sílaba aprobada (o al revés), copiar antes de regenerar.
+
 ## Revisar a oído
 
 La app tiene en Ajustes (modo adulto) el panel **«Revisar las voces»**: reproduce todas las grabaciones seguidas, con pausa, retroceso de 10 s y barra, y permite marcar las malas y copiar la lista («N.º 139 de 280 (tramo) · Sílaba: go»). Para regenerar una mala: borrar su mp3 (o sobrescribirlo) y pedirla otra vez con `language_code: "es"`. Una sílaba suelta puede sonar rara; si pasa, probar escribiéndola de otra forma (por ejemplo con una vocal de apoyo) y regenerar.
