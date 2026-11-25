@@ -331,8 +331,11 @@ export function crearRevisorVoces() {
   const botonesTanda = [];
   cargarTandaNueva().then((nuevas) => {
     // (`extra`: una sílaba corregida que no es de ninguna tanda; solo cuenta en su botón de revisión)
-    const enTandas = nuevas.filter((x) => !x.extra).length;
+    const deTandas = nuevas.filter((x) => !x.extra);
+    const enTandas = deTandas.length;
     for (let i = 1; i * POR_TANDA < enTandas; i++) { // la tanda 1 (i = 0) ya está en las listas por tipo
+      // si ya no queda nada por oír (todo aprobado o corregido), el botón desaparece
+      if (!deTandas.slice(i * POR_TANDA, (i + 1) * POR_TANDA).some((x) => !x.revisar && !x.aprobada)) continue;
       const desde = i * POR_TANDA + 1;
       const hasta = Math.min(enTandas, (i + 1) * POR_TANDA);
       const b = el('button', { type: 'button', class: 'boton secundario' }, `Probar voces nuevas de Escritura ${desde} a ${hasta}`);

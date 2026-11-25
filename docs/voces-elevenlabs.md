@@ -136,6 +136,8 @@ Tercera ronda (`data/voces/correcciones-tanda2c.json`, `"intento": 2`): de las 2
 
 **`güi` quedó bien** con la receta de la tanda 1 de Escritura: `güi` **sin contexto**, stability 0,5 (se eligió entre cuatro pruebas: `gwí`, `guwí` y `guúi` con contexto, y esta). Es la excepción: para las sílabas con diéresis no usar contexto ni acento. Todas las corregidas de la tanda 2 pasaron a «Probar sílabas» y el resto de la tanda 2 se vuelve a oír completo.
 
+Al volver a oír la tanda 2 (25 de noviembre) solo `fro` sonaba muy anglo: va en `correcciones-tanda2e.json` con la receta de las anglo (`fró` + contexto + stability 0.9) y `"revisar": 2` («Revisión tanda 2»). Las otras 137 pasaron a «Probar sílabas» y el botón «Probar voces nuevas de Escritura 201 a 400» se quitó (el revisor esconde el botón de una tanda que ya no tiene nada por oír).
+
 ## Revisar a oído
 
 La app tiene en Ajustes (modo adulto) el panel **«Revisar las voces»**: reproduce todas las grabaciones seguidas, con pausa, retroceso de 10 s y barra, y permite marcar las malas y copiar la lista («N.º 139 de 280 (tramo) · Sílaba: go»). Para regenerar una mala: borrar su mp3 (o sobrescribirlo) y pedirla otra vez con `language_code: "es"`. Una sílaba suelta puede sonar rara; si pasa, probar escribiéndola de otra forma (por ejemplo con una vocal de apoyo) y regenerar.
