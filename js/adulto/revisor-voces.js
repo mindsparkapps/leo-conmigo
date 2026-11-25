@@ -44,7 +44,7 @@ const POR_TANDA = 200; // cuántas voces nuevas de Escritura trae cada botón de
 // Sílabas del diccionario (docs/plan-silabas-diccionario.md, fase 4): se oyen por tandas de 200, en orden alfabético
 // dentro de cada corte de cobertura (99, 99.9, 100). Mientras una tanda no esté aprobada, sus sílabas NO salen en
 // «Probar sílabas» ni en «todas». Al aprobar una, se anota su número aquí y su botón desaparece.
-const TANDAS_DEL_DICCIONARIO_APROBADAS = new Set([1]);
+const TANDAS_DEL_DICCIONARIO_APROBADAS = new Set([1, 2]);
 
 let diccionario = null;
 /** Las sílabas del diccionario que ya tienen mp3, en el orden de revisión. */
