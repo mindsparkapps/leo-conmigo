@@ -1316,6 +1316,173 @@ Contestadas: ver «Lo que respondió el usuario al aprobar».
 
 ---
 
+## Ampliación 6 — Fases 33 a 39: modo «Hablar» (diagnóstico y práctica de la articulación) — PROPUESTA del 2026-11-25, **pendiente de aprobación**
+
+> **Para Sonnet:** no empieces ninguna fase de esta ampliación hasta que el título diga «aprobada» y exista la sección «Lo que respondió el usuario al aprobar» (manda sobre el resto). Cada fase en **su propia sesión**, solo la que te pidieron, con su lista de aceptación, `npm test` en verde, prueba en el navegador, `graphify update .` y un commit. Lee antes §2, §4, las fases 12 a 14, la Ampliación 4 («Quién puede tocar qué», fichas) y la Ampliación 5 (cómo se separó un modo nuevo de la lectura con `esDeEscritura`, el perfil de prueba y el modo administrador): **este modo copia ese patrón, no lo reinventa.** Usa `graphify query` antes de leer código.
+
+### Qué pidió el usuario
+1. Un modo de **reconocimiento de voz** para una persona con síndrome de Down, **muy sensible** y **orientado al español**, que detecte **qué sonidos debe practicar** para mejorar su dicción y lo vaya **guiando**.
+2. Que funcione **sin conexión en el celular**.
+3. Que haga un **diagnóstico inicial** y que **mejore su análisis** a medida que interactúa con la persona.
+4. Investigar qué librería es la mejor opción y dejar un plan para implementarla.
+
+### Lo que se encontró al investigar
+
+**1. El reconocimiento de voz común no sirve para esto.** Los reconocedores de palabras (Web Speech API, Whisper, Vosk) están hechos para adivinar *qué palabra quiso decir* la persona: corrigen solos hacia la palabra del diccionario y así **esconden** justamente los errores de articulación que queremos ver. Además rinden mal con el habla del síndrome de Down: un estudio de 2025 encontró que el mejor sistema comercial llegaba a ~67 % de palabras bien reconocidas ([Springer, UAIS 2025](https://link.springer.com/article/10.1007/s10209-025-01197-4)). Para la dicción hace falta reconocer **fonemas** (sonidos), no palabras, y comparar lo que dijo con lo que **debía** decir.
+
+**2. Opciones comparadas (todas probadas contra «sin conexión en el celular» y «app estática sin compilación»):**
+
+| Opción | Qué entrega | Sin conexión en Android | Peso | Veredicto |
+|---|---|---|---|---|
+| Web Speech API (`SpeechRecognition`, `processLocally`) | Palabras | Solo en Chrome 139+ si el paquete de idioma existe; el español en Chrome **no está confirmado** (sí en Edge) y la instalación falla en algunos navegadores ([MDN](https://developer.mozilla.org/docs/Web/API/SpeechRecognition/processLocally), [Chromium](https://groups.google.com/a/chromium.org/g/chrome-ai-dev-preview-discuss/c/Rlyc2uAsFCY)) | 0 (lo baja el navegador) | **Descartada** para diagnóstico: corrige hacia palabras y no da fonemas ni confianza por sonido. |
+| Whisper (whisper.cpp / Transformers.js) | Palabras | Sí | 75 MB a 1,5 GB | **Descartada:** normaliza y «alucina» palabras correctas; lento en celulares de gama media. |
+| Vosk (`vosk-browser`, Kaldi en WASM) | Palabras con confianza; gramática cerrada | Sí | ~40 MB (español pequeño) | **Plan C**: sirve para «¿dijo la palabra?» con una lista cerrada, no para saber qué sonido falló. |
+| **ZIPA-CR pequeño** (Zipformer + CTC, 64 M parámetros, reconoce fonemas IPA de cualquier idioma, ACL 2025, Apache-2.0) | **Fonemas** con probabilidad por cuadro de 20–40 ms | Sí, con `onnxruntime-web` (WASM; WebGPU si hay) | Estimado **~70 MB en int8** (el checkpoint PyTorch publicado pesa ~1 GB con estados de entrenamiento; **hay que exportarlo a ONNX y medirlo**) | **Elegida (plan A)**: según el paper, la versión de 64 M supera a modelos previos de 300 M ([ZIPA, arXiv](https://arxiv.org/abs/2505.23170v1), [modelo](https://huggingface.co/anyspeech/zipa-cr-s)). |
+| wav2vec2 Large «CommonPhone» (Klumpp; 6 idiomas con español, 101 fonemas IPA, error de fonemas 8,8 % en español, CC0) | Fonemas | Sí, con `onnxruntime-web` | ~320 MB en int8 (300 M parámetros) | **Plan B** si ZIPA no rinde: más pesado y lento, pero entrenado con español ([modelo](https://huggingface.co/pklumpp/Wav2Vec2_CommonPhone)). |
+
+Hay un precedente que confirma que el camino es viable: un reconocedor de fonemas wav2vec2 exportado a ONNX int8 (~355 MB) que corre en el navegador para puntuar pronunciación en inglés ([speako](https://huggingface.co/robg/speako-phoneme-recognizer)). No existe uno listo para español: lo armamos con ZIPA + nuestra propia lógica.
+
+**3. El método: «bondad de la pronunciación» (GOP) con alineación forzada.** Es la técnica estándar de los evaluadores de pronunciación:
+1. El texto que debía decir («perro») pasa por un **G2P propio** (texto → fonemas, fácil en español porque la ortografía es transparente): `/ˈpe.ro/`.
+2. El modelo da, para cada cuadro de audio, la probabilidad de cada fonema.
+3. Se **alinea** el audio con los fonemas esperados (Viterbi sobre CTC) y se calcula para cada fonema cuánto más probable es el esperado que el mejor competidor (**GOP**).
+4. En paralelo se decodifica **libremente** (sin decirle qué esperar) y se compara con lo esperado: así se ve **qué** salió en vez del sonido (`/r/` → `/l/`: «pelo»), si **se omitió** o si **se agregó** algo.
+5. Con esa comparación se detectan los **procesos de simplificación fonológica**, que es como trabajan los fonoaudiólogos en Chile.
+
+**4. Lo que dice la evidencia sobre el habla en el síndrome de Down (en español):** errores de **simplificación estructural** y **sustituciones sistemáticas** ([Vergara et al., Rev. Investigación en Logopedia 2026](https://revistas.ucm.es/index.php/RLOG/article/download/104526/4564456576556/4564456782585)); en niños chilenos con SD, omisión de un segmento en los **diptongos** ([Rev. Chilena de Fonoaudiología](https://revfono.uchile.cl/index.php/RCDF/article/download/75807/79426/314903)); el método de elicitación (nombrar la imagen vs. repetir) cambia el perfil fonológico que se obtiene ([tesis de Vergara Ponce, U. de Oviedo](https://digibuo.uniovi.es/dspace/bitstream/handle/10651/63316/TD_PatricioVergaraPonce.pdf?sequence=2)); comparación de procesos entre síndromes en Hidalgo y Garayzábal 2019 ([RLOG](https://revistas.ucm.es/index.php/RLOG/es/article/view/62942)). Sobre la intervención: un ensayo controlado mostró que niños y jóvenes con SD **mejoran su articulación con retroalimentación visual** (electropalatografía, [Wood et al. 2018](https://strathprints.strath.ac.uk/64380/1/Wood_etal_IJLCD2018_The_use_of_electropalatography_in_the_treatment_of_speech.pdf)); trabajar la **intensidad de la voz** también dio resultados preliminares (LSVT LOUD). Y sobre la tecnología: los reconocedores **personalizados** al hablante mejoran mucho con habla atípica ([JSLHR 2024](https://pubs.asha.org/doi/10.1044/2024_JSLHR-24-00045), [Google, arXiv 2024](https://arxiv.org/pdf/2412.19315)).
+
+**Consecuencias para el diseño:**
+- La máquina **nunca decide sola**: propone, y el **adulto confirma** escuchando la grabación. Esas confirmaciones son las que hacen que el análisis «aprenda» a esta persona.
+- **Sensibilidad alta** significa marcar como «posible error» incluso diferencias sutiles, pero **solo para el adulto**; un sonido pasa a «a practicar» recién con evidencia repetida.
+- No se re-entrena la red en el celular (demasiado pesado). Lo que aprende es la **calibración**: umbrales por persona y por sonido, sus confusiones típicas y **plantillas de su propia voz** cuando lo dice bien.
+- **No es un diagnóstico clínico**: es una observación para el adulto y para la fonoaudióloga, con informe exportable.
+
+### Cambios explícitos a las reglas del §2 (hay que aprobarlos; valen **solo** en el modo Hablar)
+| Regla | Lo que cambia | Cómo se protege a la persona |
+|---|---|---|
+| §2.11 «No se evalúa el habla» | La app **escucha y analiza** lo que dice. | El resultado **nunca se muestra a la persona** ni cambia lo que ve: no hay «mal», puntaje, rojo, cruz ni sonido de error. Siempre recibe elogio **por intentarlo** («¡Qué bien lo dijiste!», «¡Buena voz!»). Si el análisis ve un posible error, como mucho se ofrece **una** vez más el modelo («Escucha otra vez… ahora tú») y luego se sigue igual, con elogio. Lo que dijo no decide aciertos de la lectura ni de la escritura. |
+| §2.9 «solo toques simples» | Se habla en vez de tocar. | Un solo botón grande de micrófono (≥ 120 px); también se puede usar **sin tocar** (escucha sola tras el modelo, se corta con el silencio). |
+
+Todo lo demás del §2 sigue igual: sesiones cortas, éxito asegurado (~70 % de cosas que ya dice bien), fatiga (3 intentos seguidos con posible error → una fácil y termina con premio), sin cronómetro ni tiempo límite, apoyo visual siempre, pantalla tranquila.
+
+### Decisiones tomadas (por defecto; el usuario puede cambiarlas al aprobar)
+| Tema | Decisión |
+|---|---|
+| Habilitar | Igual que la Escritura: `ajustes.habla.habilitada` (por defecto `false`), casilla **«Hablar (experimental)»**; mientras esté apagada el botón **«Hablar»** del inicio solo aparece en **modo administrador** (`esAdministrador()`), con su etiqueta, y guarda en la ficha `prueba:<perfilId>`. |
+| Descarga del modelo | No va en `PRECACHE`. En el menú «Hablar» del adulto: **«Preparar el modo Hablar (≈ N MB)»**, con aviso de espacio (`navigator.storage.estimate`), barra de avance, comprobación SHA-256 y guardado en la caché `leo-habla-modelo-v1`. Después funciona **sin conexión**. Se puede borrar desde «Espacio». |
+| Motor | `onnxruntime-web` copiado a `vendor/onnxruntime/` (sin compilación), en un **Web Worker** (`js/habla/trabajador.js`) para no congelar la pantalla. WASM con SIMD por defecto; WebGPU si está y la fase 33 muestra que es más rápido. Hilos múltiples solo si la fase 33 comprueba que el aislamiento entre orígenes (COOP/COEP) no rompe Google ni ARASAAC. |
+| Captura | `getUserMedia` mono → `AudioWorklet` → 16 kHz `Float32`. `noiseSuppression` y `echoCancellation`: lo que la fase 33 mida como mejor (el supresor de Android puede borrar consonantes suaves como /s/ o /f/). Detección de voz (VAD) con energía y piso de ruido adaptativo (puro, probado); Silero VAD (~2 MB) solo si la energía falla con ruido real. Máximo 6 s por intento. |
+| Variante del español | **Chile** (§0). El G2P y el comparador aceptan como **correctas** las variantes dialectales: seseo (no hay /θ/), yeísmo (ll = y), /s/ final aspirada u omitida («lo' perro'»), /d/ entre vocales o final debilitada («cansao», «verdá»), «tr» y «ch» chilenas, /x/ suave ante e/i, b/d/g suaves entre vocales. Interruptor `aspiracionAceptada` (por defecto `true`). |
+| Sensibilidad | `ajustes.habla.sensibilidad`: `'alta'` (por defecto, como pidió el usuario), `'media'`, `'baja'`. Mueve el umbral de GOP para marcar «posible error» **para el adulto**. No cambia nada de lo que ve la persona. |
+| Quién marca | Después de cada sesión (o en el momento, con «Escuchar y marcar»), el adulto oye cada grabación dudosa y toca **«Bien» / «Casi» / «No»** y, si quiere, «En vez de ___ dijo ___» (con botones de sonidos, sin teclear IPA). En el **diagnóstico inicial** se recomienda hacerlo en el momento (modo «con adulto al lado», por defecto). |
+| Grabaciones | Se guardan **solo en el dispositivo** (almacén `grabaciones`), las dudosas hasta que el adulto las marque y luego 30 días; las marcadas «Bien» que se eligen como **plantilla** se guardan siempre (máx. 5 por sonido). No viajan a Drive salvo que el usuario diga otra cosa al aprobar (ver preguntas). Lo que sí viaja son los **resultados** (números y marcas), como las respuestas de hoy. |
+| Fichas y curso (Ampliación 4) | Del **curso**: `habilitada`, `sensibilidad`, `aspiracionAceptada`, objetivos fijados a mano, sonidos bloqueados. Del **alumno**: su perfil fonético, calibración, plantillas, objetivos automáticos y nivel en cada jerarquía. La familia en el celular del alumno puede **hacer sesiones y marcar grabaciones** (es quien más lo escucha); no cambia los ajustes del curso. |
+
+### El diagnóstico inicial (actividad `H0`)
+- **Batería** `data/habla/diagnostico.json`: ~50 palabras concretas e ilustrables (emoji + búsqueda ARASAAC, como el banco de escritura), elegidas para cubrir **cada fonema del español chileno en posición inicial, entre vocales y final de sílaba**, los **grupos** `pl bl kl gl fl pr br tr dr kr gr fr`, **diptongos** crecientes y decrecientes, y palabras de **1 a 4 sílabas**. Se usan como referencia de cobertura las pruebas que usan los fonoaudiólogos en Chile (TEPROSIF-R), **sin copiar sus ítems ni láminas**. Las palabras del vocabulario del perfil que cubran un sonido **reemplazan** a las del banco (§2.3: con significado personal primero).
+- **Cómo se pide cada palabra:** primero **nombrar la imagen** (sin modelo); si no dice nada en 5 s o dice otra cosa, la app **dice la palabra y la persona repite**. Se registra cuál fue (`elicitacion: 'nombrar' | 'repetir'`), porque cambia el perfil (Vergara Ponce).
+- **En tramos cortos:** 4 sesiones de ~12 palabras (fatiga, §2.4). Se puede pausar y seguir otro día.
+- **Resultado (pantalla del adulto «Diagnóstico inicial»):**
+  1. **Inventario de sonidos:** cuáles produce bien, cuáles a veces, cuáles nunca (por posición).
+  2. **Procesos de simplificación** encontrados con su frecuencia: reducción de grupo consonántico («plato» → «pato»), omisión de consonante final, omisión de sílaba átona («pelota» → «tota»), sustitución de vibrantes (/ɾ/ y /r/ → /l/, /d/), frontalización y posteriorización (/k/ ↔ /t/), asimilación, sonorización o ensordecimiento, simplificación de diptongos.
+  3. **Inteligibilidad estimada** (porcentaje de palabras en que todos los fonemas pasaron el umbral) y **estimulabilidad** (cuánto mejora cuando repite tras el modelo).
+  4. **Sonidos sugeridos para practicar** (máximo 2 a la vez), con el porqué: aparece mucho en su vocabulario, es estimulable, y según el **orden aproximado de adquisición** del español (vocales y /p m n t k b/ antes; /ɾ/, grupos y /r/ al final). El orden vive en `core/habla/fonemas.js`, editable, marcado «a validar con la fonoaudióloga».
+  5. Botón **«Informe para la fonoaudióloga»** (página imprimible / PDF con tablas y ejemplos de audio solo si el adulto los adjunta).
+
+### La práctica guiada (actividades `H1`–`H6`)
+Sigue la jerarquía clásica de la terapia de articulación: **oír → sonido → sílaba → palabra → frase**, con pares mínimos y siempre apoyo visual (§2.7).
+
+| Código | Actividad | Qué hace la persona | ¿Usa micrófono? |
+|---|---|---|---|
+| `H1` | Escucha y elige | Oye «rata» o «lata» y toca la imagen (pares mínimos del sonido objetivo). Discriminar antes de producir. | No (toques, como L1) |
+| `H2` | Mi boca hace… | Ve cómo se pone la boca (ilustración SVG simple y, si quiere, **espejo** con la cámara frontal, sin grabar) y repite el sonido solo o alargado («sssss», «rrrr»). | Sí |
+| `H3` | Sílabas | Repite sílabas con el sonido («ra re ri ro ru», «pla ple…»). | Sí |
+| `H4` | Repite la palabra | Imagen + modelo hablado → repite. Posición del sonido: inicial → entre vocales → final. | Sí |
+| `H5` | Nombra la imagen | Imagen sin modelo → la nombra (si no puede, pasa a `H4` con modelo, sin «error»). | Sí |
+| `H6` | Di la frase | Frases cortas del perfil (F1–F3) que contienen el sonido. | Sí |
+
+- **Mientras habla:** una onda tranquila que se mueve con su voz (le muestra que lo están escuchando y anima a hablar fuerte, sin colores de acierto o error).
+- **Avance:** cada sonido objetivo tiene su nivel en la jerarquía; los pares (sonido, actividad) usan el motor del §4 (Leitner, avance rápido, «aprendida»), **reutilizando** `core/progreso.js` y `crearSesion` con un parámetro, como hizo la Escritura. Se sube de actividad con ≥ 80 % de intentos que el análisis (o el adulto) da por buenos en las últimas 10; se sugiere bajar con < 50 %, nunca solo.
+- **Sesión:** ~8 intentos, ~70 % con sonidos que ya dice bien o palabras fáciles, ~30 % el objetivo; el mismo premio que la lectura (lámina, álbum, monedas por álbumes).
+
+### Cómo mejora el análisis con el uso
+1. **Calibración por persona:** cada marca del adulto («Bien» / «No») es un ejemplo con su GOP. Por cada (persona, fonema) se ajusta en línea una **regresión logística** pequeña (GOP → probabilidad de que el adulto diga «Bien»), con un **prior** común mientras haya pocos ejemplos (< 10). Así el umbral se acomoda a su voz y a su forma de hablar. Puro, en `core/habla/calibracion.js`.
+2. **Plantillas de su propia voz:** las grabaciones marcadas «Bien» de un sonido se guardan como plantilla; los intentos nuevos también se comparan con ellas (**DTW sobre posteriorgramas** del modelo, técnica clásica para habla atípica). Si se parece a «su /r/ bien dicha», cuenta a favor aunque el modelo general dude.
+3. **Matriz de confusiones personal:** qué pone en lugar de qué (/r/ → /l/ 70 %). Ayuda a decodificar mejor (se le da al decodificador libre un sesgo hacia sus confusiones conocidas) y a elegir los pares mínimos de `H1`.
+4. **Estimación por sonido con incertidumbre:** para cada (fonema, posición) una Beta(aciertos, errores) con olvido suave (las últimas semanas pesan más). Un sonido pasa a «a practicar» si la probabilidad de producirlo bien es < 0,6 **con al menos 6 observaciones**, y a «logrado» con > 0,85 en 10 seguidas y en **palabras no practicadas**.
+5. **Sondas de generalización:** cada 2 semanas, 6 palabras nunca practicadas con los sonidos trabajados (como `primeraVez` en la Escritura). Es la medida de avance real.
+6. **Re-diagnóstico** cada 3 meses (o cuando el adulto quiera), comparado con el anterior en el mismo informe.
+7. **Exportación para IA** (`construirExportacion`, sección `habla`): GOP por fonema, marcas del adulto, confusiones, procesos, historial; sin audio.
+
+### Datos
+```js
+perfil.ajustes.habla = {
+  habilitada: false, sensibilidad: 'alta' | 'media' | 'baja', aspiracionAceptada: true,
+  conAdulto: true,               // diagnóstico con el adulto al lado
+  objetivosManuales: [],          // fonemas fijados por el adulto (manda sobre lo automático)
+  bloqueados: [],                 // sonidos que no se trabajan (p. ej. por indicación de la fono)
+  intentosPorSesion: 8, espejo: false,
+}
+perfil.ajustes.automaticos += { objetivosHabla: true, nivelHabla: true }
+// almacenes nuevos (subir la versión de IndexedDB):
+grabacion { id, perfilId, respuestaId, blob (solo local), ms, plantilla: false, fonema?, caduca? }
+fonetica  { id: `${perfilId}:${fonema}:${posicion}`, perfilId, fonema, posicion, a, b,   // Beta
+            calibracion: { w0, w1, n }, confusiones: { [fonema]: n }, estado: 'sin-datos'|'a-practicar'|'en-practica'|'logrado' }
+diagnostico { id, perfilId, fecha, items: [...], resumen: { inventario, procesos, inteligibilidad, estimulabilidad, sugeridos } }
+respuesta  { ...fase 12, modo: 'habla', actividad: 'H0'..'H6', objetivo: 'perro', esperado: ['p','e','r','o'],
+             elicitacion: 'nombrar'|'repetir', decodificado: ['p','e','l','o'],
+             fonemas: [{ esperado, gop, alineado: [ini, fin], probable, plantilla? }],
+             procesos: ['sustitucion-vibrante'], posibleError, marcaAdulto?: 'bien'|'casi'|'no', dijoEnVez?: {...},
+             grabacionId?, msVoz, volumen }
+```
+**Separar lectura, escritura y habla (obligatorio, con pruebas):** `esDeHabla(registro)` (`actividad` `H`+número o `modo: 'habla'`) en `core/habla/comun.js`; todo lo que hoy ignora la escritura con `esDeEscritura` debe ignorar también el habla (conviene una sola `esDeOtroModo` para no olvidar ninguno). Actualizar `CAMPOS_DEL_*` / `AJUSTES_DEL_*` y `ALMACENES_DE_FICHA` de `core/curso.js`.
+
+### Fase 33 — Prueba técnica y elección del modelo (antes de escribir la app)
+- `herramientas/habla/exportar-zipa.py`: baja `anyspeech/zipa-cr-s`, lo exporta a ONNX y lo cuantiza a int8 (solo MatMul si las Conv cuantizadas fallan en `onnxruntime-web`, como pasó en speako); deja el **mapa de símbolos** de ZIPA al inventario chileno (`data/habla/simbolos.json`, unir alófonos).
+- `tests/navegador/habla-banco.html`: carga el modelo, mide tiempo de carga, tiempo por segundo de audio (RTF) con WASM y WebGPU, memoria, y muestra fonemas decodificados de grabaciones de prueba.
+- **Lo hace el usuario:** probar en **2 celulares Android reales** (uno de gama media) y grabar un set de prueba: ~20 palabras dichas bien por un adulto, las mismas dichas «con errores» a propósito (pato por plato, pelo por perro), y, si se puede, ~20 de la persona.
+- **Acepta si:** RTF < 0,5 en el de gama media, < 3 s por palabra, el decodificador encuentra al menos 8 de cada 10 errores provocados. Si no, se repite con el **plan B** (CommonPhone) y se anota la decisión (peso, velocidad, precisión, licencia) en «Decisiones de implementación».
+
+### Fase 34 — Núcleo puro de fonética (sin DOM)
+- `js/core/habla/`: `fonemas.js` (inventario es-CL con rasgos: punto, modo, sonoridad; orden aproximado de adquisición), `g2p.js` (texto → fonemas con sílabas y acento, reutiliza `core/silabas.js`; alófonos aceptables por dialecto), `alineacion.js` (Viterbi CTC forzado y alineación por edición entre esperado y decodificado), `gop.js`, `procesos.js` (de la alineación a los procesos de simplificación), `comun.js` (`esDeHabla`).
+- **Acepta si:** G2P con ≥ 80 palabras (incluidas las de §7 y casos chilenos), alineación y GOP con posteriores sintéticos conocidos, cada proceso detectado con ≥ 3 ejemplos, y las variantes dialectales no cuentan como error. `npm test` en verde.
+
+### Fase 35 — Captura y motor en el navegador
+- `js/habla/captura.js` (micrófono, `AudioWorklet`, 16 kHz, VAD), `js/habla/trabajador.js` (Worker con `onnxruntime-web`), `js/habla/modelo.js` (descarga, SHA-256, caché, borrar), `js/habla/analizar.js` → `analizar(audio, palabra)` = fonemas + GOP + procesos.
+- `sw.js`: el código y `vendor/onnxruntime/` en `PRECACHE` (sube `VERSION`); el modelo **no** (va a su caché propia, como las sílabas del diccionario).
+- **Acepta si:** funciona sin red tras la descarga (modo avión), la pantalla no se congela durante el análisis, el micrófono falso de §10 da un resultado, y `privacidad.html` sigue siendo cierta (ningún audio sale del dispositivo).
+
+### Fase 36 — Diagnóstico inicial
+- `data/habla/diagnostico.json`, `js/core/habla/diagnostico.js` (elegir ítems con el vocabulario del perfil primero, cobertura, resumen), pantalla `H0` del niño (`js/nino/hablar.js`), pantalla adulta **«Escuchar y marcar»** y **«Diagnóstico inicial»** (`js/adulto/habla-diagnostico.js`) con el informe imprimible.
+- **Acepta si:** la batería cubre todos los fonemas y grupos en sus posiciones (prueba), el resumen sale bien con respuestas simuladas, y se puede hacer en 4 tramos.
+
+### Fase 37 — Práctica guiada
+- `H1`–`H6` en `js/actividades/`, selección de objetivos (`core/habla/objetivos.js`), sesión y controlador reutilizando los del §4 con un parámetro (sin duplicar), ilustraciones de la boca (SVG simples, sin rojo), espejo opcional, elogio por intentar, premio de siempre.
+- **Acepta si:** nunca aparece un mensaje, color o sonido de error para la persona (prueba con el análisis forzado a «posible error»), la fatiga funciona y las sesiones de habla no cambian nada de la lectura ni la escritura.
+
+### Fase 38 — Aprendizaje continuo y «Qué le cuesta al hablar»
+- `core/habla/calibracion.js`, `plantillas.js` (DTW), `perfil-fonetico.js` (Beta con olvido, estados), sondas, re-diagnóstico, autoajuste una vez al día con «Deshacer» (fase 14), sección «Hablar» en `#/adulto/analisis` y en la exportación.
+- `tests/simulador.js`: persona simulada con errores conocidos (/r/ → /l/ 80 %, reducción de grupos 60 %) y un «adulto» que marca bien el 95 %: medir en cuántas sesiones la calibración encuentra los dos objetivos y deja de marcar lo que ya dice bien.
+
+### Fase 39 — Privacidad, ayuda y prueba real
+- Ayuda del adulto, «Acerca de» (licencias: ZIPA Apache-2.0, onnxruntime MIT, fuentes en `docs/habla-fuentes.md`), `privacidad.html` (micrófono, qué se guarda, que no es diagnóstico clínico), README.
+- **Lo hace el usuario:** probar con la persona y, si se puede, mostrar el informe a su fonoaudióloga.
+
+### Preguntas abiertas (para aprobar)
+1. **¿Para quién es?** ¿El mismo niño de 4–10 años de la app, o un adolescente o adulto? Cambia las palabras, las imágenes y la voz del modelo.
+2. **¿Apruebas el cambio a §2.11** (la app escucha y analiza, pero la persona nunca ve un error)?
+3. **Grabaciones:** ¿solo en el dispositivo (por defecto) o también en el Drive del adulto (permite oírlas en otro equipo y mostrarlas a la fono)?
+4. **Dónde se aloja el modelo** (~70 MB, o ~320 MB con el plan B): ¿en Hugging Face (deja bajarlo desde la app sin límites de GitHub Pages) o dentro del repositorio?
+5. ¿Hay una **fonoaudióloga** que pueda revisar el orden de adquisición y la batería antes de la fase 36?
+
+### Fuera de alcance (preguntar antes)
+- Re-entrenar la red neuronal con la voz de la persona (se calibra, no se re-entrena).
+- Conversación libre o reconocimiento de frases largas espontáneas.
+- Voz, tono, fluidez (tartamudeo) y deglución: solo articulación.
+- Enviar audio a cualquier servidor.
+
+---
+
 ## 10. Notas para el desarrollo
 
 - **Git:** commit al cerrar cada fase con un mensaje claro. **No hacer `git push`** (no puede autenticarse desde este equipo): el usuario sube los cambios.
