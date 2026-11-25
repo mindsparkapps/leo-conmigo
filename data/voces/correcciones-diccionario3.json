@@ -1,0 +1,22 @@
+[
+  {"texto":"jac","enviado":"jác","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"jan","enviado":"ján","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"ján","enviado":"ján","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"jé","enviado":"jé","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"jen","enviado":"jén","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"jez","enviado":"jéz","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"jí","enviado":"jí","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"jia","enviado":"jiá","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"jie","enviado":"jié","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"jié","enviado":"jié","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"jim","enviado":"jím","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"jin","enviado":"jín","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"jis","enviado":"jís","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"jon","enviado":"jón","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"jón","enviado":"jón","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"jou","enviado":"jóu","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"jus","enviado":"jús","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"jús","enviado":"jús","contexto":true,"stability":0.9,"problema":"la «j» suena como «y»","intento":2},
+  {"texto":"lac","enviado":"lák","contexto":true,"stability":0.9,"problema":"la «c» final suena «s»","intento":2},
+  {"texto":"lác","enviado":"lák","contexto":true,"stability":0.9,"problema":"la «c» final suena «s»","intento":2}
+]
