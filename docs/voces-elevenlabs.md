@@ -146,6 +146,17 @@ Se oyeron mal `ahu` (decía «aju»: la «h» muda se leía como «j»), `bér` 
 
 **Diccionario 401 a 600** (`correcciones-diccionario3.json`): las 18 sílabas con «j» (jac, jan, ján, jé, jen, jez, jí, jia, jie, jié, jim, jin, jis, jon, jón, jou, jus, jús) sonaban con la «j» como «y» porque la receta 3 del diccionario (sin acento) falla con «j» seguida de e/i/a; sirvió la de `ge`/`gia`/`gie` de la tanda 2: **acento en la vocal + contexto + stability 0.9** (`jác`, `jén`, `jiá`, `jié`, `jóu`…; las dos grafías de una misma sílaba, con y sin tilde, se enviaron con el mismo texto). `lac` y `lác` sonaban «las» (la «c» final como «s»): se envió `lák`, igual que `flec`. Van como extras con `"revisar": 5` («Revisión tanda 5»). Las 20 salieron bien y se aprobaron, con toda la tanda 3 del diccionario (401 a 600); sus botones se quitaron.
 
+**Diccionario 601 a 1000** (26 de noviembre, `correcciones-diccionario4.json`, «Revisión tanda 6»), 16 sílabas que el usuario marcó mientras oía las tandas 4 a 7 del diccionario:
+
+| Problema oído | Casos | Qué se envió (contexto + stability 0.9) |
+|---|---|---|
+| «c» final suena «s» o «ts» | lic, nec, néc, rac, vic, xac | con «k»: `lík`, `nék`, `rák`, `vík`; `xac` como `ksák` (igual que `xi` → `ksí`) |
+| «h» muda suena «j» | prohi, rahu, rehi, rehir, sahi, sahu, truha | sin la «h» y con acento en la vocal débil (marca el hiato): `proí`, `raú`, `reí`, `reír`, `saí`, `saú`, `trúa` |
+| Francesa (acabada en «r»/«s») | nér, reins | `nér` → `ner` sin acento (receta 2, como `ber` y `der`); `reins` → `reíns` (acento en la vocal cerrada) |
+| Dice «tien» | tián | `tiyán` (la «y» deja el hiato como semivocal) |
+
+Las que estaban en una tanda sin aprobar siguen saliendo de su lista del diccionario mientras están en revisión. Con la «k» se evita la «s»: probar primero `lík`-like antes de acentuar.
+
 ### Correcciones de la tanda 3 de Escritura (25 de noviembre de 2026)
 
 De las voces nuevas 401 a 600 el usuario marcó 10. Van en `data/voces/correcciones-tanda3.json`, todas con contexto + stability 0.9 (`"intento": 1`), y salieron de su tanda con `"revisar": 3` («Revisión tanda 3»). Tres son **palabras** (`tractor`, `guau`, `miau`): llevan `ruta` (el mp3 de la palabra, que `regenerar-silabas.mjs` sobrescribe sin anotarla como sílaba) y `contexto` con la frase «Ahora repite la palabra en español…» en vez de «la sílaba».

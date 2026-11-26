@@ -1,0 +1,18 @@
+[
+  {"texto":"lic","enviado":"lík","contexto":true,"stability":0.9,"problema":"la «c» final suena «s»","intento":2},
+  {"texto":"nec","enviado":"nék","contexto":true,"stability":0.9,"problema":"la «c» final suena «s»","intento":2},
+  {"texto":"néc","enviado":"nék","contexto":true,"stability":0.9,"problema":"la «c» final suena «s»","intento":2},
+  {"texto":"nér","enviado":"ner","contexto":true,"stability":0.9,"problema":"francesa: «nergg»","intento":2},
+  {"texto":"prohi","enviado":"proí","contexto":true,"stability":0.9,"problema":"la «h» muda suena «j»","intento":2},
+  {"texto":"rac","enviado":"rák","contexto":true,"stability":0.9,"problema":"la «c» final suena «s»","intento":2},
+  {"texto":"rahu","enviado":"raú","contexto":true,"stability":0.9,"problema":"la «h» muda suena «j»","intento":2},
+  {"texto":"rehi","enviado":"reí","contexto":true,"stability":0.9,"problema":"la «h» muda suena «j»","intento":2},
+  {"texto":"rehir","enviado":"reír","contexto":true,"stability":0.9,"problema":"la «h» muda suena «j»","intento":2},
+  {"texto":"reins","enviado":"reíns","contexto":true,"stability":0.9,"problema":"francesa: «reengs»","intento":2},
+  {"texto":"sahi","enviado":"saí","contexto":true,"stability":0.9,"problema":"la «h» muda suena «j»","intento":2},
+  {"texto":"sahu","enviado":"saú","contexto":true,"stability":0.9,"problema":"la «h» muda suena «j»","intento":2},
+  {"texto":"tián","enviado":"tiyán","contexto":true,"stability":0.9,"problema":"suena «tien»","intento":2},
+  {"texto":"truha","enviado":"trúa","contexto":true,"stability":0.9,"problema":"la «h» muda suena «j»","intento":2},
+  {"texto":"vic","enviado":"vík","contexto":true,"stability":0.9,"problema":"la «c» final suena «s»","intento":2},
+  {"texto":"xac","enviado":"ksák","contexto":true,"stability":0.9,"problema":"la «c» final suena «ts»","intento":2}
+]
