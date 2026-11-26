@@ -157,6 +157,8 @@ Se oyeron mal `ahu` (decía «aju»: la «h» muda se leía como «j»), `bér` 
 
 Segunda ronda (`correcciones-diccionario4b.json`): `raú` sonaba «raul» → `ráu`; `tiyán` sonaba «tiyan» → `tian` sin acento + contexto (el paso 3 del orden sugerido).
 
+Tercera ronda de `tián` (`correcciones-diccionario4c.json`): `tian` con contexto seguía diciendo «tien»; se probó `tián` **sin contexto**, stability 0.5 (como `güi`).
+
 Las que estaban en una tanda sin aprobar siguen saliendo de su lista del diccionario mientras están en revisión. Con la «k» se evita la «s»: probar primero `lík`-like antes de acentuar.
 
 ### Correcciones de la tanda 3 de Escritura (25 de noviembre de 2026)
