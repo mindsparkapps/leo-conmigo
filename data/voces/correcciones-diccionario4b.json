@@ -1,0 +1,4 @@
+[
+  {"texto":"rahu","enviado":"ráu","contexto":true,"stability":0.9,"problema":"`raú` sonaba «raul»","intento":3},
+  {"texto":"tián","enviado":"tian","contexto":true,"stability":0.9,"problema":"`tián` sonaba «tien» y `tiyán` «tiyan»","intento":3}
+]
