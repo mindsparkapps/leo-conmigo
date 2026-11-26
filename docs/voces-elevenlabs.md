@@ -159,6 +159,8 @@ Segunda ronda (`correcciones-diccionario4b.json`): `raú` sonaba «raul» → `r
 
 Tercera ronda de `tián` (`correcciones-diccionario4c.json`): `tian` con contexto seguía diciendo «tien»; se probó `tián` **sin contexto**, stability 0.5 (como `güi`).
 
+Cuarta ronda (`correcciones-diccionario4d.json`): `mohi` y `zahi` sonaban con «j» → `moí`, `zaí` (igual que las otras con «h» muda); `toim` sonaba «toin» → `tóimm` (la «m» doble final marca más la «m»); `tián` seguía «tien», algo asiático, también sin contexto → `tiáan`.
+
 Las que estaban en una tanda sin aprobar siguen saliendo de su lista del diccionario mientras están en revisión. Con la «k» se evita la «s»: probar primero `lík`-like antes de acentuar.
 
 ### Correcciones de la tanda 3 de Escritura (25 de noviembre de 2026)

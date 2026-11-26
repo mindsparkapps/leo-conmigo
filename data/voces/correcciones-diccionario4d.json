@@ -1,0 +1,6 @@
+[
+  {"texto":"mohi","enviado":"moí","contexto":true,"stability":0.9,"problema":"la «h» muda suena «j»","intento":2},
+  {"texto":"zahi","enviado":"zaí","contexto":true,"stability":0.9,"problema":"la «h» muda suena «j»","intento":2},
+  {"texto":"toim","enviado":"tóimm","contexto":true,"stability":0.9,"problema":"la «m» final suena «n»; hay que marcarla más","intento":2},
+  {"texto":"tián","enviado":"tiáan","contexto":true,"stability":0.9,"problema":"suena «tien», algo asiático","intento":2}
+]
