@@ -161,7 +161,9 @@ Tercera ronda de `tián` (`correcciones-diccionario4c.json`): `tian` con context
 
 Cuarta ronda (`correcciones-diccionario4d.json`): `mohi` y `zahi` sonaban con «j» → `moí`, `zaí` (igual que las otras con «h» muda); `toim` sonaba «toin» → `tóimm` (la «m» doble final marca más la «m»); `tián` seguía «tien», algo asiático, también sin contexto → `tiáan`.
 
-Las que estaban en una tanda sin aprobar siguen saliendo de su lista del diccionario mientras están en revisión. Con la «k» se evita la «s»: probar primero `lík`-like antes de acentuar.
+Las 19 corregidas de esta ronda salieron bien y se aprobaron, y con ellas las 7 tandas del diccionario (1301 sílabas): todo pasó a «Probar sílabas» y se quitaron todos los botones del diccionario y de revisión.
+
+(Mientras estuvieron en revisión) las que estaban en una tanda sin aprobar siguen saliendo de su lista del diccionario mientras están en revisión. Con la «k» se evita la «s»: probar primero `lík`-like antes de acentuar.
 
 ### Correcciones de la tanda 3 de Escritura (25 de noviembre de 2026)
 
